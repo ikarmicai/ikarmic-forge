@@ -14,7 +14,8 @@
  *   - truncation of details
  *   - schemaIsPath: loading a Zod schema from a file path
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -167,6 +168,12 @@ describe('jsonSchema grader — schemaIsPath', () => {
   });
 
   function writeFixture(): string {
+    // A schema file imports `zod` from its own location, so the fixture directory gets a link to the
+    // zod this package uses. Without it the import only resolves when vitest handles it, which is the
+    // case in the monorepo but not when core comes from node_modules (the public repository).
+    const zodDir = path.dirname(createRequire(import.meta.url).resolve('zod/package.json'));
+    mkdirSync(path.join(workDir, 'node_modules'), { recursive: true });
+    symlinkSync(zodDir, path.join(workDir, 'node_modules', 'zod'), 'junction');
     const file = path.join(workDir, 'pr-summary-schema.mjs');
     writeFileSync(
       file,

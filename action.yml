@@ -1,0 +1,71 @@
+name: IKarmic AI Forge
+description: Run the Forge coding agent on a task or an @forge comment, then open a draft PR with its changes and reply on the thread.
+author: ikarmicai
+branding:
+  icon: cpu
+  color: orange
+
+inputs:
+  prompt:
+    description: The task. Leave empty to take it from the comment or issue that triggered the workflow (the text after "@forge").
+    required: false
+    default: ''
+  model:
+    description: Model id (or provider:model / alias). Defaults to the provider's default model.
+    required: false
+    default: ''
+  provider:
+    description: Provider (anthropic, openai, google, openrouter, ...). Defaults to the first one with an API key in the environment.
+    required: false
+    default: ''
+  max-cost:
+    description: Stop the run once it has cost this many USD.
+    required: false
+    default: '2'
+  create-pr:
+    description: When the run changed files, commit them to a new branch and open a draft PR.
+    required: false
+    default: 'true'
+  comment:
+    description: Reply on the triggering issue or PR with Forge's answer (and the PR link).
+    required: false
+    default: 'true'
+  github-token:
+    description: Token for pushing, opening the PR, commenting and the agent's PR-reading tool. Needs contents, pull-requests and issues write.
+    required: false
+    default: ${{ github.token }}
+  forge-version:
+    description: npm version of the ikarmic-forge CLI to run.
+    required: false
+    default: latest
+
+outputs:
+  result:
+    description: Forge's final reply.
+    value: ${{ steps.forge.outputs.result }}
+  reason:
+    description: Why the run ended (completed, max_iterations, budget_exceeded, error, ...).
+    value: ${{ steps.forge.outputs.reason }}
+  pr-url:
+    description: The draft PR it opened, if any.
+    value: ${{ steps.forge.outputs.pr-url }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - id: forge
+      shell: bash
+      # Inputs reach the script as INPUT_* variables, never interpolated into the shell.
+      env:
+        INPUT_PROMPT: ${{ inputs.prompt }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_MAX_COST: ${{ inputs.max-cost }}
+        INPUT_CREATE_PR: ${{ inputs.create-pr }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_FORGE_VERSION: ${{ inputs.forge-version }}
+      run: node "$GITHUB_ACTION_PATH/scripts/github-action/run.mjs"
