@@ -12,7 +12,8 @@
     "test": "pnpm -r --filter=./packages/* test",
     "dev": "pnpm -r --filter=./packages/* dev",
     "clean": "pnpm -r --filter=./packages/* clean",
-    "typecheck": "pnpm -r --filter=./packages/* typecheck"
+    "typecheck": "pnpm -r --filter=./packages/* typecheck",
+    "docs:build": "node scripts/build-docs.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
