@@ -1,0 +1,31 @@
+{
+  "name": "ikarmic-forge",
+  "version": "5.0.0",
+  "private": true,
+  "description": "IKarmic AI Forge: an all-in-one AI coding assistant (CLI + VS Code extension).",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/* build",
+    "test": "pnpm -r --filter=./packages/* test",
+    "dev": "pnpm -r --filter=./packages/* dev",
+    "clean": "pnpm -r --filter=./packages/* clean",
+    "typecheck": "pnpm -r --filter=./packages/* typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "marked": "^15.0.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "jsondiffpatch": ">=0.7.6"
+    }
+  },
+  "packageManager": "pnpm@10.33.2"
+}

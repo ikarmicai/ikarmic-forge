@@ -1,0 +1,74 @@
+{
+  "name": "ikarmic-forge",
+  "version": "5.0.0",
+  "description": "IKarmic AI Forge CLI: run AI coding agents from your terminal. Multi-model (OpenAI, Anthropic, Google, Ollama, OpenRouter), MCP, sandbox, project memory, plan mode, context compaction.",
+  "type": "module",
+  "bin": {
+    "forge": "./dist/bin/forge.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "ai",
+    "cli",
+    "agent",
+    "llm",
+    "claude",
+    "gpt",
+    "gemini",
+    "ollama",
+    "openrouter",
+    "mcp",
+    "code-assistant",
+    "repl"
+  ],
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ikarmicai/ikarmic-forge"
+  },
+  "bugs": {
+    "url": "https://github.com/ikarmicai/ikarmic-forge/issues"
+  },
+  "homepage": "https://github.com/ikarmicai/ikarmic-forge#readme",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/bin/forge.ts",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@ikarmic/forge-core": "^5.0.0",
+    "@napi-rs/keyring": "^1.0.0",
+    "ai": "^7.0.0",
+    "commander": "^12.1.0",
+    "ink": "^5.0.1",
+    "ink-select-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "@types/react": "^18.3.12",
+    "ink-testing-library": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.2"
+  }
+}

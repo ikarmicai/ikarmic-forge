@@ -1,0 +1,892 @@
+{
+  "name": "ikarmic-forge",
+  "displayName": "IKarmic AI Forge",
+  "description": "Open-source AI coding agent. Multi-provider (OpenAI, Anthropic, Google, OpenRouter, Ollama), MCP-native, with skills system + lifecycle hooks + plan mode + context compaction + voice input. Inline completions + chat panel.",
+  "version": "5.0.0",
+  "publisher": "ikarmic",
+  "license": "AGPL-3.0-only",
+  "icon": "resources/icon.png",
+  "categories": [
+    "AI",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "agent",
+    "coding-assistant",
+    "claude",
+    "gpt",
+    "gemini",
+    "openrouter",
+    "ollama",
+    "mcp",
+    "model-context-protocol",
+    "skills",
+    "hooks",
+    "plan-mode",
+    "inline-completions",
+    "voice-input",
+    "speech-recognition",
+    "chat"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ikarmicai/ikarmic-forge.git",
+    "directory": "packages/vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./dist/extension.js",
+  "l10n": "./l10n",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:forge.openChat",
+    "onCommand:forge.runTask",
+    "onCommand:forge.runTaskAuto",
+    "onCommand:forge.runOnSelection",
+    "onCommand:forge.configureProvider",
+    "onCommand:forge.cancelTask",
+    "onCommand:forge.startVoiceInput",
+    "onCommand:forge.openSettings",
+    "onCommand:forge.manageMemory"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "forge.openChat",
+        "title": "%command.forge.openChat.title%",
+        "category": "%category.forge%",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "forge.runTask",
+        "title": "%command.forge.runTask.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.runTaskAuto",
+        "title": "%command.forge.runTaskAuto.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.runOnSelection",
+        "title": "%command.forge.runOnSelection.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.inlineEdit",
+        "title": "%command.forge.inlineEdit.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.explainSelection",
+        "title": "%command.forge.explainSelection.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.fixDiagnostic",
+        "title": "%command.forge.fixDiagnostic.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.cancelTask",
+        "title": "%command.forge.cancelTask.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.configureProvider",
+        "title": "%command.forge.configureProvider.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.openSettings",
+        "title": "%command.forge.openSettings.title%",
+        "category": "%category.forge%",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "forge.openMemory",
+        "title": "%command.forge.openMemory.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.generateCommitMessage",
+        "title": "%command.forge.generateCommitMessage.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.manageMemory",
+        "title": "%command.forge.manageMemory.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.startVoiceInput",
+        "title": "%command.forge.startVoiceInput.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.completionTelemetry.accept",
+        "title": "%command.forge.completionTelemetry.accept.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.completionTelemetry.reset",
+        "title": "%command.forge.completionTelemetry.reset.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.spec.generate",
+        "title": "%command.forge.spec.generate.title%",
+        "category": "%category.forge%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "forge.spec.approve",
+        "title": "%command.forge.spec.approve.title%",
+        "category": "%category.forge%",
+        "icon": "$(check)"
+      },
+      {
+        "command": "forge.spec.discard",
+        "title": "%command.forge.spec.discard.title%",
+        "category": "%category.forge%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "forge.spec.runTask",
+        "title": "%command.forge.spec.runTask.title%",
+        "category": "%category.forge%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "forge.spec.runTaskCurrent",
+        "title": "%command.forge.spec.runTaskCurrent.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.spec.convert",
+        "title": "%command.forge.spec.convert.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.spec.sync",
+        "title": "%command.forge.spec.sync.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.spec.openFile",
+        "title": "%command.forge.spec.openFile.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.spec.refresh",
+        "title": "%command.forge.spec.refresh.title%",
+        "category": "%category.forge%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "forge.steering.new",
+        "title": "%command.forge.steering.new.title%",
+        "category": "%category.forge%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "forge.steering.toggle",
+        "title": "%command.forge.steering.toggle.title%",
+        "category": "%category.forge%",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "forge.steering.open",
+        "title": "%command.forge.steering.open.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.steering.refresh",
+        "title": "%command.forge.steering.refresh.title%",
+        "category": "%category.forge%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "forge.mcp.browse",
+        "title": "%command.forge.mcp.browse.title%",
+        "category": "%category.forge%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "forge.mcp.reload",
+        "title": "%command.forge.mcp.reload.title%",
+        "category": "%category.forge%",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "forge.mcp.openConfig",
+        "title": "%command.forge.mcp.openConfig.title%",
+        "category": "%category.forge%",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "forge.mcp.toggle",
+        "title": "%command.forge.mcp.toggle.title%",
+        "category": "%category.forge%",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "forge.mcp.remove",
+        "title": "%command.forge.mcp.remove.title%",
+        "category": "%category.forge%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "forge.skills.browse",
+        "title": "%command.forge.skills.browse.title%",
+        "category": "%category.forge%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "forge.skills.open",
+        "title": "%command.forge.skills.open.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.agents.run",
+        "title": "%command.forge.agents.run.title%",
+        "category": "%category.forge%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "forge.agents.review",
+        "title": "%command.forge.agents.review.title%",
+        "category": "%category.forge%",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "forge.agents.merge",
+        "title": "%command.forge.agents.merge.title%",
+        "category": "%category.forge%",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "forge.agents.discard",
+        "title": "%command.forge.agents.discard.title%",
+        "category": "%category.forge%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "forge.agents.clear",
+        "title": "%command.forge.agents.clear.title%",
+        "category": "%category.forge%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "forge.getStarted",
+        "title": "%command.forge.getStarted.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.showStats",
+        "title": "%command.forge.showStats.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.sessions.resume",
+        "title": "%command.forge.sessions.resume.title%",
+        "category": "%category.forge%"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "forge.getStarted",
+        "title": "%walkthrough.forge.getStarted.title%",
+        "description": "%walkthrough.forge.getStarted.description%",
+        "steps": [
+          {
+            "id": "provider",
+            "title": "%walkthrough.forge.getStarted.provider.title%",
+            "description": "%walkthrough.forge.getStarted.provider.description%",
+            "media": {
+              "markdown": "resources/walkthrough/provider.md"
+            },
+            "completionEvents": [
+              "onCommand:forge.configureProvider"
+            ]
+          },
+          {
+            "id": "chat",
+            "title": "%walkthrough.forge.getStarted.chat.title%",
+            "description": "%walkthrough.forge.getStarted.chat.description%",
+            "media": {
+              "markdown": "resources/walkthrough/chat.md"
+            },
+            "completionEvents": [
+              "onCommand:forge.openChat"
+            ]
+          },
+          {
+            "id": "safety",
+            "title": "%walkthrough.forge.getStarted.safety.title%",
+            "description": "%walkthrough.forge.getStarted.safety.description%",
+            "media": {
+              "markdown": "resources/walkthrough/safety.md"
+            }
+          },
+          {
+            "id": "more",
+            "title": "%walkthrough.forge.getStarted.more.title%",
+            "description": "%walkthrough.forge.getStarted.more.description%",
+            "media": {
+              "markdown": "resources/walkthrough/more.md"
+            }
+          }
+        ]
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "forge",
+          "title": "%viewsContainer.forge.title%",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "forge": [
+        {
+          "id": "forge.chatView",
+          "name": "%view.forge.chatView.name%",
+          "type": "webview",
+          "when": "config.forge.chatViewEnabled !== false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "forge.provider": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "openai",
+            "anthropic",
+            "google",
+            "openrouter",
+            "minimax",
+            "ollama",
+            "lmstudio",
+            "openai-compatible",
+            "azure",
+            "bedrock",
+            "vertex"
+          ],
+          "default": "auto",
+          "description": "%config.forge.provider.description%"
+        },
+        "forge.model": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.model.description%"
+        },
+        "forge.completionModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.completionModel.description%"
+        },
+        "forge.completionDebounceMs": {
+          "type": "number",
+          "default": 350,
+          "minimum": 0,
+          "maximum": 3000,
+          "description": "%config.forge.completionDebounceMs.description%"
+        },
+        "forge.completionMaxTokens": {
+          "type": "number",
+          "default": 512,
+          "minimum": 32,
+          "maximum": 2048,
+          "description": "%config.forge.completionMaxTokens.description%"
+        },
+        "forge.completionTelemetry": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.completionTelemetry.description%"
+        },
+        "forge.voice.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.voice.enabled.description%"
+        },
+        "forge.voice.language": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.voice.language.description%"
+        },
+        "forge.voice.autoSubmit": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.voice.autoSubmit.description%"
+        },
+        "forge.voice.continuous": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.voice.continuous.description%"
+        },
+        "forge.voice.interimResults": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.voice.interimResults.description%"
+        },
+        "forge.suggestSpec": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.suggestSpec.description%"
+        },
+        "forge.chatViewEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.chatViewEnabled.description%"
+        },
+        "forge.checkpoints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.checkpoints.enabled.description%"
+        },
+        "forge.checkpoints.captureCommands": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.checkpoints.captureCommands.description%"
+        },
+        "forge.apiKeys.openai": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.apiKeys.openai.description%"
+        },
+        "forge.apiKeys.anthropic": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.apiKeys.anthropic.description%"
+        },
+        "forge.apiKeys.google": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.apiKeys.google.description%"
+        },
+        "forge.providers.awsRegion": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.awsRegion.description%"
+        },
+        "forge.providers.vertexProject": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.vertexProject.description%"
+        },
+        "forge.providers.vertexLocation": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.vertexLocation.description%"
+        },
+        "forge.providers.azureResourceName": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.azureResourceName.description%"
+        },
+        "forge.providers.azureBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.azureBaseUrl.description%"
+        },
+        "forge.providers.openaiCompatibleBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.openaiCompatibleBaseUrl.description%"
+        },
+        "forge.providers.lmstudioBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.lmstudioBaseUrl.description%"
+        },
+        "forge.providers.ollamaBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.providers.ollamaBaseUrl.description%"
+        },
+        "forge.compaction.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.compaction.enabled.description%"
+        },
+        "forge.compaction.threshold": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0.3,
+          "maximum": 0.95,
+          "description": "%config.forge.compaction.threshold.description%"
+        },
+        "forge.context.budgetTokens": {
+          "type": "number",
+          "default": 60000,
+          "minimum": 0,
+          "description": "%config.forge.context.budgetTokens.description%"
+        },
+        "forge.context.maskOldResults": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.context.maskOldResults.description%"
+        },
+        "forge.context.keepRecentTurns": {
+          "type": "number",
+          "default": 6,
+          "minimum": 2,
+          "description": "%config.forge.context.keepRecentTurns.description%"
+        },
+        "forge.memory.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.memory.enabled.description%"
+        },
+        "forge.memory.injectionBudgetBytes": {
+          "type": "number",
+          "default": 8000,
+          "minimum": 0,
+          "description": "%config.forge.memory.injectionBudgetBytes.description%"
+        },
+        "forge.memory.maxBodyChars": {
+          "type": "number",
+          "default": 1200,
+          "minimum": 1,
+          "description": "%config.forge.memory.maxBodyChars.description%"
+        },
+        "forge.memory.autoApproveWrites": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.memory.autoApproveWrites.description%"
+        },
+        "forge.maxCostUsd": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "%config.forge.maxCostUsd.description%"
+        },
+        "forge.loopGuardThreshold": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "%config.forge.loopGuardThreshold.description%"
+        },
+        "forge.notifications.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.notifications.enabled.description%"
+        },
+        "forge.notifications.minSeconds": {
+          "type": "number",
+          "default": 20,
+          "minimum": 0,
+          "description": "%config.forge.notifications.minSeconds.description%"
+        },
+        "forge.router.cheapModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.router.cheapModel.description%"
+        },
+        "forge.cachePrompts": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.cachePrompts.description%"
+        },
+        "forge.architect.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.architect.enabled.description%"
+        },
+        "forge.architect.editorModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.architect.editorModel.description%"
+        },
+        "forge.repoMap.tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "%config.forge.repoMap.tokens.description%"
+        },
+        "forge.autoLint.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.autoLint.enabled.description%"
+        },
+        "forge.autoLint.commands": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "%config.forge.autoLint.commands.description%"
+        },
+        "forge.autoCommit.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.autoCommit.enabled.description%"
+        },
+        "forge.autoCommit.dirtyCommits": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.autoCommit.dirtyCommits.description%"
+        },
+        "forge.autoCommit.attribute": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.autoCommit.attribute.description%"
+        },
+        "forge.autoCommit.runHooks": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.autoCommit.runHooks.description%"
+        },
+        "forge.verify.commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "%config.forge.verify.commands.description%"
+        },
+        "forge.verify.auto": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "on",
+            "off"
+          ],
+          "default": "ask",
+          "description": "%config.forge.verify.auto.description%"
+        },
+        "forge.verify.lsp": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.verify.lsp.description%"
+        },
+        "forge.semanticSearch": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.semanticSearch.description%"
+        },
+        "forge.browser.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.browser.enabled.description%"
+        },
+        "forge.browser.headless": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.browser.headless.description%"
+        },
+        "forge.github.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.github.enabled.description%"
+        },
+        "forge.webSearch.provider": {
+          "type": "string",
+          "enum": [
+            "off",
+            "auto",
+            "brave",
+            "tavily",
+            "searxng"
+          ],
+          "default": "off",
+          "description": "%config.forge.webSearch.provider.description%"
+        },
+        "forge.webSearch.searxngUrl": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.webSearch.searxngUrl.description%"
+        },
+        "forge.docs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "%config.forge.docs.description%"
+        },
+        "forge.terminal.integrated": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.terminal.integrated.description%"
+        },
+        "forge.mcp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.mcp.enabled.description%"
+        },
+        "forge.audit.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.forge.audit.enabled.description%"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "forge.openChat",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+shift+i"
+      },
+      {
+        "command": "forge.runTask",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "forge.inlineEdit",
+        "key": "ctrl+shift+alt+i",
+        "mac": "cmd+shift+alt+i",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "forge.startVoiceInput",
+        "key": "ctrl+shift+space",
+        "mac": "cmd+shift+space",
+        "when": "workbench.view.extension.forge || sidebarFocus"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "forge.generateCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "forge.inlineEdit",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "forge@1"
+        },
+        {
+          "command": "forge.explainSelection",
+          "when": "editorHasSelection",
+          "group": "forge@2"
+        },
+        {
+          "command": "forge.runOnSelection",
+          "when": "editorHasSelection",
+          "group": "forge@3"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "forge.openSettings",
+          "when": "view == forge.chatView",
+          "group": "navigation@9"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "forge.fixDiagnostic",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.approve",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.discard",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.runTask",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.runTaskCurrent",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.convert",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.sync",
+          "when": "false"
+        },
+        {
+          "command": "forge.spec.openFile",
+          "when": "false"
+        },
+        {
+          "command": "forge.steering.toggle",
+          "when": "false"
+        },
+        {
+          "command": "forge.steering.open",
+          "when": "false"
+        },
+        {
+          "command": "forge.mcp.toggle",
+          "when": "false"
+        },
+        {
+          "command": "forge.mcp.remove",
+          "when": "false"
+        },
+        {
+          "command": "forge.skills.open",
+          "when": "false"
+        },
+        {
+          "command": "forge.agents.review",
+          "when": "false"
+        },
+        {
+          "command": "forge.agents.merge",
+          "when": "false"
+        },
+        {
+          "command": "forge.agents.discard",
+          "when": "false"
+        },
+        {
+          "command": "forge.steering.new",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "build:watch": "node esbuild.config.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "package": "npm run build && vsce package",
+    "clean": "rm -rf dist out *.vsix *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.0",
+    "@ai-sdk/google": "^4.0.0",
+    "@ai-sdk/openai": "^4.0.0",
+    "@ikarmic/forge-core": "^5.0.0",
+    "ai": "^7.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.7.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "mermaid": "^11.17.2",
+    "mocha": "^12.0.2",
+    "playwright-core": "^1.63.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.2"
+  }
+}

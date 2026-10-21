@@ -1,0 +1,33 @@
+IKarmic Forge
+
+Copyright (c) 2025-2026 IKarmic
+
+Licensing by component (versions 5.0.0 and later)
+-------------------------------------------------
+
+  packages/vscode   VS Code extension   AGPL-3.0-only  (see LICENSE)
+  packages/cli      Command line tool   AGPL-3.0-only  (see LICENSE)
+  packages/eval     Evaluation harness  AGPL-3.0-only  (see LICENSE)
+  packages/core     Core engine         Proprietary    (see packages/core/LICENSE)
+
+Versions 4.5.0 and earlier of every package were released under the MIT
+License. Those releases stay MIT.
+
+Additional permission under GNU AGPL version 3 section 7
+--------------------------------------------------------
+
+The copyright holder gives you additional permission to link or combine the
+AGPL-licensed components above with "@ikarmic/forge-core" (proprietary), and
+to run the result, as long as you obtain "@ikarmic/forge-core" from IKarmic
+under its own licence. This permission covers running the combined program
+only. It does not let you copy, modify or redistribute "@ikarmic/forge-core",
+and it does not change the terms of packages/core/LICENSE.
+
+If you modify an AGPL-licensed component, you may extend this permission to
+your modified version, or delete it; if you delete it, delete this paragraph.
+
+Contributing
+------------
+
+Contributions need agreement to CLA.md before they can be merged, so that
+IKarmic can keep offering the paid editions.
