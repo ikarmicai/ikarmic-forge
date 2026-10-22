@@ -2,7 +2,7 @@
   "name": "ikarmic-forge",
   "displayName": "IKarmic AI Forge",
   "description": "Open-source AI coding agent. Multi-provider (OpenAI, Anthropic, Google, OpenRouter, Ollama), MCP-native, with skills system + lifecycle hooks + plan mode + context compaction + voice input. Inline completions + chat panel.",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "publisher": "ikarmic",
   "license": "AGPL-3.0-only",
   "icon": "resources/icon.png",
@@ -1098,7 +1098,7 @@
     "@ai-sdk/anthropic": "^4.0.0",
     "@ai-sdk/google": "^4.0.0",
     "@ai-sdk/openai": "^4.0.0",
-    "@ikarmic/forge-core": "^5.0.0",
+    "@ikarmic/forge-core": "^5.1.0",
     "ai": "^7.0.0"
   },
   "devDependencies": {
