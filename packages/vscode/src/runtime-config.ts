@@ -1,4 +1,14 @@
-import { loadForgeConfigFile, type CredentialStore } from '@ikarmic/forge-core';
+import * as vscode from 'vscode';
+
+import {
+  loadMergedForgeConfig,
+  overridesFromProviders,
+  registerCustomProviders,
+  registerModelFilters,
+  registerModelOverrides,
+  type CredentialStore,
+  type LoadForgeConfigFileResult,
+} from '@ikarmic/forge-core';
 
 import { applyProviderEnv, applyResolvedApiKeys, resolveApiKeysWithStore } from './api-keys.js';
 import { readConfig, type ExtensionConfig } from './config.js';
@@ -14,7 +24,13 @@ export async function loadRuntimeConfig(store?: CredentialStore): Promise<Extens
   const cfg = readConfig();
   // The Settings panel saves provider/model to the shared ~/.forge/config.json (the CLI reads it too).
   // An explicit VS Code setting wins; otherwise the shared choice applies; otherwise auto-detect.
-  const { config: shared } = await loadForgeConfigFile().catch(() => ({ config: {} as Awaited<ReturnType<typeof loadForgeConfigFile>>['config'] }));
+  // The workspace's .forge/config.json (trusted workspaces only) sits on top of the user file.
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+  const { config: shared } = await loadMergedForgeConfig(root, { trusted: vscode.workspace.isTrusted }).catch(() => ({ config: {} as LoadForgeConfigFileResult['config'] }));
+  // Named providers and per-model numbers are process-wide so every model lookup sees them.
+  registerCustomProviders(shared.customProviders);
+  registerModelFilters(shared.modelFilters);
+  registerModelOverrides({ ...overridesFromProviders(shared.customProviders), ...shared.modelOverrides });
   applySharedModel(cfg, shared);
   applyProviderEnv(cfg.providerEnv);
   if (store) {

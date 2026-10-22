@@ -45,6 +45,8 @@ export interface CliOptions {
   maxDurationMs: number | null;
   /** `--max-cost <usd>`: stop the run once its USD cost reaches this. */
   maxCostUsd: number | null;
+  /** `--loop-guard <n>`: stop the run after this many identical tool calls in a row. */
+  loopGuardThreshold: number | null;
   /** `--cheap-model <id>`: same-provider model for read-only exploration steps. */
   cheapModel: string | null;
   /** `--no-cache-prompts`: skip Anthropic prompt-cache breakpoints. */
@@ -189,6 +191,7 @@ export function buildProgram(): Command {
     .option('--max-iterations <n>', 'max agent iterations', (v) => parseInt(v, 10), 50)
     .option('--max-duration <ms>', 'max wall-clock ms', (v) => parseInt(v, 10), 10 * 60 * 1000)
     .option('--max-cost <usd>', 'stop the run once its cost reaches this many USD', (v) => parseFloat(v))
+    .option('--loop-guard <n>', 'stop the run after this many identical tool calls in a row (off by default)', (v) => parseInt(v, 10))
     .option('--verify <cmd>', 'run this check after edits and self-fix on failure (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--force', 'with `plugin install`: replace an installed plugin of the same name', false)
     .option('--project', 'with `plugin install|remove`: use the project (.forge/plugins) instead of ~/.forge/plugins', false)
@@ -407,6 +410,8 @@ export function parseOptions(argv: string[]): {
   acpCommand: boolean;
   /** `forge policy`: print the active organization policy. */
   policyCommand: boolean;
+  /** `forge import claude [apply]`: copy a Claude Code setup into Forge. */
+  importCommand: { source: 'claude'; apply: boolean } | null;
   /** cli package version (for the ACP handshake). */
   version: string;
 } {
@@ -455,6 +460,7 @@ export function parseOptions(argv: string[]): {
     maxIterations: (opts.maxIterations as number | undefined) ?? null,
     maxDurationMs: (opts.maxDuration as number | undefined) ?? null,
     maxCostUsd: typeof opts.maxCost === 'number' && Number.isFinite(opts.maxCost) && opts.maxCost > 0 ? opts.maxCost : null,
+    loopGuardThreshold: typeof opts.loopGuard === 'number' && Number.isInteger(opts.loopGuard) && opts.loopGuard > 0 ? opts.loopGuard : null,
     cheapModel: (opts.cheapModel as string | undefined) ?? null,
     noCachePrompts: opts.cachePrompts === false,
     architect: opts.architect === true,
@@ -526,6 +532,7 @@ export function parseOptions(argv: string[]): {
   const configCommand = extractConfigCommand(program);
   const acpCommand = program.args[0] === 'acp';
   const policyCommand = program.args[0] === 'policy';
+  const importCommand = program.args[0] === 'import' && program.args[1] === 'claude' ? { source: 'claude' as const, apply: program.args[2] === 'apply' } : null;
   const resolveModel = (): ModelConfig => resolveModelNow(cliOptions);
 
   return {
@@ -547,6 +554,7 @@ export function parseOptions(argv: string[]): {
     configCommand,
     acpCommand,
     policyCommand,
+    importCommand,
     version: readPackageVersion(),
   };
 }
@@ -689,6 +697,7 @@ export interface ParsedHookCommand {
  */
 export interface ParsedMcpCommand {
   list?: true;
+  login?: { name: string };
   install?: { source: string; overwrite: boolean };
   remove?: { name: string };
   browse?: true;
@@ -939,6 +948,9 @@ function extractMcpCommand(program: Command, opts: Record<string, unknown>): Par
   if (sub === 'remove' && args[2]) {
     return { remove: { name: args[2] } };
   }
+  if (sub === 'login' && args[2]) {
+    return { login: { name: args[2] } };
+  }
   return {};
 }
 
@@ -1080,7 +1092,8 @@ export async function toAgentConfig(
   options: CliOptions,
   model: ModelConfig,
   approve: AgentConfig['approve'],
-  extraTools: AgentConfig['extraTools'] = []
+  extraTools: AgentConfig['extraTools'] = [],
+  mcpInstructions?: string
 ): Promise<AgentConfig> {
   const cwd = options.cwd ?? process.cwd();
   const [skillsRegistry, hooksConfig, sandboxFromFile, sharedConfig, steering] = await Promise.all([
@@ -1111,10 +1124,13 @@ export async function toAgentConfig(
     cwd: options.cwd ?? undefined,
     auto: options.auto,
     ...(options.confirmReads ? {} : { autoApproveTools: resolveAutoApprove(sharedConfig.config.autoApproveTools) }),
+    ...(sharedConfig.config.permission && Object.keys(sharedConfig.config.permission).length > 0 ? { permissionRules: sharedConfig.config.permission } : {}),
+    ...(sharedConfig.config.instructions?.length ? { extraInstructions: sharedConfig.config.instructions } : {}),
     allowDestructive: options.allowDestructive,
     maxIterations: options.maxIterations ?? undefined,
     maxDurationMs: options.maxDurationMs ?? undefined,
     ...(options.maxCostUsd !== null ? { maxCostUsd: options.maxCostUsd } : {}),
+    ...(options.loopGuardThreshold !== null ? { loopGuardThreshold: options.loopGuardThreshold } : {}),
     ...(options.audit ? { audit: createFileAuditSink() } : {}),
     ...(options.browser ? { browser: true as const } : {}),
     ...(options.github ? { github: resolveGitHub() } : {}),
@@ -1137,6 +1153,7 @@ export async function toAgentConfig(
     ...(options.noCachePrompts ? { cachePrompts: false } : {}),
     systemPrompt: options.systemPrompt ?? undefined,
     extraTools,
+    ...(mcpInstructions ? { mcpInstructions } : {}),
     approve,
     redact: options.noRedact ? { enabled: false } : {},
     disableCost: options.noCost,
@@ -1254,4 +1271,4 @@ function parseRegexCsv(raw: string | null): RegExp[] {
 }
 
 /** Tools that change anything outside the process; denied under `--dry-run`. */
-export const DRY_RUN_DENIED_TOOLS = ['write_file', 'edit_file', 'edit_notebook', 'run_command', 'browser_act', 'memory_write', 'memory_forget'];
+export const DRY_RUN_DENIED_TOOLS = ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command', 'browser_act', 'memory_write', 'memory_forget'];

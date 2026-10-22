@@ -53,6 +53,18 @@ describe('ChatSession', () => {
     expect(s.sessionPath).toBe(path.join('/home', 'u', '.forge', 'sessions', 'sess-1'));
   });
 
+  it('setLabel names the chat for later saves, and clearing it drops the name', async () => {
+    const d = deps();
+    const s = new ChatSession(d);
+    s.setLabel('Refactor auth');
+    await s.recordTurn(turn('hi'), model, '/ws');
+    const calls = (d as { saveSession: ReturnType<typeof vi.fn> }).saveSession.mock.calls;
+    expect(calls[0][0].label).toBe('Refactor auth');
+    s.setLabel(undefined);
+    await s.recordTurn(turn('again'), model, '/ws');
+    expect(calls[1][0]).not.toHaveProperty('label');
+  });
+
   it('recordTurn stores history and saves a full Session', async () => {
     const d = deps();
     const s = new ChatSession(d);

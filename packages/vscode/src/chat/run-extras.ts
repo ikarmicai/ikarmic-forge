@@ -7,15 +7,25 @@ import {
   MAX_BODY_CHARS,
   createExploreEditRouter,
   createFileAuditSink,
+  applyResolved,
+  buildEmbedder,
+  parseExtensions,
   expandModelAlias,
   resolveModelAlias,
   webSearchFromEnv,
   type AgentConfig,
+  type ForgeConfigFile,
   type ModelAliases,
   type ModelConfig,
   type WebSearchConfig,
   type WebSearchProvider,
 } from '@ikarmic/forge-core';
+
+/** The shared config's `permission` rules as the run's `permissionRules`; nothing when there are none. */
+export function permissionExtras(shared: Pick<ForgeConfigFile, 'permission'>): Pick<AgentConfig, 'permissionRules'> {
+  const rules = shared.permission;
+  return rules && Object.keys(rules).length > 0 ? { permissionRules: rules } : {};
+}
 
 /** Per-check cap for commands detected from the project (explicit commands keep the 5-minute default). */
 const AUTO_VERIFY_TIMEOUT_MS = 120_000;
@@ -30,8 +40,23 @@ export function cleanLintCommands(raw: Record<string, unknown> | undefined): Rec
   return out;
 }
 
+/** The `semanticSearch` block of an agent config from the `forge.semantic.*` settings. */
+function semanticOptions(s: RunExtrasSettings['semantic']): NonNullable<AgentConfig['semanticSearch']> {
+  if (!s) return {};
+  const extensions = parseExtensions(s.extensions);
+  return {
+    ...(s.embedder !== 'env'
+      ? { embedder: buildEmbedder({ kind: s.embedder, model: s.model.trim(), baseUrl: s.baseUrl.trim(), apiKeyEnv: s.apiKeyEnv.trim(), ...(s.batchSize > 0 ? { batchSize: s.batchSize } : {}) }) }
+      : {}),
+    ...(extensions ? { extensions } : {}),
+    ...(s.minScore > 0 ? { minScore: s.minScore } : {}),
+    ...(s.resultLimit > 0 ? { defaultLimit: s.resultLimit } : {}),
+  };
+}
+
 export interface RunExtrasSettings {
-  compaction: { enabled: boolean; threshold: number };
+  compaction: { enabled: boolean; threshold: number; keepRecent?: number };
+  tools?: { maxOutputChars?: number };
   context: { budgetTokens: number; maskOldResults: boolean; keepRecentTurns: number };
   memory: { enabled: boolean; injectionBudgetBytes: number; maxBodyChars: number; autoApproveWrites: boolean };
   maxCostUsd: number;
@@ -41,6 +66,8 @@ export interface RunExtrasSettings {
   verifyCommands: string[];
   verifyLsp?: boolean;
   semanticSearch: boolean;
+  /** Index and search controls; read only when `semanticSearch` is on. */
+  semantic?: { embedder: 'env' | 'hashing' | 'openai' | 'ollama' | 'custom'; model: string; baseUrl: string; apiKeyEnv: string; batchSize: number; resultLimit: number; minScore: number; extensions: string };
   browser: { enabled: boolean; headless: boolean };
   audit: { enabled: boolean };
   cachePrompts: boolean;
@@ -85,7 +112,7 @@ export function buildRunExtras(
   }
 ): Partial<AgentConfig> {
   // Spec generation is a read-only exploration: no compaction/verify/budget games, just search.
-  const extras: Partial<AgentConfig> = settings.semanticSearch ? { semanticSearch: {} } : {};
+  const extras: Partial<AgentConfig> = settings.semanticSearch ? { semanticSearch: semanticOptions(settings.semantic) } : {};
   // Auditing applies to every run, including read-only ones.
   if (settings.audit.enabled) extras.audit = createFileAuditSink();
   if (!settings.cachePrompts) extras.cachePrompts = false;
@@ -104,14 +131,16 @@ export function buildRunExtras(
   if (settings.compaction.enabled) {
     extras.enableCompaction = true;
     extras.compactionThreshold = settings.compaction.threshold;
+    if (settings.compaction.keepRecent) extras.compactionKeepRecent = settings.compaction.keepRecent;
   }
+  if (settings.tools?.maxOutputChars) extras.maxToolOutputChars = settings.tools.maxOutputChars;
   if (settings.context.budgetTokens > 0) extras.contextBudgetTokens = settings.context.budgetTokens;
   extras.maskOldResults = settings.context.maskOldResults ? { keepRecentTurns: settings.context.keepRecentTurns } : false;
   if (settings.maxCostUsd > 0) extras.maxCostUsd = settings.maxCostUsd;
   if ((settings.loopGuardThreshold ?? 0) > 0) extras.loopGuardThreshold = settings.loopGuardThreshold;
   const cheap = settings.cheapModel.trim();
   if (cheap) {
-    const cheapModel = { ...model, ...resolveModelAlias(cheap, opts.aliases, model.provider) };
+    const cheapModel = applyResolved(model, resolveModelAlias(cheap, opts.aliases, model.provider));
     if (cheapModel.model !== model.model || cheapModel.provider !== model.provider) {
       extras.modelRouter = createExploreEditRouter({ strong: model, cheap: cheapModel });
     }

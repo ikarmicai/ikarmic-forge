@@ -32,6 +32,26 @@ export function registerMcp(context: vscode.ExtensionContext, manager: McpManage
 
   context.subscriptions.push(
     vscode.commands.registerCommand('forge.mcp.reload', reload),
+    vscode.commands.registerCommand('forge.mcp.signIn', async (name?: string) => {
+      await manager.ensureConnected();
+      const waiting = manager.status().filter((s) => s.state === 'needs-auth');
+      const target =
+        name && waiting.some((s) => s.name === name)
+          ? name
+          : waiting.length === 1
+            ? waiting[0]!.name
+            : (await vscode.window.showQuickPick(waiting.map((s) => s.name), { placeHolder: t('Sign in to which MCP server?') }));
+      if (!target) {
+        if (waiting.length === 0) void vscode.window.showInformationMessage(t('Forge: no MCP server needs you to sign in.'));
+        return;
+      }
+      try {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t('Signing in to {0}… finish in your browser.', target) }, () => manager.signIn(target));
+        void vscode.window.showInformationMessage(t('Forge: signed in to {0}.', target));
+      } catch (err) {
+        void vscode.window.showWarningMessage(t('Forge: sign-in to {0} did not finish: {1}', target, (err as Error).message));
+      }
+    }),
     vscode.commands.registerCommand('forge.mcp.openConfig', async () => {
       const file = defaultUserMcpPath();
       if (!existsSync(file)) {

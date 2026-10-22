@@ -13,6 +13,7 @@ import type {
   RestoreResult,
   Session,
   deleteSession as coreDeleteSession,
+  saveSession as coreSaveSession,
   listSessions as coreListSessions,
   loadSession as coreLoadSession,
   searchSessions as coreSearchSessions,
@@ -23,6 +24,7 @@ export type HistoryMessage =
   | { type: 'searchSessions'; q: string }
   | { type: 'resumeSession'; id: string }
   | { type: 'deleteSession'; id: string }
+  | { type: 'renameSession'; id: string }
   | { type: 'listCheckpoints' }
   | { type: 'restoreCheckpoint'; id: string };
 
@@ -52,6 +54,11 @@ export interface HistoryDeps {
   searchSessions: typeof coreSearchSessions;
   loadSession: typeof coreLoadSession;
   deleteSession: typeof coreDeleteSession;
+  saveSession: typeof coreSaveSession;
+  /** Asks for a new name (`undefined` = cancelled). */
+  askName: (current: string | undefined) => Promise<string | undefined>;
+  /** Called when the renamed session is the open one, so its next save keeps the label. */
+  renameActive?: (label: string | undefined) => void;
   removeDir: (dir: string) => Promise<void>;
   checkpoints: () => CheckpointAccess;
   confirm: (message: string, action: string) => Promise<boolean>;
@@ -62,7 +69,7 @@ export interface HistoryDeps {
   stripSteering?: (text: string) => string;
 }
 
-const ID_TYPES = new Set(['resumeSession', 'deleteSession', 'restoreCheckpoint']);
+const ID_TYPES = new Set(['resumeSession', 'deleteSession', 'renameSession', 'restoreCheckpoint']);
 const PLAIN_TYPES = new Set(['listSessions', 'listCheckpoints']);
 
 export function isHistoryMessage(msg: unknown): msg is HistoryMessage {
@@ -129,6 +136,17 @@ export async function handleHistoryMessage(msg: HistoryMessage, deps: HistoryDep
       case 'resumeSession': {
         const session = await deps.loadSession(msg.id, deps.sessionDir);
         return { type: 'sessionResumed', session, transcript: transcriptFromMessages(session.messages, deps.stripSteering) };
+      }
+
+      case 'renameSession': {
+        const session = await deps.loadSession(msg.id, deps.sessionDir);
+        const asked = await deps.askName(session.label);
+        if (asked === undefined) return { type: 'cancelled' };
+        const label = asked.trim().slice(0, 120);
+        const { label: _old, ...rest } = session;
+        await deps.saveSession(label ? { ...rest, label } : rest, deps.sessionDir);
+        if (msg.id === deps.activeSessionId()) deps.renameActive?.(label || undefined);
+        return { type: 'sessionsListed', sessions: await deps.listSessions(deps.sessionDir) };
       }
 
       case 'deleteSession': {

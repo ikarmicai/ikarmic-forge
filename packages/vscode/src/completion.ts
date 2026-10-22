@@ -5,6 +5,7 @@ import { generateText } from 'ai';
 import { assertProviderAllowed, createLanguageModel, getOrgPolicy } from '@ikarmic/forge-core';
 import type { CredentialStore } from '@ikarmic/forge-core';
 
+import { CompletionState, completionGate } from './completion-controls.js';
 import {
   buildPrompt,
   isInsideStringOrComment,
@@ -52,13 +53,15 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
     private readonly getDocumentContext: () => { uri: vscode.Uri; languageId: string } | null,
     private readonly getTelemetry: () => CompletionTelemetry | null,
     private readonly getTelemetryEnabled: () => boolean,
-    private readonly credentialStore?: CredentialStore
+    private readonly credentialStore?: CredentialStore,
+    private readonly controls: CompletionState = new CompletionState(),
+    private readonly onUsage: () => void = () => {}
   ) {}
 
   async provideInlineCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
-    _context: vscode.InlineCompletionContext,
+    context: vscode.InlineCompletionContext,
     token: vscode.CancellationToken
   ): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList | null | undefined> {
     if (token.isCancellationRequested) return undefined;
@@ -74,6 +77,14 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
     }
 
     let cfg = readConfig();
+    const gate = completionGate({
+      enabled: cfg.completionEnabled,
+      automatic: cfg.completionAutomatic,
+      snoozedUntil: this.controls.snoozedUntil,
+      now: Date.now(),
+      manual: context.triggerKind === vscode.InlineCompletionTriggerKind.Invoke,
+    });
+    if (gate !== 'run') return undefined;
     const debounceMs = Math.max(0, cfg.completionDebounceMs);
 
     if (debounceMs > 0) {
@@ -121,7 +132,7 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
 
     try {
       // think-tags: handled in sanitize() (completion-helpers.ts), which strips <think> blocks.
-      const { text } = await generateText({
+      const { text, usage } = await generateText({
         model: lm,
         system: COMPLETION_SYSTEM_PROMPT,
         prompt: buildPrompt(languageId, prefix, suffix),
@@ -129,6 +140,8 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
         maxOutputTokens: cfg.completionMaxTokens,
         temperature: 0.2,
       });
+      this.controls.usage.add({ inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens });
+      this.onUsage();
       if (token.isCancellationRequested) return undefined;
       const cleaned = sanitize(text);
       if (!cleaned) return undefined;

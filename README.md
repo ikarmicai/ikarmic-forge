@@ -42,6 +42,7 @@ An all-in-one AI coding assistant. A shared agent engine that drives a polished 
 
 ## Unreleased
 
+- **Permission rules, goals, slash menu** (VS Code): ordered `allow`/`ask`/`deny` rules (`permission` in `~/.forge/config.json`, last match wins, `.env` reads always ask), a todo checklist and `ask_user` questions, `/goal` to keep working on one objective, a `/` command menu, a Settings row for every `forge.*` setting, and a per-project `.forge/config.json` that can only tighten what you allowed.
 - **Prompt caching**: Anthropic (and Anthropic on Bedrock) requests now carry cache breakpoints, so long agent runs re-read earlier context at a tenth of the price. Cost and the CLI footer account for cached tokens. Off with `--no-cache-prompts` / `forge.cachePrompts`.
 - **Infinite output**: a reply cut off by the model's output limit is continued automatically (up to 3 times).
 - **Model aliases**: `"aliases": { "fast": "anthropic:claude-haiku-4-5" }` in `~/.forge/config.json`; use them with `--model`, `--cheap-model`, `--editor-model` and the VS Code model settings. `forge config` lists them.

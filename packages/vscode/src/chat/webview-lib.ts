@@ -5,4 +5,7 @@
  */
 export { renderMarkdown } from './markdown.js';
 export { shouldApplyEnhanced } from './enhance-apply.js';
+export { renderTodoSummary } from './todo-summary.js';
+export { blockOpen, reasoningMode } from './block-modes.js';
 export { approvalCopy, approvalLogText, isProgressResult, summarizeTool } from './tool-summary.js';
+export { filterSlash, parseSlash, slashMenuQuery } from './slash-commands.js';

@@ -7,7 +7,7 @@ import { toAgentConfig, type CliOptions } from '../src/options.js';
 function baseOptions(overrides: Partial<CliOptions> = {}): CliOptions {
   return {
     task: null, provider: null, model: null, auto: false, allowDestructive: false,
-    cwd: null, maxIterations: null, maxDurationMs: null, maxCostUsd: null, mapTokens: null, autoLint: false, autoLintCommands: {}, lintCmds: [], testCmds: [], cheapModel: null, noCachePrompts: false, autoCommit: false, noDirtyCommits: false, noAttribute: false, gitCommitVerify: false, architect: false, editorModel: null, editorReasoning: null, verify: [], semanticSearch: false, browser: false, audit: false, orchestratorCommit: false, verbose: false, systemPrompt: null,
+    cwd: null, maxIterations: null, maxDurationMs: null, maxCostUsd: null, loopGuardThreshold: null, mapTokens: null, autoLint: false, autoLintCommands: {}, lintCmds: [], testCmds: [], cheapModel: null, noCachePrompts: false, autoCommit: false, noDirtyCommits: false, noAttribute: false, gitCommitVerify: false, architect: false, editorModel: null, editorReasoning: null, verify: [], semanticSearch: false, browser: false, audit: false, orchestratorCommit: false, verbose: false, systemPrompt: null,
     json: false, mcpConfig: null, noCost: false, noRedact: false, noMemory: false, aiComments: false, dryRun: false, notifications: false, notificationsCommand: null, noProjectInstructions: false,
     plan: false, spec: false, enableCompaction: false, compactAt: null,
     allowTools: null, denyTools: null, allowPaths: null, denyPaths: null,

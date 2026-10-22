@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { resolveInsideWorkspace } from '../chat/edit-preview.js';
 
-const WRITE_TOOLS = new Set(['write_file', 'edit_file', 'edit_notebook']);
+const WRITE_TOOLS = new Set(['write_file', 'edit_file', 'edit_notebook', 'apply_patch']);
 
 /** Workspace-relative posix path a successful write/edit touched, else null. */
 export function changedFileFromToolResult(root: string, toolName: string, args: unknown, isError: boolean): string | null {

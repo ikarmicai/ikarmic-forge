@@ -19,7 +19,7 @@ import { buildCommitMessageInput } from './commit-message-input.js';
 import { SettingsViewProvider, type SettingsViewOptions } from './settings/settings-view.js';
 import { t } from './l10n.js';
 import { ForgeCodeActions } from './editor/code-actions.js';
-import { explainTask, fixTask } from './editor/editor-tasks.js';
+import { IMPROVE_INSTRUCTION, contextMention, explainTask, fixTask, terminalExplainTask, terminalFixTask } from './editor/editor-tasks.js';
 import { INLINE_EDIT_SCHEME, InlineEditContent, runInlineEdit } from './editor/inline-edit.js';
 import { buildMemoryItems, type MemoryItem } from './memory/memory-model.js';
 
@@ -66,6 +66,10 @@ export class CommandRegistry {
       vscode.commands.registerCommand('forge.openSettings', () => this.openSettings()),
       vscode.commands.registerCommand('forge.inlineEdit', () => runInlineEdit(this.credentialStore, this.inlineEditContent)),
       vscode.commands.registerCommand('forge.explainSelection', () => this.explainSelection()),
+      vscode.commands.registerCommand('forge.addToContext', () => this.addToContext()),
+      vscode.commands.registerCommand('forge.improveSelection', () => runInlineEdit(this.credentialStore, this.inlineEditContent, { instruction: IMPROVE_INSTRUCTION })),
+      vscode.commands.registerCommand('forge.terminalExplain', () => this.terminalTask('explain')),
+      vscode.commands.registerCommand('forge.terminalFix', () => this.terminalTask('fix')),
       vscode.commands.registerCommand('forge.fixDiagnostic', (uri: vscode.Uri, range: vscode.Range, message: string, source?: string, code?: string) =>
         this.fixDiagnostic(uri, range, message, source, code)
       ),
@@ -98,7 +102,14 @@ export class CommandRegistry {
         return;
       }
       const input = buildCommitMessageInput(stagedFiles, workingFiles, staged, working);
-      repo.inputBox.value = await generateCommitMessage(input.diff, input.files, await resolveCheapModel(this.credentialStore));
+      repo.inputBox.value = await generateCommitMessage(
+        input.diff,
+        input.files,
+        await resolveCheapModel(this.credentialStore),
+        undefined,
+        undefined,
+        vscode.workspace.getConfiguration('forge').get<string>('commitMessage.prompt') || undefined
+      );
     });
   }
 
@@ -267,6 +278,45 @@ export class CommandRegistry {
     const start = editor.selection.start.line + 1;
     const task = explainTask(file, editor.document.languageId, editor.document.getText(editor.selection), start);
     await this.chat.runFromEditor(t('Explain {0}:{1}', file, start), task, 'ask');
+  }
+
+  /** "Add to Forge context": the file, or the selected lines of it, as an @ mention in the message box. */
+  private async addToContext(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.uri.scheme !== 'file') {
+      void vscode.window.showWarningMessage(t('Forge: open a file to add it to the chat.'));
+      return;
+    }
+    const file = vscode.workspace.asRelativePath(editor.document.uri);
+    const sel = editor.selection;
+    // A selection that ends at the start of a line does not include that line.
+    const endLine = sel.end.character === 0 && sel.end.line > sel.start.line ? sel.end.line : sel.end.line + 1;
+    await this.chat.addToComposer(contextMention(file, sel.isEmpty ? undefined : { startLine: sel.start.line + 1, endLine }));
+  }
+
+  /** The text selected in the integrated terminal, read through the clipboard (which is put back afterwards). */
+  private async terminalSelection(): Promise<string> {
+    const marker = `forge-no-selection-${Date.now()}`;
+    const previous = await vscode.env.clipboard.readText();
+    await vscode.env.clipboard.writeText(marker);
+    try {
+      await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
+      const text = await vscode.env.clipboard.readText();
+      return text === marker ? '' : text;
+    } finally {
+      await vscode.env.clipboard.writeText(previous);
+    }
+  }
+
+  /** "Explain / Fix terminal output": the selected terminal text goes to the chat (Explain in Ask mode, which cannot edit). */
+  private async terminalTask(kind: 'explain' | 'fix'): Promise<void> {
+    const text = (await this.terminalSelection()).trim();
+    if (!text) {
+      void vscode.window.showWarningMessage(t('Forge: select the terminal text you want to work on.'));
+      return;
+    }
+    if (kind === 'explain') await this.chat.runFromEditor(t('Explain terminal output'), terminalExplainTask(text), 'ask');
+    else await this.chat.runFromEditor(t('Fix terminal error'), terminalFixTask(text));
   }
 
   cancel(): void {

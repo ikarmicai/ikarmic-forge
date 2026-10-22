@@ -49,10 +49,16 @@ async function fetchPage(url: string, root: string): Promise<string | null> {
   }
 }
 
-export function createMentionResolvers(root: string, recentTerminal: () => string, docs: Record<string, string> = {}): MentionResolvers {
+export function createMentionResolvers(
+  root: string,
+  recentTerminal: () => string,
+  docs: Record<string, string> = {},
+  chat?: (ref: string) => Promise<string | null>
+): MentionResolvers {
   const inside = (p: string): string | null => resolveInsideWorkspace(root, p);
 
   return {
+    ...(chat ? { chat } : {}),
     async file(p) {
       const abs = inside(p);
       if (!abs) return null;

@@ -82,6 +82,40 @@ export function fixTask(d: DiagnosticInfo, file: string, language: string, excer
   return `Fix this problem at ${where}${from}:\n${d.message}\n\nThe code around it:\n\`\`\`${language}\n${excerpt}\n\`\`\`\n\nMake the smallest change that fixes it, then say what was wrong.`;
 }
 
+/** The `@` mention that puts a file, or part of one, in the next chat message. Lines are 1-based. */
+export function contextMention(file: string, selection?: { startLine: number; endLine: number }): string {
+  if (!selection) return `@file:${file}`;
+  return selection.startLine === selection.endLine ? `@file:${file}#L${selection.startLine}` : `@file:${file}#L${selection.startLine}-${selection.endLine}`;
+}
+
+/** What "Improve with Forge" asks of the selection: a smaller, clearer version that behaves the same. */
+export const IMPROVE_INSTRUCTION =
+  'Improve this code: clearer names, simpler logic, no needless repetition, and fix obvious bugs. Keep its behaviour and public interface the same.';
+
+const TERMINAL_MAX = 8000;
+
+/** The end of the terminal text, where the error usually is. */
+function terminalTail(text: string): string {
+  const t = text.trim();
+  return t.length <= TERMINAL_MAX ? t : '... (earlier output left out)\n' + t.slice(-TERMINAL_MAX);
+}
+
+export function terminalExplainTask(text: string): string {
+  return `Explain this terminal output: what happened, why, and what it means. Do not change any files or run any commands.
+
+\`\`\`
+${terminalTail(text)}
+\`\`\``;
+}
+
+export function terminalFixTask(text: string): string {
+  return `This came out of my terminal. Find the cause in this project and fix it. Say what you changed and how to run the command again.
+
+\`\`\`
+${terminalTail(text)}
+\`\`\``;
+}
+
 /** A chat task asking Forge to explain a piece of code without changing anything. */
 export function explainTask(file: string, language: string, code: string, startLine: number): string {
   return `Explain what this code in ${file} (from line ${startLine}) does, how it works and anything surprising about it. Do not change any files.\n\n\`\`\`${language}\n${code}\n\`\`\``;

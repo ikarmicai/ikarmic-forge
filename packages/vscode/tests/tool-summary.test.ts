@@ -11,6 +11,13 @@ describe('summarizeTool: running (no outcome)', () => {
     expect(s.meta).toBeUndefined();
   });
 
+  it('names the files an apply_patch touches', () => {
+    const patch = ['*** Begin Patch', '*** Update File: src/a.ts', '@@', '-a', '+b', '*** Add File: docs/n.md', '+x', '*** End Patch'].join('\n');
+    const s = summarizeTool('apply_patch', { patch });
+    expect(s.target).toBe('a.ts, n.md');
+    expect(s.title).toBe('src/a.ts, docs/n.md');
+  });
+
   it('shows the line delta and diff for edit_file before it runs', () => {
     const s = summarizeTool('edit_file', { path: 'a/b.ts', old_text: 'x', new_text: 'y\nz\nw' });
     expect(s).toMatchObject({ verb: 'Editing', target: 'b.ts', meta: '+3 −1' });

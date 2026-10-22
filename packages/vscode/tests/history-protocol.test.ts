@@ -242,3 +242,45 @@ describe('searchSessions', () => {
   });
 });
 
+describe('renameSession', () => {
+  const saved = { id: 'old-1', messages: [], label: 'before' };
+
+  it('is a well-formed history message only with an id', () => {
+    expect(isHistoryMessage({ type: 'renameSession', id: 'a' })).toBe(true);
+    expect(isHistoryMessage({ type: 'renameSession' })).toBe(false);
+  });
+
+  it('asks for the name, stores it as the label, and sends back the refreshed list', async () => {
+    const saveSession = vi.fn().mockResolvedValue('p');
+    const askName = vi.fn().mockResolvedValue('  Refactor auth  ');
+    const listSessions = vi.fn().mockResolvedValue([{ id: 'old-1', label: 'Refactor auth' }]);
+    const res = await handleHistoryMessage({ type: 'renameSession', id: 'old-1' }, deps({ loadSession: vi.fn().mockResolvedValue({ ...saved }), saveSession, askName, listSessions }));
+    expect(askName).toHaveBeenCalledWith('before');
+    expect(saveSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'old-1', label: 'Refactor auth' }), SESSION_DIR);
+    expect(res).toMatchObject({ type: 'sessionsListed' });
+  });
+
+  it('an empty name removes the label; cancelling the prompt changes nothing', async () => {
+    const saveSession = vi.fn().mockResolvedValue('p');
+    const load = vi.fn().mockResolvedValue({ ...saved });
+    await handleHistoryMessage({ type: 'renameSession', id: 'old-1' }, deps({ loadSession: load, saveSession, askName: vi.fn().mockResolvedValue('   ') }));
+    expect(saveSession.mock.calls[0]![0]).not.toHaveProperty('label');
+    saveSession.mockClear();
+    const res = await handleHistoryMessage({ type: 'renameSession', id: 'old-1' }, deps({ loadSession: load, saveSession, askName: vi.fn().mockResolvedValue(undefined) }));
+    expect(saveSession).not.toHaveBeenCalled();
+    expect(res).toEqual({ type: 'cancelled' });
+  });
+
+  it('clips a long name to 120 characters', async () => {
+    const saveSession = vi.fn().mockResolvedValue('p');
+    await handleHistoryMessage({ type: 'renameSession', id: 'old-1' }, deps({ loadSession: vi.fn().mockResolvedValue({ ...saved }), saveSession, askName: vi.fn().mockResolvedValue('x'.repeat(300)) }));
+    expect(saveSession.mock.calls[0]![0].label).toHaveLength(120);
+  });
+
+  it('renaming the open chat also updates the live session, so its next save keeps the name', async () => {
+    const renameActive = vi.fn();
+    await handleHistoryMessage({ type: 'renameSession', id: 'active-1' }, deps({ loadSession: vi.fn().mockResolvedValue({ ...saved, id: 'active-1' }), saveSession: vi.fn().mockResolvedValue('p'), askName: vi.fn().mockResolvedValue('Mine'), renameActive }));
+    expect(renameActive).toHaveBeenCalledWith('Mine');
+  });
+});
+

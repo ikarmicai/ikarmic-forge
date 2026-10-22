@@ -10,16 +10,19 @@ import {
   DEFAULT_SKILL_CATALOG_URL,
   SUPPORTED_PROVIDERS,
   defaultUserMcpPath,
+  builtinSkills,
   discoverSkills,
   exportSettings,
   fetchSkillsCatalog,
   importSettings,
   installMcpServer,
+  defaultForgeConfigPath,
   installSkillFromCatalog,
   listInstalledServers,
   listSpecialists,
   loadForgeConfigFile,
   loadMcpCatalog,
+  projectConfigPath,
   loadToolSandboxConfig,
   registerMcpServer,
   saveForgeConfigFile,
@@ -32,12 +35,15 @@ import {
 } from '@ikarmic/forge-core';
 
 import { readConfig, resolveModel } from '../config.js';
+import { t } from '../l10n.js';
 import type { ModelLister } from '../model-lister.js';
 import { getModelPin, syncModelPin } from '../model-setting.js';
 import { loadRuntimeConfig } from '../runtime-config.js';
 
 import { handleSettingsMessage, markBuiltin, type SettingsDeps, type SettingsMessage } from './settings-protocol.js';
+import { readFileSync } from 'node:fs';
 import { getSettingsHtml } from './settings-html.js';
+import { settingsDictionary } from './settings-i18n.js';
 
 export interface SettingsViewOptions {
   extensionUri: vscode.Uri;
@@ -76,7 +82,7 @@ export class SettingsViewProvider {
     const scriptUri = this.opts
       ? this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.opts.extensionUri, 'dist', 'webview', 'settings-ui.js')).toString()
       : '';
-    this.panel.webview.html = getSettingsHtml({ scriptUri, cspSource: this.panel.webview.cspSource });
+    this.panel.webview.html = getSettingsHtml({ scriptUri, cspSource: this.panel.webview.cspSource, strings: settingsDictionary((s) => t(s)) });
     this.panel.onDidDispose(() => {
       this.panel = undefined;
     });
@@ -94,6 +100,27 @@ export class SettingsViewProvider {
       }
       if (response.type !== 'none') void this.panel?.webview.postMessage(response);
     });
+  }
+
+  private descriptions: Record<string, string> | undefined;
+
+  /** The setting's help text from package.json, with its package.nls.json wording. Empty when it cannot be read. */
+  private describeSetting(key: string): string {
+    if (!this.descriptions) {
+      this.descriptions = {};
+      try {
+        const root = this.opts?.extensionUri.fsPath ?? '';
+        const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')) as { contributes: { configuration: { properties: Record<string, { description?: string }> } } };
+        const nls = JSON.parse(readFileSync(path.join(root, 'package.nls.json'), 'utf8')) as Record<string, string>;
+        for (const [k, v] of Object.entries(pkg.contributes.configuration.properties)) {
+          const ref = /^%(.+)%$/.exec(v.description ?? '')?.[1];
+          this.descriptions[k] = (ref ? nls[ref] : v.description) ?? '';
+        }
+      } catch {
+        // No descriptions is fine: the rows still work.
+      }
+    }
+    return this.descriptions[key] ?? '';
   }
 
   private deps(): SettingsDeps {
@@ -116,6 +143,22 @@ export class SettingsViewProvider {
       saveToolSandboxConfig,
       isWorkspaceTrusted: vscode.workspace.isTrusted,
       providers: SUPPORTED_PROVIDERS,
+      openConfig: async (scope) => {
+        const root = this.opts?.workspaceRoot;
+        if (scope === 'project' && !root) return;
+        const file = scope === 'user' ? defaultForgeConfigPath() : projectConfigPath(root!);
+        if (!existsSync(file)) {
+          await mkdir(path.dirname(file), { recursive: true });
+          await writeFile(file, '{}\n', 'utf8');
+        }
+        await vscode.window.showTextDocument(vscode.Uri.file(file));
+      },
+      rows: {
+        get: (key) => vscode.workspace.getConfiguration('forge').get(key.replace(/^forge\./, '')),
+        update: (key, value) => Promise.resolve(vscode.workspace.getConfiguration('forge').update(key.replace(/^forge\./, ''), value, vscode.ConfigurationTarget.Global)),
+        describe: (key) => this.describeSetting(key),
+        defaultOf: (key) => vscode.workspace.getConfiguration('forge').inspect(key.replace(/^forge\./, ''))?.defaultValue,
+      },
       modelPin: { get: getModelPin, sync: syncModelPin },
       ...(this.opts?.models ? { listModels: (p, refresh) => this.opts!.models!.list(p, refresh) } : {}),
       effective: async () => {
@@ -137,6 +180,7 @@ export class SettingsViewProvider {
                 return mcp.tools().map((t) => t.name).filter((n) => n.startsWith(prefix)).map((n) => n.slice(prefix.length));
               },
               actions: { setMcpServerDisabled, uninstallMcpServer, registerMcpServer, installMcpServer, reload },
+              signIn: (name: string) => mcp.signIn(name),
               catalog: async () => {
                 const [{ servers, warning }, installed] = await Promise.all([loadMcpCatalog(), listInstalledServers().catch(() => [])]);
                 return { entries: servers, installed: installed.map((s) => s.name), ...(warning ? { warning } : {}) };
@@ -158,6 +202,12 @@ export class SettingsViewProvider {
             skills: {
               list: () => discoverSkills(root).catch(() => []),
               open: async (p: string) => {
+                // A skill built into Forge has no file: show its text in an unsaved Markdown tab.
+                const builtin = builtinSkills().find((s) => s.source.path === p);
+                if (builtin) {
+                  await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ content: builtin.body, language: 'markdown' }));
+                  return;
+                }
                 await vscode.window.showTextDocument(vscode.Uri.file(p));
               },
               catalog: async () => {

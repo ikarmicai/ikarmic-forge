@@ -250,6 +250,25 @@ describe('handleSettingsMessage: keys, MCP and skills', () => {
     });
   });
 
+  it('mcpSignIn signs in a server that needs it, and lists the servers again', async () => {
+    const mcp = { ...mcpDeps([st({ state: 'needs-auth' })]), signIn: vi.fn().mockResolvedValue(undefined) };
+    const r = await handleSettingsMessage({ type: 'mcpSignIn', name: 'github' }, baseDeps({ mcp }));
+    expect(mcp.signIn).toHaveBeenCalledWith('github');
+    expect(r).toMatchObject({ type: 'mcpListed' });
+  });
+
+  it('mcpSignIn reports a failed or abandoned sign-in instead of throwing', async () => {
+    const mcp = { ...mcpDeps([st({ state: 'needs-auth' })]), signIn: vi.fn().mockRejectedValue(new Error('sign-in timed out')) };
+    const r = await handleSettingsMessage({ type: 'mcpSignIn', name: 'github' }, baseDeps({ mcp }));
+    expect(r).toEqual({ type: 'notice', message: 'Sign-in to "github" did not finish: sign-in timed out' });
+  });
+
+  it('mcpSignIn on an unknown name reports it and does nothing', async () => {
+    const mcp = { ...mcpDeps([]), signIn: vi.fn() };
+    expect(await handleSettingsMessage({ type: 'mcpSignIn', name: 'ghost' }, baseDeps({ mcp }))).toEqual({ type: 'notice', message: 'MCP server "ghost" is no longer configured.' });
+    expect(mcp.signIn).not.toHaveBeenCalled();
+  });
+
   it('mcpToggle looks the server up again and toggles it', async () => {
     const mcp = mcpDeps();
     const r = await handleSettingsMessage({ type: 'mcpToggle', name: 'github' }, baseDeps({ mcp }));
@@ -337,3 +356,88 @@ describe('handleSettingsMessage: review fixes', () => {
     expect(r).toEqual({ type: 'sandboxLoaded', sandbox: { denyTools: ['fetch_url'], policies: { run_command: { deniedCommands: ['^git push'], deniedPaths: ['**/.env*'] } } } });
   });
 });
+
+describe('handleSettingsMessage - openConfig', () => {
+  it('asks the host to open the user or the project config file and answers with nothing', async () => {
+    const openConfig = vi.fn().mockResolvedValue(undefined);
+    const deps = baseDeps({ openConfig });
+    expect(await handleSettingsMessage({ type: 'openConfig', scope: 'user' }, deps)).toEqual({ type: 'none' });
+    expect(await handleSettingsMessage({ type: 'openConfig', scope: 'project' }, deps)).toEqual({ type: 'none' });
+    expect(openConfig.mock.calls).toEqual([['user'], ['project']]);
+  });
+
+  it('does nothing when the host cannot open files', async () => {
+    expect(await handleSettingsMessage({ type: 'openConfig', scope: 'user' }, baseDeps())).toEqual({ type: 'none' });
+  });
+});
+
+describe('handleSettingsMessage - providers', () => {
+  function providerDeps(initial: Record<string, unknown> = {}) {
+    let config: Record<string, unknown> = { customProviders: initial };
+    const saves: Array<Record<string, unknown>> = [];
+    const deps = baseDeps({
+      loadForgeConfigFile: vi.fn(async () => ({ config, warnings: [] })),
+      saveForgeConfigFile: vi.fn(async (patch: Record<string, unknown>) => {
+        saves.push(patch);
+        config = { ...config, ...patch };
+      }),
+    });
+    return { deps, saves, current: () => config };
+  }
+
+  it('loadProviders lists custom providers without their keys, and the presets to start from', async () => {
+    const { deps } = providerDeps({ acme: { name: 'Acme', baseUrl: 'https://llm.acme.test/v1', apiKey: 'secret', apiKeyEnv: 'ACME_KEY', timeoutMs: 5000 } });
+    const res = (await handleSettingsMessage({ type: 'loadProviders' }, deps)) as { type: string; providers: Array<Record<string, unknown>>; presets: Array<{ id: string }> };
+    expect(res.type).toBe('providersLoaded');
+    expect(res.providers).toEqual([
+      { id: 'acme', name: 'Acme', baseUrl: 'https://llm.acme.test/v1', api: 'openai-compatible', apiKeyEnv: 'ACME_KEY', hasInlineKey: true, timeoutMs: 5000, chunkTimeoutMs: undefined, models: 0 },
+    ]);
+    expect(JSON.stringify(res)).not.toContain('secret');
+    expect(res.presets.map((p) => p.id)).toContain('groq');
+  });
+
+  it('saveProvider adds or replaces one provider and keeps the others', async () => {
+    const { deps, saves } = providerDeps({ keep: { baseUrl: 'https://keep.test/v1' } });
+    const res = await handleSettingsMessage({ type: 'saveProvider', provider: { id: 'acme', name: 'Acme', baseUrl: 'https://llm.acme.test/v1', apiKeyEnv: 'ACME_KEY' } }, deps);
+    expect(res).toMatchObject({ type: 'providersLoaded' });
+    expect(saves[0]!.customProviders).toEqual({
+      keep: { baseUrl: 'https://keep.test/v1' },
+      acme: { name: 'Acme', baseUrl: 'https://llm.acme.test/v1', apiKeyEnv: 'ACME_KEY' },
+    });
+  });
+
+  it('saveProvider refuses a built-in id, a missing URL and a non-http URL, and saves nothing', async () => {
+    const { deps, saves } = providerDeps();
+    for (const provider of [
+      { id: 'openai', baseUrl: 'https://x.test/v1' },
+      { id: 'acme' },
+      { id: 'acme', baseUrl: 'ftp://x.test' },
+    ]) {
+      expect(await handleSettingsMessage({ type: 'saveProvider', provider }, deps)).toMatchObject({ type: 'error' });
+    }
+    expect(saves).toEqual([]);
+  });
+
+  it('saveProvider keeps the stored key when the page sends none, and replaces it when one is typed', async () => {
+    const { deps, current } = providerDeps({ acme: { baseUrl: 'https://llm.acme.test/v1', apiKey: 'old' } });
+    await handleSettingsMessage({ type: 'saveProvider', provider: { id: 'acme', baseUrl: 'https://llm.acme.test/v1', name: 'Acme' } }, deps);
+    expect((current().customProviders as Record<string, { apiKey?: string }>).acme!.apiKey).toBe('old');
+    await handleSettingsMessage({ type: 'saveProvider', provider: { id: 'acme', baseUrl: 'https://llm.acme.test/v1', apiKey: 'new' } }, deps);
+    expect((current().customProviders as Record<string, { apiKey?: string }>).acme!.apiKey).toBe('new');
+  });
+
+  it('saveProvider keeps the models, headers and filters the page does not edit', async () => {
+    const { deps, current } = providerDeps({ acme: { baseUrl: 'https://llm.acme.test/v1', headers: { 'X-Team': 'a' }, models: { fast: { id: 'real' } }, whitelist: ['fast'] } });
+    await handleSettingsMessage({ type: 'saveProvider', provider: { id: 'acme', baseUrl: 'https://llm.acme.test/v2', name: 'Acme' } }, deps);
+    expect((current().customProviders as Record<string, unknown>).acme).toMatchObject({ baseUrl: 'https://llm.acme.test/v2', headers: { 'X-Team': 'a' }, models: { fast: { id: 'real' } }, whitelist: ['fast'] });
+  });
+
+  it('deleteProvider removes one and saves null when none are left', async () => {
+    const { deps, saves } = providerDeps({ acme: { baseUrl: 'https://llm.acme.test/v1' } });
+    const res = await handleSettingsMessage({ type: 'deleteProvider', id: 'acme' }, deps);
+    expect(res).toMatchObject({ type: 'providersLoaded', providers: [] });
+    expect(saves[0]!.customProviders).toBeUndefined();
+    expect('customProviders' in saves[0]!).toBe(true);
+  });
+});
+

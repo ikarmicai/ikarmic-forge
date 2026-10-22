@@ -25,6 +25,10 @@ export interface RunOutcome {
   files: string[];
   /** Set when the run's post-edit checks ran: whether they ended passing. */
   verified?: boolean;
+  /** Tool calls the run made (goal turns use this to spot a turn with no progress). */
+  toolCalls?: number;
+  /** The person denied a tool call or approval during the run. */
+  denied?: boolean;
 }
 
 export type SpecResult =

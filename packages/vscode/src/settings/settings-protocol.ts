@@ -7,6 +7,7 @@
  */
 import type {
   CredentialStore,
+  CustomProviderConfig,
   CustomSpecialistConfig,
   ForgeConfigFile,
   ForgeSettingsExport,
@@ -29,11 +30,12 @@ import type {
   saveToolSandboxConfig as coreSaveSandbox,
 } from '@ikarmic/forge-core';
 
-import { envVarForProvider } from '@ikarmic/forge-core';
+import { PROVIDER_PRESETS, customProviderProblems, envVarForProvider } from '@ikarmic/forge-core';
 import { listEntries, withoutEntry } from '../chat/command-allow-store.js';
 import type { ModelList } from '../model-lister.js';
 import { WORKSPACE_READONLY, installEntry, removeServer, toggleServer, type McpActionDeps } from '../mcp/mcp-actions.js';
 import { commandPreview, serverDescription } from '../mcp/mcp-model.js';
+import { SETTING_ROWS, SHORT_HELP, coerceRow, type SettingRow } from './settings-rows.js';
 
 export type SettingsMessage =
   | { type: 'load' }
@@ -54,13 +56,20 @@ export type SettingsMessage =
   | { type: 'mcpToggle'; name: string }
   | { type: 'mcpRemove'; name: string }
   | { type: 'mcpReload' }
+  | { type: 'mcpSignIn'; name: string }
   | { type: 'mcpCatalog' }
   | { type: 'mcpInstall'; name: string }
   | { type: 'openMcpConfig'; scope: 'user' | 'workspace' }
   | { type: 'skillsList' }
   | { type: 'skillOpen'; path: string }
   | { type: 'skillCatalog' }
-  | { type: 'skillInstall'; name: string };
+  | { type: 'skillInstall'; name: string }
+  | { type: 'openConfig'; scope: 'user' | 'project' }
+  | { type: 'loadProviders' }
+  | { type: 'saveProvider'; provider: ProviderInput }
+  | { type: 'deleteProvider'; id: string }
+  | { type: 'loadRows' }
+  | { type: 'setRow'; key: string; value: unknown };
 
 export type SettingsResponse =
   | { type: 'loaded'; config: ForgeConfigFile; /** What the chat will actually use, e.g. "minimax/MiniMax-M3". */ effective?: string }
@@ -81,8 +90,79 @@ export type SettingsResponse =
   | { type: 'skillsListed'; skills: SkillView[] }
   | { type: 'allowedCommandsListed'; commands: Array<{ workspace: string; command: string }> }
   | { type: 'skillCatalogListed'; entries: SkillCatalogView[]; /** Why the catalog could not be shown. */ error?: string }
+  | { type: 'providersLoaded'; providers: ProviderView[]; presets: Array<{ id: string; name: string; baseUrl: string; apiKeyEnv: string }> }
+  | { type: 'rowsLoaded'; rows: SettingRowView[] }
+  | { type: 'rowSaved'; key: string; value: unknown }
+  | { type: 'rowError'; key: string; message: string }
   | { type: 'notice'; message: string }
   | { type: 'none' };
+
+/** What the Providers page sends for one provider; a field left out keeps what is stored, an empty string clears it. */
+export interface ProviderInput {
+  id: string;
+  name?: string;
+  baseUrl?: string;
+  apiKeyEnv?: string;
+  /** Written as plain text to the config file; never sent back to the page. */
+  apiKey?: string;
+  api?: 'openai-compatible' | 'anthropic';
+  timeoutMs?: number | '';
+  chunkTimeoutMs?: number | '';
+}
+
+/** A provider as the page shows it: never the key itself, only whether one is stored. */
+export interface ProviderView {
+  id: string;
+  name: string;
+  baseUrl: string;
+  api: 'openai-compatible' | 'anthropic';
+  apiKeyEnv?: string;
+  hasInlineKey: boolean;
+  timeoutMs?: number | undefined;
+  chunkTimeoutMs?: number | undefined;
+  models: number;
+}
+
+function providerViews(custom: Record<string, CustomProviderConfig> | undefined): ProviderView[] {
+  return Object.entries(custom ?? {}).map(([id, c]) => ({
+    id,
+    name: c.name ?? PROVIDER_PRESETS[id]?.name ?? id,
+    baseUrl: c.baseUrl ?? PROVIDER_PRESETS[id]?.baseUrl ?? '',
+    api: c.api ?? PROVIDER_PRESETS[id]?.api ?? 'openai-compatible',
+    ...(c.apiKeyEnv ?? PROVIDER_PRESETS[id]?.apiKeyEnv ? { apiKeyEnv: (c.apiKeyEnv ?? PROVIDER_PRESETS[id]?.apiKeyEnv)! } : {}),
+    hasInlineKey: Boolean(c.apiKey),
+    timeoutMs: c.timeoutMs,
+    chunkTimeoutMs: c.chunkTimeoutMs,
+    models: Object.keys(c.models ?? {}).length,
+  }));
+}
+
+const presetList = (): Array<{ id: string; name: string; baseUrl: string; apiKeyEnv: string }> =>
+  Object.entries(PROVIDER_PRESETS).map(([id, p]) => ({ id, name: p.name, baseUrl: p.baseUrl, apiKeyEnv: p.apiKeyEnv }));
+
+/** Merge the page's fields over a stored provider: undefined keeps, an empty string clears, a value sets. */
+function mergeProvider(existing: CustomProviderConfig | undefined, input: ProviderInput): CustomProviderConfig {
+  const out: Record<string, unknown> = { ...(existing ?? {}) };
+  const fields: Array<keyof ProviderInput> = ['name', 'baseUrl', 'apiKeyEnv', 'apiKey', 'api', 'timeoutMs', 'chunkTimeoutMs'];
+  for (const f of fields) {
+    const v = input[f];
+    if (v === undefined) continue;
+    if (v === '') delete out[f];
+    else out[f] = typeof v === 'string' ? v.trim() : v;
+  }
+  return out as CustomProviderConfig;
+}
+
+/** A `forge.*` setting row with the text and value the page shows. */
+export type SettingRowView = SettingRow & { description: string; value: unknown; default?: unknown };
+
+export interface SettingsRowsDeps {
+  get(key: string): unknown;
+  update(key: string, value: unknown): Promise<void>;
+  describe(key: string): string;
+  /** The setting's default from package.json, so a row can offer "Reset". */
+  defaultOf?(key: string): unknown;
+}
 
 export interface McpServerView {
   name: string;
@@ -103,6 +183,8 @@ export interface SettingsMcpDeps {
   status(): Promise<McpServerStatus[]>;
   tools(name: string): string[];
   actions: McpActionDeps;
+  /** Sign in to a server that needs it (opens the browser). Absent where there is no way to do that. */
+  signIn?(name: string): Promise<void>;
   catalog(): Promise<{ entries: MarketplaceEntry[]; installed: string[]; warning?: string }>;
   confirm(message: string, detail: string | undefined, action: string): Promise<boolean>;
   openConfig(scope: 'user' | 'workspace'): Promise<void>;
@@ -138,6 +220,10 @@ export interface SettingsDeps {
   effective?: () => Promise<string | undefined>;
   mcp?: SettingsMcpDeps;
   skills?: SettingsSkillsDeps;
+  /** Reads and writes the `forge.*` VS Code settings behind the Context, Safety, Tools, Git and Advanced pages. */
+  rows?: SettingsRowsDeps;
+  /** Opens `~/.forge/config.json` or the workspace's `.forge/config.json` in the editor, creating it when missing. */
+  openConfig?: (scope: 'user' | 'project') => Promise<void>;
 }
 
 async function mcpListed(mcp: SettingsMcpDeps | undefined): Promise<SettingsResponse> {
@@ -268,6 +354,16 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
       case 'mcpReload':
         if (deps.mcp) await deps.mcp.actions.reload();
         return mcpListed(deps.mcp);
+      case 'mcpSignIn': {
+        if (!deps.mcp?.signIn) return mcpListed(deps.mcp);
+        if (!(await findServer(deps.mcp, msg.name))) return gone(msg.name);
+        try {
+          await deps.mcp.signIn(msg.name);
+        } catch (err) {
+          return { type: 'notice', message: `Sign-in to "${msg.name}" did not finish: ${(err as Error).message}` };
+        }
+        return mcpListed(deps.mcp);
+      }
       case 'mcpToggle': {
         if (!deps.mcp) return mcpListed(deps.mcp);
         const s = await findServer(deps.mcp, msg.name);
@@ -334,6 +430,43 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
           type: 'skillCatalogListed',
           entries: catalog.entries.map((e) => ({ name: e.name, displayName: e.displayName, description: e.description, installed: have.has(e.name) })),
         };
+      }
+      case 'openConfig':
+        await deps.openConfig?.(msg.scope);
+        return { type: 'none' };
+      case 'loadProviders': {
+        const { config } = await deps.loadForgeConfigFile(deps.configPath);
+        return { type: 'providersLoaded', providers: providerViews(config.customProviders), presets: presetList() };
+      }
+      case 'saveProvider': {
+        const id = typeof msg.provider?.id === 'string' ? msg.provider.id.trim() : '';
+        const { config } = await deps.loadForgeConfigFile(deps.configPath);
+        const entry = mergeProvider(config.customProviders?.[id], { ...msg.provider, id });
+        const problem = customProviderProblems({ [id]: entry })[0];
+        if (!id || problem) return { type: 'error', message: problem?.message ?? 'A provider needs an id.' };
+        const next = { ...(config.customProviders ?? {}), [id]: entry };
+        await deps.saveForgeConfigFile({ customProviders: next }, deps.configPath);
+        return { type: 'providersLoaded', providers: providerViews(next), presets: presetList() };
+      }
+      case 'deleteProvider': {
+        const { config } = await deps.loadForgeConfigFile(deps.configPath);
+        const next = { ...(config.customProviders ?? {}) };
+        delete next[msg.id];
+        await deps.saveForgeConfigFile({ customProviders: Object.keys(next).length ? next : undefined }, deps.configPath);
+        return { type: 'providersLoaded', providers: providerViews(next), presets: presetList() };
+      }
+      case 'loadRows': {
+        const rows = deps.rows;
+        if (!rows) return { type: 'rowsLoaded', rows: [] };
+        return { type: 'rowsLoaded', rows: SETTING_ROWS.map((r) => ({ ...r, description: SHORT_HELP[r.key] ?? rows.describe(r.key), value: rows.get(r.key), default: rows.defaultOf?.(r.key) })) };
+      }
+      case 'setRow': {
+        const row = SETTING_ROWS.find((r) => r.key === msg.key);
+        if (!row || !deps.rows) return { type: 'error', message: 'That setting cannot be changed here.' };
+        const checked = coerceRow(row, msg.value);
+        if (!checked.ok) return { type: 'rowError', key: row.key, message: checked.message };
+        await deps.rows.update(row.key, checked.value);
+        return { type: 'rowSaved', key: row.key, value: checked.value };
       }
       case 'skillInstall': {
         if (!deps.skills) return { type: 'none' };

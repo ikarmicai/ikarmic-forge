@@ -14,7 +14,8 @@ export type Mention =
   | { kind: 'terminal'; raw: string }
   | { kind: 'git'; value: 'working' | 'staged'; raw: string }
   | { kind: 'url'; value: string; raw: string }
-  | { kind: 'docs'; value: string; raw: string };
+  | { kind: 'docs'; value: string; raw: string }
+  | { kind: 'chat'; value: string; raw: string };
 
 export interface MentionResolvers {
   /** File text, or null when missing / outside the workspace. */
@@ -31,6 +32,8 @@ export interface MentionResolvers {
   url?(url: string): Promise<string | null>;
   /** A named documentation source's text, or null when the name is unknown or unreachable. */
   docs?(name: string): Promise<string | null>;
+  /** The text of a saved chat (`last`, an id prefix or a dashed label), or null when none matches. */
+  chat?(ref: string): Promise<string | null>;
 }
 
 export interface ResolvedMentions {
@@ -65,6 +68,7 @@ export function parseMentions(text: string): Mention[] {
     } else if (colon !== -1 && rest) {
       if (head === 'url' && /^https?:\/\//.test(rest)) mention = { kind: 'url', value: rest, raw };
       else if (head === 'docs') mention = { kind: 'docs', value: rest.toLowerCase(), raw };
+      else if (head === 'chat') mention = { kind: 'chat', value: rest, raw };
       else if (head === 'file') mention = { kind: 'file', value: rest, raw };
       else if (head === 'folder') mention = { kind: 'folder', value: rest, raw };
       else if (head === 'symbol') mention = { kind: 'symbol', value: rest, raw };
@@ -118,12 +122,22 @@ export async function resolveMentions(
     try {
       switch (mention.kind) {
         case 'file': {
-          if (resolvers.isDirectory && (await resolvers.isDirectory(mention.value))) {
-            body = await resolvers.folder(mention.value);
-            attrs = `type="folder" path="${esc(mention.value)}"`;
+          // `@file:src/a.ts#L12-30` (or `#L12`) attaches only those lines.
+          const range = /^(.*?)#L(\d+)(?:-L?(\d+))?$/.exec(mention.value);
+          const target = range ? range[1]! : mention.value;
+          if (!range && resolvers.isDirectory && (await resolvers.isDirectory(target))) {
+            body = await resolvers.folder(target);
+            attrs = `type="folder" path="${esc(target)}"`;
           } else {
-            body = await resolvers.file(mention.value);
-            attrs = `type="file" path="${esc(mention.value)}"`;
+            body = await resolvers.file(target);
+            attrs = `type="file" path="${esc(target)}"`;
+            if (range && body !== null) {
+              const from = Number(range[2]);
+              const to = range[3] ? Number(range[3]) : from;
+              const lines = body.split(/\r?\n/);
+              body = from >= 1 && from <= lines.length && to >= from ? lines.slice(from - 1, to).join('\n') : null;
+              attrs += ` lines="${from}-${to}"`;
+            }
           }
           break;
         }
@@ -154,6 +168,10 @@ export async function resolveMentions(
         case 'docs':
           body = resolvers.docs ? await resolvers.docs(mention.value) : null;
           attrs = `type="docs" name="${esc(mention.value)}"`;
+          break;
+        case 'chat':
+          body = resolvers.chat ? await resolvers.chat(mention.value) : null;
+          attrs = `type="chat" ref="${esc(mention.value)}"`;
           break;
       }
     } catch {
@@ -198,6 +216,7 @@ const KEYWORD_SUGGESTIONS: MentionSuggestion[] = [
   { value: 'git', label: '@git', hint: 'uncommitted changes' },
   { value: 'git:staged', label: '@git:staged', hint: 'staged changes' },
   { value: 'terminal', label: '@terminal', hint: 'recent Forge terminal output' },
+  { value: 'chat:last', label: '@chat:last', hint: 'your previous chat' },
 ];
 
 /**

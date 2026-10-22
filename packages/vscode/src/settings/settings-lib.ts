@@ -13,7 +13,9 @@ export {
   emptyDraft,
   filterSettings,
   markSaved,
+  retentionProblem,
   sandboxToDraft,
   saveMessages,
   sortedTools,
 } from './settings-model.js';
+export { SECTION_LABELS, SETTING_ROWS, coerceRow, groupRows, rowId, splitHint } from './settings-rows.js';

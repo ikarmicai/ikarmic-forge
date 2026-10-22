@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { notifyKind, shouldNotify } from '../src/chat/notify.js';
+import { notifyChannels, notifyKind, shouldNotify } from '../src/chat/notify.js';
 
 const base = { enabled: true, minSeconds: 20, durationMs: 30_000, windowFocused: false, reason: 'completed' as const };
 
@@ -40,5 +40,24 @@ describe('notifyKind', () => {
   it('has no kind for an abort or a missing key, where the user is already looking', () => {
     expect(notifyKind('aborted')).toBeUndefined();
     expect(notifyKind('no_provider_key')).toBeUndefined();
+  });
+});
+
+describe('notifyChannels', () => {
+  const full = { ...base, sound: false, osToast: false };
+
+  it('uses only the channels that are switched on', () => {
+    expect(notifyChannels({ ...full, sound: true })).toEqual({ message: true, sound: true, toast: false });
+    expect(notifyChannels({ ...full, enabled: false, sound: true })).toEqual({ message: false, sound: true, toast: false });
+    expect(notifyChannels({ ...full, enabled: false, osToast: true })).toEqual({ message: false, sound: false, toast: true });
+  });
+
+  it('is silent on every channel while the window is focused or the run was short', () => {
+    expect(notifyChannels({ ...full, sound: true, osToast: true, windowFocused: true })).toBeUndefined();
+    expect(notifyChannels({ ...full, sound: true, osToast: true, durationMs: 1 })).toBeUndefined();
+  });
+
+  it('is silent when every channel is off', () => {
+    expect(notifyChannels({ ...full, enabled: false })).toBeUndefined();
   });
 });

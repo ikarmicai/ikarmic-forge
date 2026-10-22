@@ -1,4 +1,5 @@
 import { MANDALA_MASK } from './brand.js';
+import { BASE_CSS } from '../webview-base-css.js';
 import { i18nScript } from './webview-i18n.js';
 
 /**
@@ -33,39 +34,29 @@ export function chatHtml(
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src ${scriptSrc};">
-<style>
+<style>${BASE_CSS}
   :root {
-    /* Type and corner scale shared with the Settings page. */
-    /* The one accent for "working" and "needs you". list.warningForeground is the text-safe amber in every theme (the editor warning colour is too pale on white, the chart colours too dark on black). */
-    /* The Forge mandala as an alpha mask (docs/brand), painted with --ember by the empty state. */
+    /* The Forge mandala as an alpha mask (docs/brand), painted with --ion by the empty state. */
     --mandala: url("${MANDALA_MASK}");
-    --ember: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground, #cca700));
-    --fs-xs: 11px; --fs-s: 12px; --fs-m: 13px; --fs-l: 15px; --fs-xl: 20px; --r-s: 4px; --r-m: 6px;
-    --fg: var(--vscode-foreground);
     --bg: var(--vscode-editor-background);
-    --muted: var(--vscode-descriptionForeground);
-    --border: var(--vscode-panel-border);
     --accent: var(--vscode-textLink-foreground);
-    /* charts.* stay at 3:1 or better on the default light and dark editor backgrounds; testing.iconPassed is 2:1 on white. */
-    --ok: var(--vscode-charts-green, #388a34);
-    --err: var(--vscode-charts-red, #e51400);
-    --warn: var(--vscode-editorWarning-foreground, #cca700);
     --tool: var(--vscode-textBlockQuote-background, #2a2a2a);
   }
-  * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; font-family: var(--vscode-font-family); font-size: var(--fs-m); color: var(--fg); background: var(--bg); }
   body { display: flex; flex-direction: column; }
   #toolbar { display: flex; align-items: center; gap: 4px; padding: 5px 8px 5px 10px; border-bottom: 1px solid var(--border); position: relative; flex-wrap: wrap; row-gap: 4px; min-width: 0; }
-  #toolbar select { background: transparent; color: var(--fg); border: 1px solid transparent; border-radius: var(--r-s); font-size: var(--fs-s); padding: 2px 4px; flex: none; min-height: 24px; cursor: pointer; }
-  #toolbar select:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
+  /* The meter and the three icon buttons wrap together, never one orphan icon on a second row. */
+  #toolbar .tb-end { display: flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
+  .cchips select { background: transparent; color: var(--fg); border: 1px solid var(--chip-edge); border-radius: var(--r-s); font-size: var(--fs-s); padding: 2px 4px; flex: none; min-height: 24px; cursor: pointer; field-sizing: content; }
+  .cchips select:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
   /* The select itself is transparent, so its popup needs an explicit themed background or it renders white with pale text. */
-  #toolbar select option { background: var(--vscode-dropdown-background, var(--bg)); color: var(--vscode-dropdown-foreground, var(--fg)); }
-  #toolbar .model { background: none; border: 0; border-radius: var(--r-s); padding: 2px 6px; min-height: 24px; color: var(--fg); font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; cursor: pointer; text-align: left; }
-  #toolbar .model::after { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 1px 2px 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
-  #toolbar .model:hover, #toolbar .model[aria-expanded="true"] { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); color: var(--fg); }
-  #model-menu { position: absolute; left: 8px; right: 8px; top: calc(100% + 2px); z-index: 7; display: flex; flex-direction: column; max-height: min(70vh, 420px); background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--border))); border-radius: var(--r-m); box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, .36)); }
+  .cchips select option { background: var(--vscode-dropdown-background, var(--bg)); color: var(--vscode-dropdown-foreground, var(--fg)); }
+  .cchips .model { background: none; border: 1px solid var(--chip-edge); border-radius: var(--r-s); padding: 2px 6px; min-height: 24px; color: var(--fg); font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; cursor: pointer; text-align: left; }
+  .cchips .model::after { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 1px 2px 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+  .cchips .model:hover, .cchips .model[aria-expanded="true"] { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); color: var(--fg); }
+  #model-menu { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 2px); z-index: 7; display: flex; flex-direction: column; max-height: min(70vh, 420px); background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--border))); border-radius: var(--r-m); box-shadow: var(--elev-3); }
   #model-menu[hidden] { display: none; }
-  #model-search { margin: 6px; width: auto; flex: none; background: var(--vscode-input-background); color: var(--vscode-input-foreground, var(--fg)); border: 1px solid var(--vscode-input-border, var(--border)); border-radius: var(--r-s); padding: 4px 8px; font: inherit; }
+  #model-search { margin: 6px; width: auto; flex: none; background: var(--vscode-input-background); color: var(--vscode-input-foreground, var(--fg)); border: 1px solid var(--edge); border-radius: var(--r-s); padding: 4px 8px; font: inherit; }
   #model-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 4px 4px; }
   #model-list .mg { padding: 8px 8px 2px; font-size: var(--fs-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   #model-list .mn { padding: 2px 8px 4px; font-size: var(--fs-xs); color: var(--muted); line-height: 1.4; }
@@ -74,6 +65,12 @@ export function chatHtml(
   #model-list button.mo .id { margin-left: auto; padding-left: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   #model-list button.mo .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #model-list button.mo .ck { width: 12px; flex: none; color: var(--ok); }
+  #model-list .mrow { display: flex; align-items: center; }
+  #model-list .mrow button.mo { flex: 1; min-width: 0; }
+  #model-list button.mo .hint { flex: none; padding-left: 8px; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+  #model-list button.star { flex: none; background: none; border: 0; color: var(--muted); min-width: 24px; min-height: 24px; padding: 0 4px; border-radius: var(--r-s); font-size: var(--fs-m); cursor: pointer; }
+  #model-list button.star[aria-pressed="true"] { color: inherit; }
+  #model-list button.star:hover, #model-list button.star:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
   #model-list .empty { padding: 10px 8px; color: var(--muted); }
   #model-menu .foot { flex: none; display: flex; justify-content: space-between; padding: 2px 4px 4px; border-top: 1px solid var(--border); }
   #model-menu .foot button { background: none; border: 0; color: var(--accent); padding: 3px 6px; min-height: 24px; cursor: pointer; font-size: var(--fs-s); }
@@ -83,15 +80,14 @@ export function chatHtml(
   button.icon[hidden] { display: none; }
   button.icon:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
   button.icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-  .meter { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; flex: none; }
+  .meter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
   .meter.empty { display: none; }
-  .meter .ring { width: 14px; height: 14px; transform: rotate(-90deg); }
-  .meter .ring circle { fill: none; stroke-width: 2.5; }
-  .meter .ring-track { stroke: var(--vscode-widget-border, var(--border)); }
-  .meter .ring-fill { stroke: var(--muted); }
+  .meter.no-ctx .m-label, .meter.no-ctx #meter-text, .meter.no-ctx .m-bar { display: none; }
+  .m-bar { width: 48px; height: 4px; border-radius: 2px; background: var(--hair); overflow: hidden; flex: none; }
+  .m-bar i { display: block; height: 100%; width: 0; background: var(--muted); }
   .meter.warn { color: var(--fg); }
-  .meter.warn .ring-fill { stroke: var(--warn); }
-  #more-menu { position: absolute; right: 8px; top: calc(100% + 2px); z-index: 6; min-width: 220px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--border)); border-radius: var(--r-m); box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, .36)); }
+  .meter.warn .m-bar i { background: var(--warn); }
+  #more-menu { position: absolute; right: 8px; top: calc(100% + 2px); z-index: 6; min-width: 220px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--border)); border-radius: var(--r-m); box-shadow: var(--elev-3); }
   #more-menu[hidden] { display: none; }
   #more-menu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--r-s); font-size: var(--fs-m); }
   #more-menu button:hover, #more-menu button:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
@@ -104,9 +100,9 @@ export function chatHtml(
   #panel .row .text { flex: 1 1 100%; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
   #panel .row .meta { color: var(--muted); font-size: var(--fs-xs); flex: 1 1 auto; display: flex; gap: 6px; align-items: center; }
   #panel .row { position: relative; }
-  #panel .row .pill { padding: 0 6px; border-radius: 8px; font-size: var(--fs-xs); line-height: 16px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+  #panel .row .pill { padding: 0 6px; border-radius: 8px; font-size: var(--fs-xs); line-height: 16px; background: none; border: 1px solid var(--border); color: var(--muted); }
   #panel .row.current .text { font-weight: 600; }
-  #panel .rowmenu { position: absolute; right: 0; top: 100%; z-index: 8; min-width: 150px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--border))); border-radius: var(--r-m); box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, .36)); }
+  #panel .rowmenu { position: absolute; right: 0; top: 100%; z-index: 8; min-width: 150px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--border))); border-radius: var(--r-m); box-shadow: var(--elev-3); }
   #panel .rowmenu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--r-s); font-size: var(--fs-m); }
   #panel .rowmenu button:hover, #panel .rowmenu button:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); }
   #panel .rowmenu button.danger { color: var(--err); }
@@ -125,7 +121,7 @@ export function chatHtml(
   #panel .trow .st { width: 14px; flex: none; text-align: center; line-height: 1.5; color: var(--muted); }
   #panel .trow .st.done { color: var(--ok); }
   #panel .trow .st.failed { color: var(--err); }
-  #panel .trow .st.running { color: var(--ember); }
+  #panel .trow .st.running { color: var(--ion); }
   #panel .trow .tt { flex: 1 1 120px; min-width: 0; text-align: left; background: none; border: 0; color: inherit; padding: 0; cursor: pointer; overflow-wrap: anywhere; line-height: 1.5; font-size: var(--fs-m); }
   #panel .trow .tt:hover { text-decoration: underline; }
   #panel .trow .req { color: var(--muted); font-size: var(--fs-xs); line-height: 1.7; flex: 0 1 auto; max-width: 45%; overflow-wrap: anywhere; }
@@ -133,13 +129,12 @@ export function chatHtml(
   #panel .trow > button.tt { flex: 1 1 120px; }
   #panel .trow .desc { display: block; color: var(--muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
   #panel .trow input[type="checkbox"] { margin: 4px 0 0; flex: none; }
-  #panel .search { width: 100%; margin: 0 0 6px; background: var(--vscode-input-background); color: var(--vscode-input-foreground, var(--fg)); border: 1px solid var(--vscode-input-border, var(--border)); border-radius: var(--r-s); padding: 4px 8px; font: inherit; }
+  #panel .search { width: 100%; margin: 0 0 6px; background: var(--vscode-input-background); color: var(--vscode-input-foreground, var(--fg)); border: 1px solid var(--edge); border-radius: var(--r-s); padding: 4px 8px; font: inherit; }
   #panel .title { font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; }
-  .run-footer { font-size: var(--fs-xs); color: var(--muted); padding: 2px 4px 6px 18px; }
-  .run-footer .link { font-size: inherit; }
-  .warning.notice { border-left-color: var(--vscode-charts-green, var(--ember)); }
-  .warning { color: var(--fg); font-size: var(--fs-s); line-height: 1.5; overflow-wrap: anywhere; padding: 6px 10px; border-left: 2px solid var(--ember); border-radius: 0 4px 4px 0; background: var(--vscode-textBlockQuote-background, transparent); }
-  .muted { color: var(--muted); }
+  .run-footer { font-size: var(--fs-xs); color: var(--muted); padding: 0 0 8px; margin-top: -2px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
+  .turn-actions .link, .run-footer .link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
+  .warning.notice { border-left-color: var(--vscode-charts-green, var(--warn)); }
+  .warning { color: var(--fg); font-size: var(--fs-s); line-height: 1.5; overflow-wrap: anywhere; padding: 6px 10px; border-left: 2px solid var(--warn); border-radius: 0 4px 4px 0; background: var(--vscode-textBlockQuote-background, transparent); }
   body { position: relative; }
   #messages {
     flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 14px;
@@ -147,48 +142,86 @@ export function chatHtml(
     container: msgs / size;
   }
   /* Steps read as one group, like the mock's .steps: only 2px between consecutive step rows. */
-  .tool-row + .tool-row, .tool-row + .approval-log, .approval-log + .tool-row, .approval-log + .approval-log { margin-top: -12px; }
-  #input-area { border-top: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-  .composer { border: 1px solid var(--vscode-input-border, var(--border)); border-radius: var(--r-m); background: var(--vscode-input-background, var(--bg)); }
-  .composer:focus-within { border-color: var(--vscode-focusBorder, var(--accent)); }
+  /* Consecutive tool rows and approval outcomes live in one group, so their spacing never depends on the message gap. */
+  .steps { display: flex; flex-direction: column; gap: 2px; }
+  .steps-head { font-size: var(--fs-xs); color: var(--muted); padding: 0 4px 2px; font-variant-numeric: tabular-nums; }
+  #input-area { position: relative; border-top: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .composer { border: 1px solid var(--edge); border-radius: var(--r-m); background: var(--vscode-input-background, var(--bg)); box-shadow: var(--elev-1); }
+  .composer:focus-within { border-color: var(--vscode-focusBorder, var(--accent)); outline: 2px solid var(--vscode-focusBorder, var(--accent)); outline-offset: 1px; }
   #input { display: block; width: 100%; resize: none; min-height: 32px; max-height: 200px; border: 0; outline: none; background: transparent; color: var(--fg); padding: 8px 10px 2px; font-family: var(--vscode-font-family); font-size: var(--fs-m); }
   #input::placeholder { color: var(--muted); }
+  /* In a very narrow sidebar the placeholder wraps; leave room for all of it instead of clipping it behind scroll arrows. */
+  @media (max-width: 260px) { #input { min-height: 56px; } }
   #queue { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
   #queue:empty { display: none; }
   #queue .queued { display: flex; align-items: center; gap: 6px; font-size: var(--fs-s); color: var(--muted); }
   #queue .queued .q-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #findbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  #findbar[hidden] { display: none; }
+  #find-input { flex: 1; min-width: 0; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: inherit; font-size: var(--fs-s); padding: 3px 8px; }
+  #find-input.nomatch { border-color: var(--err); }
   #edit-banner { display: flex; align-items: center; gap: 6px; padding: 4px 8px 0; font-size: var(--fs-s); color: var(--muted); }
   #edit-banner[hidden] { display: none; }
-  .turn-actions { display: flex; gap: 8px; margin: -4px 0 8px; font-size: var(--fs-s); }
+  #chipbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
+  #bg-strip { margin: 0 6px 4px; border: 1px solid var(--hair); border-radius: var(--r-s); font-size: var(--fs-s); }
+  #bg-strip[hidden] { display: none; }
+  #bg-strip .bghead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 8px; color: var(--muted); }
+  #bg-strip ul { list-style: none; margin: 0; padding: 0; }
+  #bg-strip .bgrow { display: flex; align-items: center; gap: 8px; padding: 0 8px; min-height: 24px; }
+  #bg-strip .bgrow .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bg-strip .bgrow .dt { flex: none; color: var(--muted); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bg-strip .bgrow .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ion); }
+  #bg-strip .bgrow.done .dot { background: var(--ok); }
+  #bg-strip .bgrow.failed .dot { background: var(--err); }
+  #bg-strip .bgrow.stopped .dot { background: var(--muted); }
+  #goal-chip { flex: 1 1 220px; min-width: 0; }
+  #todo-chip { flex: 0 1 auto; }
+  #todo-chip:has(#todo-list:not([hidden])) { flex-basis: 100%; }
+  #goal-chip, #todo-chip { padding: 2px 8px; font-size: var(--fs-s); color: var(--muted); }
+  #goal-chip[hidden], #todo-chip[hidden] { display: none; }
+  #goal-chip { display: flex; align-items: center; gap: 8px; }
+  #goal-chip .gtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #todo-chip .link { padding: 0; text-align: left; }
+  #todo-list { margin: 4px 0 2px; padding: 0 0 0 4px; list-style: none; color: var(--fg); }
+  #todo-list[hidden] { display: none; }
+  #todo-list li { padding: 1px 0; overflow-wrap: anywhere; }
+  #todo-list li.done { color: var(--muted); text-decoration: line-through; }
+  #todo-list li.doing { font-weight: 600; }
+  .question { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .question .qk { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
+  .question .qt { overflow-wrap: anywhere; }
+  .question .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .question .opts button, .question .custom button { font-size: var(--fs-s); padding: 3px 9px; }
+  .question .custom { display: flex; gap: 6px; }
+  .question .custom input { flex: 1; min-width: 0; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: inherit; font-size: var(--fs-s); padding: 3px 8px; }
+  .turn-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin: -4px 0 0; font-size: var(--fs-s); }
   .diagram { margin: 6px 0; padding: 8px; overflow: auto; border-radius: var(--r-m); background: var(--vscode-textCodeBlock-background, transparent); }
   .diagram svg { max-width: 100%; height: auto; }
   details.diagram-src > summary { cursor: pointer; font-size: var(--fs-s); color: var(--muted); }
   #attachments { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px 0; }
   #attachments:empty { display: none; }
-  .chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 1px 2px 1px 6px; border-radius: var(--r-s); background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-size: 11px; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 1px 2px 1px 6px; border-radius: var(--r-s); background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-size: var(--fs-xs); }
   .chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip button { width: 16px; height: 16px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; line-height: 1; }
-  .msg.user .files { margin-top: 4px; font-size: 11px; opacity: .8; }
+  .msg.user .files { margin-top: 4px; font-size: var(--fs-xs); opacity: .8; }
+  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 2px 4px 0 6px; min-width: 0; }
   .cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px 8px; }
   .cfoot .auto { font-size: var(--fs-s); color: var(--muted); display: flex; gap: 6px; align-items: center; min-height: 24px; padding: 0 6px; border-radius: var(--r-s); cursor: pointer; }
-  .cfoot .auto.on { color: var(--ember); font-weight: 600; background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .2)); }
-  #auto-note { padding: 0 10px 6px; font-size: var(--fs-xs); color: var(--ember); }
+  .cfoot .auto.on { color: var(--err); font-weight: 600; background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .2)); }
+  #auto-note { padding: 0 10px 6px; font-size: var(--fs-xs); color: var(--err); }
   #auto-note[hidden] { display: none; }
   #send, #cancel { flex: none; min-height: 24px; }
   #send[hidden], #cancel[hidden] { display: none; }
-  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-  button {
-    background: var(--vscode-button-background); color: var(--vscode-button-foreground);
-    border: none; padding: 4px 10px; border-radius: var(--r-s); cursor: pointer; font-size: var(--fs-s);
-  }
-  button:hover { background: var(--vscode-button-hoverBackground); }
-  button.secondary {
-    background: transparent; color: var(--fg); border: 1px solid var(--border);
-  }
+  /* A plain button is a reset. Look comes from a class: primary, secondary, link (base), icon, or the component's own rule. */
+  button { background: none; color: inherit; border: 0; padding: 0; border-radius: var(--r-s); cursor: pointer; font-size: var(--fs-s); }
+  button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); padding: 4px 10px; min-height: 24px; }
+  button.primary:hover { background: var(--vscode-button-hoverBackground); }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--edge); padding: 4px 10px; min-height: 24px; }
+  button.secondary:hover { background: var(--vscode-toolbar-hoverBackground, transparent); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .msg { padding: 0; line-height: 1.5; }
   .msg.user { color: var(--fg); }
-  .msg.user .body { background: var(--vscode-input-background, var(--tool)); border: 1px solid var(--vscode-input-border, var(--border)); border-radius: var(--r-m); padding: 7px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.user .body { background: var(--bubble); border: 1px solid var(--hair); border-radius: var(--r-m); padding: 7px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .msg.assistant .body { overflow-wrap: anywhere; }
   .msg.assistant .body:not(.md) { white-space: pre-wrap; }
   .msg .label { display: none; }
@@ -216,7 +249,7 @@ export function chatHtml(
   .tool-row { font-size: var(--fs-m); color: var(--muted); }
   .tool-row[open], .tool-row > summary:hover { color: var(--fg); }
   .tool-row .target { color: var(--fg); }
-  .tool-row > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: var(--r-s); cursor: pointer; min-width: 0; }
+  .tool-row > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 3px 4px; min-height: 24px; border-radius: var(--r-s); cursor: pointer; min-width: 0; }
   .tool-row > summary::-webkit-details-marker { display: none; }
   .tool-row > summary:hover { background: var(--vscode-list-hoverBackground); }
   .tool-row .chev { width: 0; height: 0; border-left: 4px solid var(--muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; flex: none; margin: 0 2px; }
@@ -224,7 +257,7 @@ export function chatHtml(
   .tool-row .st { width: 14px; text-align: center; flex: none; font-size: var(--fs-s); }
   .tool-row .st.ok { color: var(--ok); }
   .tool-row .st.err { color: var(--err); }
-  .tool-row .st.spin { width: 10px; height: 10px; margin: 0 2px; border: 1.5px solid var(--ember); border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+  .tool-row .st.spin { width: 10px; height: 10px; margin: 0 2px; border: 1.5px solid var(--ion); border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .tool-row .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tool-row .target { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
@@ -235,7 +268,7 @@ export function chatHtml(
   .tool-row .result.collapsed { max-height: 120px; }
   .tool-row .show-more { font-size: var(--fs-xs); margin-top: 2px; cursor: pointer; color: var(--accent); background: none; border: none; padding: 0; }
   .tool-row .diff { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-s); overflow-x: auto; font-size: var(--fs-s); }
-  .cursor { display: inline-block; width: 6px; height: 13px; background: var(--ember); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; }
+  .cursor { display: inline-block; width: 6px; height: 13px; background: var(--ion); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   .diff-line { white-space: pre; font-family: var(--vscode-editor-font-family); padding: 0 8px; line-height: 1.5; }
   .diff-add { background: var(--vscode-diffEditor-insertedLineBackground, transparent); }
@@ -248,26 +281,28 @@ export function chatHtml(
   .reasoning > summary:hover { color: var(--fg); }
   .reasoning .rbody { white-space: pre-wrap; padding: 0 0 4px;
   }
-  .approval { border: 1px solid var(--ember); border-left-width: 3px; border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); animation: rise .14s ease-out; }
+  .approval { border: 1px solid var(--warn); border-left-width: 3px; border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); box-shadow: var(--elev-1); animation: rise .14s ease-out; }
   @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .approval { animation: none; } }
   .approval.destructive { border-color: var(--err); }
-  .approval .kind { padding: 7px 10px 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ember); }
+  .approval .kind { padding: 7px 10px 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
   .approval.destructive .kind { color: var(--err); }
   .approval .line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 8px 8px 10px; min-width: 0; }
   .approval .q { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
-  .approval.destructive .q { color: var(--err); }
-  .approval .target, .approval .file { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
+  .approval .file { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
+  /* The command or path being approved is the focus of the card: a code block that wraps, never a coloured sentence. */
+  .approval .target { display: inline-block; max-width: 100%; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); background: var(--vscode-textCodeBlock-background, var(--tool)); border-radius: var(--r-s); padding: 1px 6px; overflow-wrap: anywhere; vertical-align: top; }
   .approval .meta { font-size: var(--fs-xs); color: var(--fg); font-family: var(--vscode-editor-font-family); }
   .approval button { flex: none; font-size: var(--fs-s); padding: 3px 9px; white-space: nowrap; }
-  .approval .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; }
+  .approval .link { padding: 0; }
   .approval .link:hover { text-decoration: underline; }
   .approval .fb { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
   .approval .fb[hidden] { display: none; }
   .approval .chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .approval .chip { border: 1px solid var(--vscode-widget-border, var(--border)); background: transparent; color: var(--muted); border-radius: 10px; padding: 1px 8px; font-size: var(--fs-xs); }
   .approval .chip:hover { color: var(--fg); }
-  .approval .note { width: 100%; resize: vertical; min-height: 44px; border: 1px solid var(--vscode-input-border, var(--border)); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: 12px var(--vscode-font-family); padding: 6px 8px; }
+  .approval .preview { margin: 6px 10px 10px; padding: 8px 10px; white-space: pre-wrap; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); max-height: 160px; overflow: auto; background: var(--sunken); border-radius: var(--r-s); }
+  .approval .note { width: 100%; resize: vertical; min-height: 44px; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: 12px var(--vscode-font-family); padding: 6px 8px; }
   .approval .note:focus { border-color: var(--vscode-focusBorder, var(--accent)); }
   .approval .fb-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
   .approval .acts { display: flex; gap: 6px; margin-left: auto; flex: none; }
@@ -289,10 +324,10 @@ export function chatHtml(
   .run .stask { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .run .meta { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
   .run .l2 { display: flex; align-items: center; gap: 8px; padding-left: 22px; flex-wrap: wrap; font-size: var(--fs-s); }
-  .run .l2 .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-size: var(--fs-s); }
+  .run .l2 .link { font-size: var(--fs-s); }
   .run .rerr { padding-left: 22px; overflow-wrap: anywhere; font-size: var(--fs-s); color: var(--err); }
   .run .rf { display: flex; justify-content: flex-end; padding: 6px 10px; border-top: 1px solid var(--vscode-widget-border, var(--border)); }
-  .run .rf .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-size: var(--fs-s); }
+  .run .rf .link { font-size: var(--fs-s); }
   .approval-log.err { color: var(--err); }
   .run .rh .ok, .run .l1 .ok { color: var(--ok); }
   .run .rh .err, .run .l1 .err { color: var(--err); }
@@ -301,17 +336,17 @@ export function chatHtml(
     display: flex; flex-wrap: wrap; gap: 2px 12px; justify-content: space-between;
   }
   .status-bar > span { min-width: 0; overflow-wrap: anywhere; }
-  .error-banner { background: rgba(244, 135, 113, 0.1); border-left: 2px solid var(--err); border-radius: 0 4px 4px 0; padding: 8px 10px; line-height: 1.5; overflow-wrap: anywhere; }
-  .error-banner .link { background: none; border: 0; padding: 0 0 0 6px; color: var(--accent); cursor: pointer; text-decoration: none; }
+  .error-banner { background: color-mix(in srgb, var(--err) 12%, transparent); border-left: 2px solid var(--err); border-radius: 0 4px 4px 0; padding: 8px 10px; line-height: 1.5; overflow-wrap: anywhere; }
+  .error-banner .link { padding: 0 0 0 6px; text-decoration: none; }
   .error-banner .link:hover { text-decoration: underline; }
   .md .code.collapsed pre { max-height: 18em; overflow: hidden; }
   .md .code .code-more { display: block; width: 100%; background: none; color: var(--accent); border: 0; border-top: 1px solid var(--vscode-widget-border, var(--border)); padding: 4px 8px; font-size: var(--fs-xs); text-align: left; cursor: pointer; }
   .empty-state { color: var(--muted); padding: 28px 4px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .empty-state .mark { width: 64px; height: 64px; background: var(--ember); -webkit-mask: var(--mandala) center / contain no-repeat; mask: var(--mandala) center / contain no-repeat; }
+  .empty-state .mark { width: 64px; height: 64px; background: var(--ion); -webkit-mask: var(--mandala) center / contain no-repeat; mask: var(--mandala) center / contain no-repeat; }
   .empty-state h2 { margin: 0; font-size: var(--fs-l); font-weight: 600; color: var(--fg); }
   .empty-state p { margin: 0; line-height: 1.5; max-width: 34ch; }
   .empty-state .examples { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
-  .empty-state .ex { text-align: left; background: transparent; color: var(--fg); border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-m); padding: 6px 10px; font-size: var(--fs-s); min-height: 28px; }
+  .empty-state .ex { text-align: left; background: transparent; color: var(--fg); border: 1px solid var(--edge); border-radius: var(--r-m); padding: 6px 10px; font-size: var(--fs-s); min-height: 28px; }
   .empty-state .ex:hover { background: var(--vscode-list-hoverBackground); border-color: var(--vscode-focusBorder, var(--accent)); }
   .empty-state .hint { font-size: var(--fs-xs); line-height: 1.4; margin-top: 6px; max-width: none; }
   /* Short panes (small windows, the composer's Autonomous note): give up the decoration first, never the hint. */
@@ -336,7 +371,7 @@ export function chatHtml(
   }
   /* Voice input */
   #mic.recording {
-    background: rgba(244, 67, 54, 0.15); color: var(--err); border-color: var(--err);
+    background: color-mix(in srgb, var(--err) 15%, transparent); color: var(--err); border-color: var(--err);
     animation: mic-pulse 1.2s ease-in-out infinite;
   }
   #mic:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -345,8 +380,8 @@ export function chatHtml(
     background: currentColor; vertical-align: middle; margin-right: 4px;
   }
   @keyframes mic-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.45); }
-    50% { box-shadow: 0 0 0 6px rgba(244, 67, 54, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--err) 45%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--err) 0%, transparent); }
   }
   #input.interim {
     color: var(--muted); font-style: italic;
@@ -373,7 +408,9 @@ export function chatHtml(
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }
   @media (forced-colors: active) {
-    button, select, textarea, #mention-list, .approval, .error-banner, .warning { border: 1px solid ButtonText; }
+    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .question, .composer, .steps, .cchips select, .cchips .model, .empty-state .ex { border: 1px solid ButtonText; }
+    .m-bar { border: 1px solid ButtonText; }
+    .m-bar i { forced-color-adjust: none; background: Highlight; }
   }
 </style>
 </head>
@@ -381,17 +418,10 @@ export function chatHtml(
 <script src="${voiceScriptUri}" onerror="window.__forgeVoiceLoadFailed=true"></script>
 <script src="${forgeUiScriptUri}" onerror="window.__forgeUiLoadFailed=true"></script>
 <div id="toolbar" role="toolbar" aria-label="Chat actions">
-  <select id="mode" title="Mode" aria-label="Mode"></select>
-  <button type="button" class="model" id="model-label" title="Model" aria-haspopup="dialog" aria-expanded="false">no model</button>
-  <span class="spacer"></span>
-  <span class="meter empty" id="meter" role="status" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is"><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle class="ring-track" cx="8" cy="8" r="6"/><circle class="ring-fill" id="meter-ring" cx="8" cy="8" r="6" stroke-dasharray="0 37.7"/></svg><span id="meter-text"></span></span>
+  <div class="tb-end">
   <button id="new-chat" class="icon" type="button" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button>
   <button id="history-btn" class="icon" type="button" title="History" aria-label="History"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.5 2.5v2.2h2.2"/><path d="M8 5v3.2l2 1.3"/></svg></button>
   <button id="more-btn" class="icon" type="button" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r=".7"/><circle cx="8" cy="8" r=".7"/><circle cx="12.5" cy="8" r=".7"/></svg></button>
-  <div id="model-menu" role="dialog" aria-label="Choose a model" hidden>
-    <input type="search" id="model-search" placeholder="Search models" aria-label="Search models" autocomplete="off" />
-    <div id="model-list"></div>
-    <div class="foot"><button type="button" id="model-refresh">Refresh</button><button type="button" id="model-settings">Settings…</button></div>
   </div>
   <div id="more-menu" role="menu" aria-label="More actions" hidden>
     <button id="checkpoints-btn" type="button" role="menuitem">Restore checkpoint…</button>
@@ -401,6 +431,7 @@ export function chatHtml(
     <div class="stat" id="meter-stat"></div>
   </div>
 </div>
+<div id="findbar" role="search" hidden><input id="find-input" type="text" aria-label="Find in this chat" placeholder="Find in this chat" /><button id="find-prev" class="link" type="button" aria-label="Previous match">Prev</button><button id="find-next" class="link" type="button" aria-label="Next match">Next</button><button id="find-close" class="link" type="button" aria-label="Close find">Close</button></div>
 <div id="panel" role="dialog" aria-label="Panel"></div>
 <div id="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation">
   <div class="empty-state" id="empty">
@@ -417,12 +448,26 @@ export function chatHtml(
 </div>
 <div id="approval-announcer" class="sr-only" aria-live="assertive"></div>
 <div id="input-area" role="region" aria-label="Message input">
+<div id="model-menu" role="dialog" aria-label="Choose a model" hidden>
+  <input type="search" id="model-search" placeholder="Search models" aria-label="Search models" autocomplete="off" />
+  <div id="model-list"></div>
+  <div class="foot"><button type="button" id="model-refresh">Refresh</button><button type="button" id="model-settings">Settings…</button></div>
+</div>
   <div id="mention-list" role="listbox" aria-label="Mention suggestions"></div>
   <div id="queue" role="list" aria-label="Queued messages"></div>
+  <div id="bg-strip" role="region" aria-label="Background agents" hidden></div>
   <div id="edit-banner" hidden><span>Editing your last message</span><button id="edit-cancel" class="link" type="button">Cancel</button></div>
+  <div id="chipbar">
+  <div id="goal-chip" hidden><span class="gtext" id="goal-text"></span><button type="button" class="link" id="goal-toggle">Pause</button><button type="button" class="link" id="goal-clear">Clear</button></div>
+  <div id="todo-chip" hidden><button type="button" class="link" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"></button><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
+  </div>
   <div class="composer">
     <div id="attachments" role="list" aria-label="Attached files"></div>
     <textarea id="input" rows="1" aria-label="Message to Forge" aria-autocomplete="list" aria-controls="mention-list" placeholder="Ask Forge… (@ to attach context)" title="@ attaches files, @problems or @git context" autofocus></textarea>
+    <div class="cchips">
+  <select id="mode" title="Mode" aria-label="Mode"></select>
+  <button type="button" class="model" id="model-label" title="Model" aria-haspopup="dialog" aria-expanded="false">no model</button>
+    </div>
     <div class="cfoot">
       <label class="auto" id="auto-label" title="Autonomous: Forge runs tools without asking you first"><input type="checkbox" id="auto-toggle" aria-describedby="auto-note" /> Autonomous</label>
       <span class="spacer"></span>
@@ -430,10 +475,11 @@ export function chatHtml(
       <button id="attach-file" class="icon" type="button" title="Attach files (or paste / drop them)" aria-label="Attach files"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.3 2.3 0 0 1 3.3 3.3L6.5 11.1a1.2 1.2 0 0 1-1.7-1.7L10 4.2"/></svg></button>
       <button id="enhance" class="icon" type="button" title="Enhance prompt" aria-label="Enhance prompt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.75 9.2 5.3 12.75 6.5 9.2 7.7 8 11.25 6.8 7.7 3.25 6.5 6.8 5.3zM12.5 10.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/></svg></button>
       <button id="mic" class="icon" type="button" title="Voice input (Ctrl+Shift+Space)" aria-label="Voice input"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.75" y="1.75" width="4.5" height="8" rx="2.25"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.25"/></svg></button>
-      <button id="send" type="button" disabled aria-label="Send message">Send</button>
+      <button id="send" class="primary" type="button" disabled title="Type a message to send" aria-label="Send message">Send</button>
       <button id="cancel" class="secondary" type="button" disabled hidden aria-label="Stop the running task">Stop</button>
     </div>
   </div>
+  <div class="meter empty" id="meter" role="status" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is"><span class="m-label">Context</span><span id="meter-text"></span><span class="m-bar" aria-hidden="true"><i id="meter-bar"></i></span><span id="meter-cost"></span></div>
   <div id="voice-status" aria-live="polite"></div>
 </div>
 
@@ -469,7 +515,8 @@ export function chatHtml(
   const mentionList = document.getElementById('mention-list');
   const moreBtn = document.getElementById('more-btn');
   const moreMenu = document.getElementById('more-menu');
-  const meterRing = document.getElementById('meter-ring');
+  const meterBar = document.getElementById('meter-bar');
+  const meterCostEl = document.getElementById('meter-cost');
   const meterText = document.getElementById('meter-text');
   const meterStat = document.getElementById('meter-stat');
   const attachBtn = document.getElementById('attach');
@@ -480,6 +527,8 @@ export function chatHtml(
   const queued = [];
   /** The last message you sent, for Retry and Edit; null in a fresh or resumed chat. */
   let lastUserText = null;
+  // Why the last run ended; 'aborted' (Stop) makes the turn actions offer Continue.
+  let lastRunReason = null;
   /** True while the input holds an edit of the last message: Send replaces that turn. */
   let editingLast = false;
   const attachFileBtn = document.getElementById('attach-file');
@@ -488,34 +537,102 @@ export function chatHtml(
   let pendingFiles = [];
   const announcer = document.getElementById('approval-announcer');
 
+  // Background agents: the host sends the whole strip each time something changes (and every second while one runs).
+  const bgStrip = document.getElementById('bg-strip');
+  function renderBgStrip(view) {
+    bgStrip.textContent = '';
+    if (!view.items.length) { bgStrip.hidden = true; return; }
+    bgStrip.hidden = false;
+    const head = document.createElement('div'); head.className = 'bghead';
+    const title = document.createElement('span'); title.textContent = 'Background agents'; head.appendChild(title);
+    if (view.canStopAll) {
+      const all = document.createElement('button'); all.type = 'button'; all.className = 'secondary'; all.textContent = 'Stop all';
+      all.addEventListener('click', () => vscode.postMessage({ type: 'bg_stop_all' }));
+      head.appendChild(all);
+    }
+    bgStrip.appendChild(head);
+    const list = document.createElement('ul');
+    view.items.forEach((it) => {
+      const li = document.createElement('li'); li.className = 'bgrow ' + it.state; li.dataset.id = it.id;
+      const dot = document.createElement('span'); dot.className = 'dot'; dot.setAttribute('aria-hidden', 'true'); li.appendChild(dot);
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.label; nm.title = it.title; li.appendChild(nm);
+      const dt = document.createElement('span'); dt.className = 'dt'; dt.textContent = it.detail; dt.title = it.detail; li.appendChild(dt);
+      const act = document.createElement('button'); act.type = 'button'; act.className = 'link';
+      if (it.canStop) { act.textContent = 'Stop'; act.setAttribute('aria-label', 'Stop ' + it.label); act.addEventListener('click', () => vscode.postMessage({ type: 'bg_stop', id: it.id })); }
+      else { act.textContent = 'Dismiss'; act.setAttribute('aria-label', 'Dismiss ' + it.label); act.addEventListener('click', () => vscode.postMessage({ type: 'bg_dismiss', id: it.id })); }
+      li.appendChild(act);
+      list.appendChild(li);
+    });
+    bgStrip.appendChild(list);
+  }
+
   // Model picker: provider-grouped, searchable; the host answers list_models with model_menu.
   const modelMenu = document.getElementById('model-menu');
   const modelSearch = document.getElementById('model-search');
   const modelList = document.getElementById('model-list');
   let modelGroups = null;
   let modelCurrent = null;
+  let favourites = [];
+  let refocusFav = '';
+  function favKey(provider, model) { return provider + '|' + model; }
+  /** One picker row: the model button (with its window and price) and a star that adds it to Favourites. */
+  function appendModelRow(g, m, showProvider) {
+    const row = document.createElement('div'); row.className = 'mrow';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mo';
+    const on = !!modelCurrent && modelCurrent.provider === g.provider && modelCurrent.model === m.id;
+    const ck = document.createElement('span'); ck.className = 'ck'; ck.textContent = on ? '✓' : ''; b.appendChild(ck);
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = m.label; b.appendChild(nm);
+    if (showProvider) { const pv = document.createElement('span'); pv.className = 'id'; pv.textContent = g.label; b.appendChild(pv); }
+    else if (m.label !== m.id) { const id = document.createElement('span'); id.className = 'id'; id.textContent = m.id; id.title = m.id; b.appendChild(id); }
+    if (m.hint) { const ht = document.createElement('span'); ht.className = 'hint'; ht.textContent = m.hint; ht.title = m.hintTitle || ''; b.appendChild(ht); }
+    b.addEventListener('click', () => { vscode.postMessage({ type: 'select_model', provider: g.provider, model: m.id }); closeModelMenu(); modelLabel.focus(); });
+    row.appendChild(b);
+    const key = favKey(g.provider, m.id);
+    const fav = favourites.indexOf(key) >= 0;
+    const star = document.createElement('button'); star.type = 'button'; star.className = 'star';
+    star.setAttribute('aria-pressed', fav ? 'true' : 'false');
+    star.setAttribute('aria-label', (fav ? 'Remove from favourites: ' : 'Add to favourites: ') + m.label);
+    star.title = fav ? 'Remove from favourites' : 'Add to favourites';
+    star.textContent = fav ? '★' : '☆';
+    star.dataset.fav = key + (showProvider ? '|top' : '');
+    star.addEventListener('click', (e) => { e.stopPropagation(); refocusFav = star.dataset.fav; vscode.postMessage({ type: 'toggle_favourite_model', provider: g.provider, model: m.id }); });
+    row.appendChild(star);
+    modelList.appendChild(row);
+  }
   function closeModelMenu() { modelMenu.hidden = true; modelLabel.setAttribute('aria-expanded', 'false'); }
   function renderModelMenu() {
     modelList.textContent = '';
     if (!modelGroups) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = 'Loading models…'; modelList.appendChild(d); return; }
     const q = modelSearch.value.trim().toLowerCase();
+    const scrollTop = modelList.scrollTop;
     let shown = 0;
+    const matches = (g, m) => !q || m.id.toLowerCase().indexOf(q) >= 0 || m.label.toLowerCase().indexOf(q) >= 0 || g.label.toLowerCase().indexOf(q) >= 0;
+    const favRows = [];
+    modelGroups.forEach((g) => g.models.forEach((m) => { if (favourites.indexOf(favKey(g.provider, m.id)) >= 0 && matches(g, m)) favRows.push({ g: g, m: m }); }));
+    if (favRows.length) {
+      const fh = document.createElement('div'); fh.className = 'mg'; fh.textContent = 'Favourites'; modelList.appendChild(fh);
+      favRows.forEach((r) => { appendModelRow(r.g, r.m, true); shown++; });
+    }
     modelGroups.forEach((g) => {
-      const rows = g.models.filter((m) => !q || m.id.toLowerCase().indexOf(q) >= 0 || m.label.toLowerCase().indexOf(q) >= 0 || g.label.toLowerCase().indexOf(q) >= 0);
-      if (!rows.length) return;
+      const rows = g.models.filter((m) => matches(g, m));
+      if (!rows.length) {
+        // A provider with nothing to list (no key, endpoint down, no models named in the config) still says why.
+        if (!q && !g.models.length && g.error) {
+          const eh = document.createElement('div'); eh.className = 'mg'; eh.textContent = g.label; modelList.appendChild(eh);
+          const en = document.createElement('div'); en.className = 'mn'; en.textContent = 'Could not list models: ' + g.error; modelList.appendChild(en);
+        }
+        return;
+      }
       const h = document.createElement('div'); h.className = 'mg'; h.textContent = g.label; modelList.appendChild(h);
       if (g.source === 'builtin' && g.error && !q) { const n = document.createElement('div'); n.className = 'mn'; n.textContent = g.error; modelList.appendChild(n); }
-      rows.forEach((m) => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'mo';
-        const on = !!modelCurrent && modelCurrent.provider === g.provider && modelCurrent.model === m.id;
-        const ck = document.createElement('span'); ck.className = 'ck'; ck.textContent = on ? '✓' : ''; b.appendChild(ck);
-        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = m.label; b.appendChild(nm);
-        if (m.label !== m.id) { const id = document.createElement('span'); id.className = 'id'; id.textContent = m.id; id.title = m.id; b.appendChild(id); }
-        b.addEventListener('click', () => { vscode.postMessage({ type: 'select_model', provider: g.provider, model: m.id }); closeModelMenu(); modelLabel.focus(); });
-        modelList.appendChild(b);
-        shown++;
-      });
+      rows.forEach((m) => { appendModelRow(g, m, false); shown++; });
     });
+    modelList.scrollTop = scrollTop;
+    if (refocusFav) {
+      const again = modelList.querySelector('button.star[data-fav="' + refocusFav.replace(/"/g, '') + '"]');
+      refocusFav = '';
+      if (again) again.focus();
+    }
     if (!shown) {
       const d = document.createElement('div'); d.className = 'empty';
       d.textContent = modelGroups.length ? 'No models match.' : 'No models yet. Add an API key in Settings.';
@@ -542,7 +659,7 @@ export function chatHtml(
     if (e.key === 'Escape') { closeModelMenu(); modelLabel.focus(); return; }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
-    const items = [modelSearch].concat(Array.prototype.slice.call(modelList.querySelectorAll('button.mo')));
+    const items = [modelSearch].concat(Array.prototype.slice.call(modelList.querySelectorAll('button.mo, button.star')));
     const at = items.indexOf(document.activeElement);
     const next = e.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1);
     items[next].focus();
@@ -673,7 +790,7 @@ export function chatHtml(
       row.appendChild(meta);
       for (const a of r.actions) {
         const b = document.createElement('button');
-        if (a.secondary) b.className = 'secondary';
+        b.className = a.secondary ? 'secondary' : 'primary';
         b.textContent = a.label;
         b.addEventListener('click', a.onClick);
         row.appendChild(b);
@@ -929,7 +1046,14 @@ export function chatHtml(
     div.textContent = text;
     messagesEl.appendChild(div);
     autoscroll();
-    setTimeout(() => div.remove(), 8000);
+    setTimeout(() => {
+      div.remove();
+      // The warning was the only thing in a fresh chat: bring the hint back instead of leaving a blank pane.
+      if (messagesEl.children.length === 0 && EMPTY_HTML) {
+        messagesEl.innerHTML = EMPTY_HTML;
+        emptyEl = document.getElementById('empty');
+      }
+    }, 8000);
   }
 
   // A neutral, lasting status line from the host (e.g. a commit that was made); unlike a warning it stays.
@@ -959,7 +1083,7 @@ export function chatHtml(
     const choices = [['Draft a spec', 'spec', false], ['Plan first', 'plan', true], ['Just do it', 'go', true]];
     for (const [label, choice, secondary] of choices) {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
-      if (secondary) b.className = 'secondary';
+      b.className = secondary ? 'secondary' : 'primary';
       b.addEventListener('click', () => { card.remove(); vscode.postMessage({ type: 'suggest_choice', choice }); });
       line.appendChild(b);
     }
@@ -998,7 +1122,7 @@ export function chatHtml(
     hideEmpty();
     const div = document.createElement('div');
     div.style.color = 'var(--muted)';
-    div.style.fontSize = '11px';
+    div.style.fontSize = 'var(--fs-xs)';
     div.style.overflowWrap = 'anywhere';
     div.textContent = text;
     messagesEl.appendChild(div);
@@ -1049,8 +1173,10 @@ export function chatHtml(
     if (cost) parts.push('This chat: ' + cost);
     if (pct !== null) parts.push('context ' + pct + '% full (' + meterCtx.tokens + ' / ' + meterCtx.window + ' tokens)');
     const detail = parts.join(' · ');
-    meterText.textContent = pct !== null ? pct + '%' : cost;
-    meterRing.setAttribute('stroke-dasharray', (((pct || 0) / 100) * 37.7).toFixed(1) + ' 37.7');
+    meterText.textContent = pct !== null ? pct + '%' : '';
+    meterCostEl.textContent = cost;
+    meterBar.style.width = (pct || 0) + '%';
+    meterEl.classList.toggle('no-ctx', pct === null);
     meterEl.title = detail || 'Cost of this chat and how full the context window is';
     meterStat.textContent = detail;
     meterEl.classList.toggle('empty', !detail);
@@ -1058,11 +1184,59 @@ export function chatHtml(
   }
   condenseBtn.addEventListener('click', () => { closeMore(); closePanel(); vscode.postMessage({ type: 'condense' }); });
 
+  // ---- slash menu: reuses the mention list; a slash as the first character opens it
+  let slashEntries = [];
+  let slashOpen = false;
+  function showSlashMenu(query) {
+    const items = UI ? UI.filterSlash(slashEntries, query) : [];
+    mentionList.textContent = '';
+    mentionRange = null;
+    if (!items.length) { hideMentions(); return; }
+    items.forEach((e, i) => {
+      const row = document.createElement('div');
+      row.className = 'mi' + (i === 0 ? ' sel' : '');
+      row.setAttribute('role', 'option');
+      row.dataset.slash = e.name;
+      const label = document.createElement('span'); label.textContent = '/' + e.name; row.appendChild(label);
+      const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = e.description + (e.source === 'custom' ? ' (yours)' : e.source === 'skill' ? ' (skill)' : ''); row.appendChild(hint);
+      row.addEventListener('mousedown', (ev) => { ev.preventDefault(); chooseSlash(e.name); });
+      mentionList.appendChild(row);
+    });
+    mentionList.classList.add('open');
+    slashOpen = true;
+  }
+  /** A command that takes arguments is completed in the box; any other runs now. */
+  function chooseSlash(name) {
+    const entry = slashEntries.find((e) => e.name === name);
+    hideMentions();
+    if (!entry) return;
+    if (entry.takesArgs) {
+      inputEl.value = '/' + name + ' ';
+      inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+      inputEl.focus();
+      setSendEnabled();
+      return;
+    }
+    inputEl.value = '/' + name;
+    runSlashFromInput();
+  }
+  /** Run the input as a built-in slash command, even while a run is going. False when it is not one. */
+  function runSlashFromInput() {
+    const slash = UI ? UI.parseSlash(inputEl.value, slashEntries) : null;
+    if (!slash || slash.entry.source !== 'builtin') return false;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    setSendEnabled();
+    hideMentions();
+    vscode.postMessage({ type: 'slash_run', name: slash.name, args: slash.args });
+    return true;
+  }
+
   // ---- @ mention autocomplete
   let mentionTimer = null;
   let mentionRange = null;
   function isSpace(ch) { return ch === ' ' || ch === '\\n' || ch === '\\t'; }
-  function hideMentions() { mentionList.classList.remove('open'); mentionList.textContent = ''; mentionRange = null; }
+  function hideMentions() { mentionList.classList.remove('open'); mentionList.textContent = ''; mentionRange = null; slashOpen = false; }
   function currentMentionToken() {
     const pos = inputEl.selectionStart;
     const upto = inputEl.value.slice(0, pos);
@@ -1267,10 +1441,13 @@ export function chatHtml(
     if (stickToBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
   }
   function hasDraft() { return !!inputEl.value.trim() || pendingFiles.length > 0; }
-  function setSendEnabled() { sendBtn.disabled = !hasDraft() || taskRunning; }
+  /** A disabled Send says why: nothing typed yet, or the agent is still working. */
+  function updateSendTitle(running) { sendBtn.title = sendBtn.disabled ? (running ? 'Forge is still working' : 'Type a message to send') : ''; }
+  function setSendEnabled() { sendBtn.disabled = !hasDraft() || taskRunning; updateSendTitle(taskRunning); }
   function setTaskRunning(running) {
     taskRunning = running;
     sendBtn.disabled = !hasDraft() || running;
+    updateSendTitle(running);
     cancelBtn.disabled = !running;
     sendBtn.hidden = running;
     cancelBtn.hidden = !running;
@@ -1284,6 +1461,9 @@ export function chatHtml(
 
   function appendUserMessage(text, files) {
     hideEmpty();
+    // RB-9: the usage footer is per turn. Release the previous turn's bar so appendStatus makes a new one below this message.
+    const previousBar = document.getElementById('status-bar');
+    if (previousBar) previousBar.removeAttribute('id');
     const div = document.createElement('div');
     div.className = 'msg user';
     div.innerHTML = '<div class="label">you</div><div class="body">' + escapeHtml(text) + '</div>';
@@ -1388,6 +1568,17 @@ export function chatHtml(
 
   /** The run ended: drop an unused streaming bubble and any cursor left behind (error, Stop). */
   function cleanupStreaming() {
+    // Stopped while the model was still thinking: no reasoning_done ever came, so fold the live block here.
+    if (reasoningEl) {
+      const rbody = reasoningEl.querySelector('.rbody');
+      if (rbody && rbody.textContent.trim()) {
+        reasoningEl.querySelector('summary').textContent = 'Thought';
+        reasoningEl.open = false;
+      } else {
+        reasoningEl.remove();
+      }
+      reasoningEl = null;
+    }
     if (streamingEl && !streamText.trim()) streamingEl.remove();
     streamingEl = null;
     streamText = '';
@@ -1424,6 +1615,20 @@ export function chatHtml(
       '<span class="meta' + (s.metaTone === 'err' ? ' err' : '') + '">' + escapeHtml(s.meta || '') + '</span></summary>';
   }
 
+  /** Consecutive steps (tool calls, results, approval outcomes) share one group; anything else between them starts a new one. */
+  function appendStep(el) {
+    const last = messagesEl.lastElementChild;
+    let group = last && last.classList.contains('steps') ? last : null;
+    if (!group) { group = document.createElement('div'); group.className = 'steps'; messagesEl.appendChild(group); }
+    group.appendChild(el);
+    const n = group.querySelectorAll('.tool-row, .approval-log').length;
+    let head = group.querySelector('.steps-head');
+    if (n >= 3) {
+      if (!head) { head = document.createElement('div'); head.className = 'steps-head'; group.insertBefore(head, group.firstChild); }
+      head.textContent = n + ' steps';
+    }
+  }
+
   function appendToolCall(id, name, args) {
     hideEmpty();
     toolArgs.set(id, { name, args });
@@ -1432,7 +1637,7 @@ export function chatHtml(
     row.id = 'tool-' + id;
     row.innerHTML = toolSummaryHtml('run', toolSummary(name, args)) +
       '<div class="tool-body"><pre class="args">' + escapeHtml(JSON.stringify(args, null, 2) || '') + '</pre></div>';
-    messagesEl.appendChild(row);
+    appendStep(row);
     toolEls.set(id, row);
     autoscroll();
   }
@@ -1491,15 +1696,13 @@ export function chatHtml(
     const row = existing || document.createElement('details');
     if (!existing) {
       row.id = 'tool-' + id;
-      messagesEl.appendChild(row);
+      appendStep(row);
     }
     const failed = !!isError || s.metaTone === 'err';
     row.className = 'tool-row ' + (failed ? 'err' : 'ok');
     let bodyHtml = '';
-    let open = displayConfig.blockDefault === 'expanded';
     if (s.diff) {
       bodyHtml = '<div class="diff">' + renderDiffHtml(s.diff.before, s.diff.after) + '</div>';
-      open = true;
     } else if (result !== undefined) {
       const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
       const isLong = text.length > 2000;
@@ -1508,7 +1711,7 @@ export function chatHtml(
       if (isLong) bodyHtml += '<button class="show-more" data-expanded="false">Show more</button>';
     }
     row.innerHTML = toolSummaryHtml(failed ? 'err' : 'ok', s) + (bodyHtml ? '<div class="tool-body">' + bodyHtml + '</div>' : '');
-    row.open = open;
+    row.open = UI.blockOpen ? UI.blockOpen(name, displayConfig, !!s.diff) : (!!s.diff || displayConfig.blockDefault === 'expanded');
     const btn = row.querySelector('.show-more');
     if (btn) {
       btn.addEventListener('click', () => {
@@ -1543,8 +1746,11 @@ export function chatHtml(
     return el;
   }
 
+  /** hidden, collapsed or expanded: display.blocks.reasoning, else showReasoning. */
+  function reasoningModeNow() { return UI.reasoningMode ? UI.reasoningMode(displayConfig) : (displayConfig.showReasoning === false ? 'hidden' : 'collapsed'); }
+
   function appendReasoningDelta(text) {
-    if (displayConfig.showReasoning === false) return;
+    if (reasoningModeNow() === 'hidden') return;
     if (!reasoningEl) reasoningEl = newReasoning();
     const body = reasoningEl.querySelector('.rbody');
     body.textContent = (body.textContent + text).trimStart();
@@ -1552,11 +1758,11 @@ export function chatHtml(
   }
 
   function finalizeReasoning(text) {
-    if (displayConfig.showReasoning === false) return;
+    if (reasoningModeNow() === 'hidden') return;
     if (!reasoningEl) reasoningEl = newReasoning();
     reasoningEl.querySelector('.rbody').textContent = text.trim();
     reasoningEl.querySelector('summary').textContent = 'Thought';
-    reasoningEl.open = false;
+    reasoningEl.open = reasoningModeNow() === 'expanded';
     reasoningEl = null;
     autoscroll();
   }
@@ -1618,7 +1824,7 @@ export function chatHtml(
     msg.textContent = mark ? text.slice(1).trim() : text;
     div.appendChild(st);
     div.appendChild(msg);
-    messagesEl.appendChild(div);
+    appendStep(div);
     autoscroll();
   }
 
@@ -1658,7 +1864,7 @@ export function chatHtml(
     div.id = 'approval-' + id;
     div.setAttribute('role', 'alertdialog');
     div.setAttribute('aria-label', 'Approval needed: ' + copy.question + ' ' + copy.target);
-    const kind = destructive ? 'Destructive' : (name === 'write_file' || name === 'edit_file' ? 'File edit' : 'Request');
+    const kind = destructive ? 'Destructive · hold to run' : (name === 'write_file' || name === 'edit_file' || name === 'apply_patch' ? 'File edit' : 'Request') + ' · needs you';
     div.innerHTML =
       '<div class="kind">' + kind + '</div>' +
       '<div class="line">' +
@@ -1677,11 +1883,11 @@ export function chatHtml(
             : '<button type="button" class="primary approve">' + escapeHtml(copy.primary) + '</button>') +
         '</span>' +
       '</div>' +
-      (preview ? '<pre class="preview" style="margin:6px 0 0;white-space:pre-wrap;font-size:11px;max-height:160px;overflow:auto">' + escapeHtml(preview) + '</pre>' : '') +
+      (preview ? '<pre class="preview">' + escapeHtml(preview) + '</pre>' : '') +
       '<div class="fb" hidden>' +
         '<div class="chips">' + chips.map((c) => '<button type="button" class="chip">' + escapeHtml(c) + '</button>').join('') + '</div>' +
         '<textarea class="note" rows="2" maxlength="2000" aria-label="What should Forge do instead?" placeholder="What should Forge do instead?"></textarea>' +
-        '<div class="fb-actions"><button type="button" class="deny-note">Deny and tell Forge</button><button type="button" class="link deny">Just deny</button></div>' +
+        '<div class="fb-actions"><button type="button" class="secondary deny-note">Deny and tell Forge</button><button type="button" class="link deny">Just deny</button></div>' +
       '</div>';
     const isFirst = approvals.size === 0;
     const settled = new Promise((resolve) => { approvals.set(id, { el: div, copy, resolve }); });
@@ -1769,6 +1975,76 @@ export function chatHtml(
       '<span title="Time and tokens used by this step">' + seconds + 's · ' + fmt(inputTokens) + ' in · ' + fmt(outputTokens) + ' out' + (nearLimit ? ' · step ' + iteration + '/' + maxIter : '') + '</span>' +
       (reason ? '<span>' + escapeHtml(reason) + '</span>' : '');
     autoscroll();
+  }
+
+  // Todo checklist chip, goal chip and ask_user question card.
+  let todoItems = [];
+  function renderTodos() {
+    const summary = UI ? UI.renderTodoSummary(todoItems) : '';
+    const chip = document.getElementById('todo-chip');
+    chip.hidden = !summary;
+    document.getElementById('todo-toggle').textContent = summary;
+    const list = document.getElementById('todo-list');
+    list.textContent = '';
+    todoItems.forEach((item) => {
+      const li = document.createElement('li');
+      li.className = item.status === 'completed' ? 'done' : item.status === 'in_progress' ? 'doing' : '';
+      li.textContent = (item.status === 'completed' ? '✓ ' : item.status === 'in_progress' ? '▸ ' : '○ ') + item.content;
+      list.appendChild(li);
+    });
+    if (!summary) list.hidden = true;
+  }
+  document.getElementById('todo-toggle').addEventListener('click', () => {
+    const list = document.getElementById('todo-list');
+    list.hidden = !list.hidden;
+    document.getElementById('todo-toggle').setAttribute('aria-expanded', String(!list.hidden));
+  });
+  let goalState = null;
+  function renderGoal(goal) {
+    goalState = goal || null;
+    const chip = document.getElementById('goal-chip');
+    chip.hidden = !goalState;
+    if (!goalState) return;
+    const label = { active: 'working', paused: 'paused', blocked: 'blocked', complete: 'done' }[goalState.status] || goalState.status;
+    const text = document.getElementById('goal-text');
+    text.textContent = 'Goal · ' + label + ' · ' + goalState.objective;
+    text.title = goalState.report ? goalState.objective + '\\n' + goalState.report : goalState.objective;
+    document.getElementById('goal-toggle').textContent = goalState.status === 'active' ? 'Pause' : goalState.status === 'complete' ? 'Restart' : 'Resume';
+  }
+  document.getElementById('goal-toggle').addEventListener('click', () => {
+    if (goalState) vscode.postMessage({ type: 'goal_command', args: goalState.status === 'active' ? 'pause' : 'resume' });
+  });
+  document.getElementById('goal-clear').addEventListener('click', () => vscode.postMessage({ type: 'goal_command', args: 'clear' }));
+  function appendQuestion(msg) {
+    hideEmpty();
+    const card = document.createElement('div');
+    card.className = 'question'; card.id = 'q-' + msg.id; card.setAttribute('role', 'group'); card.setAttribute('aria-label', 'Question from Forge');
+    const kind = document.createElement('div'); kind.className = 'qk'; kind.textContent = 'Forge asks';
+    const text = document.createElement('div'); text.className = 'qt'; text.textContent = msg.question;
+    card.appendChild(kind); card.appendChild(text);
+    const answer = (value) => {
+      vscode.postMessage({ type: 'question_answer', id: msg.id, answer: value });
+      card.remove();
+      const log = document.createElement('div'); log.className = 'approval-log';
+      const st = document.createElement('span'); st.className = 'st'; st.textContent = '?';
+      const body = document.createElement('span'); body.textContent = 'You answered: ' + (value || '(no answer)');
+      log.appendChild(st); log.appendChild(body); appendStep(log);
+    };
+    if (msg.options && msg.options.length) {
+      const opts = document.createElement('div'); opts.className = 'opts';
+      msg.options.forEach((o) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'secondary'; b.textContent = o; b.addEventListener('click', () => answer(o)); opts.appendChild(b); });
+      card.appendChild(opts);
+    }
+    if (msg.allowCustom) {
+      const custom = document.createElement('div'); custom.className = 'custom';
+      const input = document.createElement('input'); input.type = 'text'; input.placeholder = 'Type your own answer'; input.setAttribute('aria-label', 'Your answer');
+      const send = document.createElement('button'); send.type = 'button'; send.className = 'primary'; send.textContent = 'Answer';
+      send.addEventListener('click', () => { if (input.value.trim()) answer(input.value.trim()); });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.value.trim()) answer(input.value.trim()); });
+      custom.appendChild(input); custom.appendChild(send); card.appendChild(custom);
+    }
+    messagesEl.appendChild(card);
+    autoscroll(true);
   }
 
   function appendError(text, action) {
@@ -1899,6 +2175,13 @@ export function chatHtml(
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
     setSendEnabled();
+    const slashQuery = UI ? UI.slashMenuQuery(inputEl.value, inputEl.selectionStart) : undefined;
+    if (slashQuery !== undefined) {
+      if (!slashOpen) vscode.postMessage({ type: 'slash_list' });
+      showSlashMenu(slashQuery);
+      return;
+    }
+    if (slashOpen) hideMentions();
     scheduleMentionQuery();
   });
   inputEl.addEventListener('keydown', (e) => {
@@ -1908,6 +2191,7 @@ export function chatHtml(
       if (e.key === 'Escape') { e.preventDefault(); hideMentions(); return; }
       if (e.key === 'Tab' || e.key === 'Enter') {
         const sel = mentionList.querySelector('.mi.sel');
+        if (sel && sel.dataset.slash) { e.preventDefault(); chooseSlash(sel.dataset.slash); return; }
         if (sel && sel.dataset.value) { e.preventDefault(); insertMention(sel.dataset.value); return; }
       }
     }
@@ -1918,6 +2202,7 @@ export function chatHtml(
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (runSlashFromInput()) return;
       if (taskRunning) { enqueue(); return; }
       if (!sendBtn.disabled) sendBtn.click();
     }
@@ -1925,6 +2210,7 @@ export function chatHtml(
   sendBtn.addEventListener('click', () => {
     const text = inputEl.value.trim();
     if (!hasDraft() || taskRunning) return;
+    if (runSlashFromInput()) return;
     removeSuggestCard();
     removeTurnActions();
     hideMentions();
@@ -2012,6 +2298,20 @@ export function chatHtml(
       setEditing(true);
       inputEl.focus();
     });
+    if (lastRunReason === 'aborted') {
+      const cont = document.createElement('button');
+      cont.type = 'button'; cont.className = 'link'; cont.textContent = 'Continue';
+      cont.title = 'Tell the agent to carry on from where you stopped it';
+      cont.addEventListener('click', () => {
+        if (taskRunning) return;
+        removeTurnActions();
+        const text = 'Continue where you stopped.';
+        lastUserText = text;
+        appendUserMessage(text, []);
+        vscode.postMessage({ type: 'user_input', text, auto: autoToggle.checked });
+      });
+      row.appendChild(cont);
+    }
     row.appendChild(retry); row.appendChild(edit);
     messagesEl.appendChild(row);
   }
@@ -2099,6 +2399,7 @@ export function chatHtml(
       case 'model_menu':
         modelGroups = msg.groups;
         modelCurrent = msg.current;
+        favourites = msg.favourites || [];
         if (!modelMenu.hidden) renderModelMenu();
         break;
       case 'model':
@@ -2152,7 +2453,39 @@ export function chatHtml(
             : { type: 'approval_response', id: msg.id, approved: d.approved });
         });
         break;
+      case 'slash_commands':
+        slashEntries = Array.isArray(msg.entries) ? msg.entries : [];
+        break;
+      case 'open_model_menu':
+        if (modelMenu.hidden) modelLabel.click();
+        break;
+      case 'open_mode_select':
+        modeSelect.focus();
+        if (typeof modeSelect.showPicker === 'function') { try { modeSelect.showPicker(); } catch (err) { /* needs a user gesture */ } }
+        break;
+      case 'todo_updated':
+        todoItems = Array.isArray(msg.todos) ? msg.todos : [];
+        renderTodos();
+        break;
+      case 'bg_agents':
+        renderBgStrip(msg);
+        break;
+      case 'goal_state':
+        renderGoal(msg.goal);
+        break;
+      case 'question_request':
+        appendQuestion(msg);
+        break;
+      case 'question_closed': {
+        const card = document.getElementById('q-' + msg.id);
+        if (card) card.remove();
+        break;
+      }
+      case 'ui_flags':
+        shiftTabVariant = msg.shiftTabVariant === true;
+        break;
       case 'status':
+        lastRunReason = msg.reason || null;
         appendStatus(msg.iteration, msg.maxIter, msg.inputTokens, msg.outputTokens, msg.durationMs, msg.reason);
         if (msg.contextWindow) { meterCtx = { tokens: msg.contextTokens || 0, window: msg.contextWindow }; renderMeter(); }
         break;
@@ -2265,6 +2598,7 @@ export function chatHtml(
             { label: 'Resume', onClick: () => vscode.postMessage({ type: 'resumeSession', id: s.id }) },
           ],
           menu: [
+            { label: 'Rename…', onClick: () => vscode.postMessage({ type: 'renameSession', id: s.id }) },
             { label: 'Copy resume command', onClick: () => vscode.postMessage({ type: 'copy_resume', id: s.id }) },
             { label: 'Delete…', danger: true, onClick: () => vscode.postMessage({ type: 'deleteSession', id: s.id }) },
           ],
@@ -2318,6 +2652,76 @@ export function chatHtml(
       case 'run_reverted':
         showRunReverted(msg.count);
         break;
+    }
+  });
+
+  // Shift+Tab in the chat box cycles the reasoning effort, only when the setting asks for it (the host sends the flag).
+  let shiftTabVariant = false;
+  inputEl.addEventListener('keydown', (e) => {
+    if (shiftTabVariant && e.key === 'Tab' && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      vscode.postMessage({ type: 'slash_run', name: 'variant', args: '' });
+    }
+  });
+
+  // Ctrl+F (Cmd+F on Mac) opens a find bar for the conversation; webview views have no find widget of their own.
+  const findBar = document.getElementById('findbar');
+  const findInput = document.getElementById('find-input');
+  function runFind(backwards) {
+    const q = findInput.value;
+    if (!q) { findInput.classList.remove('nomatch'); return; }
+    // window.find also matches the text typed into this very box, so ask the conversation first. It cannot select
+    // text inside a closed <details> (a Thought block, tool output): open the blocks that hold the text, then find.
+    const lower = q.toLowerCase();
+    const present = messagesEl.textContent.toLowerCase().includes(lower);
+    let found = false;
+    if (present) {
+      messagesEl.querySelectorAll('details:not([open])').forEach((d) => {
+        if (d.textContent.toLowerCase().includes(lower)) d.open = true;
+      });
+      for (let i = 0; i < 20 && window.find(q, false, backwards, true, false, false, false); i++) {
+        const sel = window.getSelection();
+        const node = sel.anchorNode;
+        const el = node && (node.nodeType === 1 ? node : node.parentElement);
+        // An empty selection means the engine matched text it could not show; the box itself is not a hit.
+        if (el && !findBar.contains(el) && String(sel).toLowerCase() === lower) {
+          found = true;
+          el.scrollIntoView({ block: 'center' });
+          break;
+        }
+      }
+    }
+    findInput.classList.toggle('nomatch', !found);
+  }
+  function closeFind() {
+    findBar.hidden = true;
+    findInput.classList.remove('nomatch');
+    window.getSelection().removeAllRanges();
+    inputEl.focus();
+  }
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'f' || e.key === 'F') && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      findBar.hidden = false;
+      findInput.focus();
+      findInput.select();
+    }
+  });
+  findInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); runFind(e.shiftKey); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+  });
+  findInput.addEventListener('input', () => findInput.classList.remove('nomatch'));
+  document.getElementById('find-next').addEventListener('click', () => runFind(false));
+  document.getElementById('find-prev').addEventListener('click', () => runFind(true));
+  document.getElementById('find-close').addEventListener('click', closeFind);
+
+  // Ctrl+. (Cmd+. on Mac) moves to the next mode (agent) and wraps; not while a run is going.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '.' && !e.shiftKey && !e.altKey && (e.ctrlKey || e.metaKey) && !modeSelect.disabled && modeSelect.options.length > 1) {
+      e.preventDefault();
+      modeSelect.selectedIndex = (modeSelect.selectedIndex + 1) % modeSelect.options.length;
+      vscode.postMessage({ type: 'set_mode', id: modeSelect.value });
     }
   });
 

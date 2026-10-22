@@ -71,11 +71,14 @@ interface ParsedInvocation {
   configCommand: ParsedConfigCommand | null;
   acpCommand: boolean;
   policyCommand: boolean;
+  importCommand: { source: 'claude'; apply: boolean } | null;
   version: string;
 }
 
 interface SessionTools {
   tools: ToolDefinition[];
+  /** What the connected MCP servers say about using them; goes into the system prompt. */
+  instructions?: string;
   cleanup: () => Promise<void>;
 }
 
@@ -87,7 +90,7 @@ async function main(): Promise<void> {
     process.stderr.write(`forge: ${(err as Error).message}\n`);
     process.exit(2);
   }
-  const { options, resolveModel, listModels, sessionCommand, skillCommand, pluginCommand, hookCommand, memoryCommand, mcpCommand, checkpointCommand, specCommand, watchCommand, diffCommand, orchestratorCommand, worktreeCommand, configCommand, acpCommand, policyCommand, version } = parsed;
+  const { options, resolveModel, listModels, sessionCommand, skillCommand, pluginCommand, hookCommand, memoryCommand, mcpCommand, checkpointCommand, specCommand, watchCommand, diffCommand, orchestratorCommand, worktreeCommand, configCommand, acpCommand, policyCommand, importCommand, version } = parsed;
 
   // Model aliases (`~/.forge/config.json` "aliases") rewrite --model before any
   // command resolves it; resolveModel() reads the same mutated options object.
@@ -165,9 +168,13 @@ async function main(): Promise<void> {
   // Organization policy + corporate proxy. The policy file is enforced by every Agent, so a
   // broken one must stop the run here with a clear message rather than fail open.
   try {
-    const { getOrgPolicy, installProxy, proxyFromEnv } = await import('@ikarmic/forge-core');
+    const { getOrgPolicy, installProxy, loadForgeConfigFile, proxyFromEnv, readCaCertificates } = await import('@ikarmic/forge-core');
     const policy = getOrgPolicy()?.policy;
-    await installProxy({ ...proxyFromEnv(), ...(policy?.proxy ?? {}) });
+    // Extra certificate authorities come from the user's config file only (a project file cannot add one).
+    const ca = readCaCertificates((await loadForgeConfigFile().catch(() => undefined))?.config.caCertificates ?? []);
+    for (const w of ca.warnings) process.stderr.write(`forge: ${w}
+`);
+    await installProxy({ ...proxyFromEnv(), ...(policy?.proxy ?? {}) }, ca.pems);
   } catch (err) {
     if (!policyCommand) {
       process.stderr.write(`forge: ${(err as Error).message}\n`);
@@ -179,6 +186,12 @@ async function main(): Promise<void> {
   if (policyCommand) {
     const { handlePolicyCommand } = await import('../commands/policy.js');
     process.exit(handlePolicyCommand());
+  }
+
+  // `forge import claude [apply]` copies a Claude Code setup into Forge.
+  if (importCommand) {
+    const { handleImportCommand } = await import('../commands/import.js');
+    process.exit(await handleImportCommand(importCommand));
   }
 
   // `forge acp` speaks the Agent Client Protocol on stdio (JetBrains AI Chat, Zed, ...).
@@ -520,7 +533,8 @@ async function runJsonMode(options: CliOptions, model: ModelConfig, session: Ses
     options,
     model,
     async () => false,
-    session.tools
+    session.tools,
+    session.instructions
   );
 
   if (options.architect) {
@@ -666,7 +680,7 @@ async function runInkMode(options: CliOptions, model: ModelConfig, session: Sess
     process.stderr.write('forge: refusing to render the TUI without a TTY. Pass --json or run inside a terminal.\n');
     process.exit(2);
   }
-  const baseConfig: AgentConfig = await toAgentConfig(options, model, async () => false, session.tools);
+  const baseConfig: AgentConfig = await toAgentConfig(options, model, async () => false, session.tools, session.instructions);
   const { config: sharedConfig } = await loadForgeConfigFile();
 
   if (options.architect) {
@@ -877,7 +891,7 @@ async function runReplMode(
   resumeFlag: ResumeFlag | null,
   version: string
 ): Promise<void> {
-  const baseConfig: AgentConfig = await toAgentConfig(options, model, async () => false, session.tools);
+  const baseConfig: AgentConfig = await toAgentConfig(options, model, async () => false, session.tools, session.instructions);
   const { config: sharedConfig } = await loadForgeConfigFile();
 
   // Resolve which session id we're using: fresh, by-id, or --latest.

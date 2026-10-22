@@ -14,6 +14,7 @@ describe('mcp model', () => {
     expect(serverDescription(st({ toolCount: 1, scope: 'workspace' }))).toBe('connected · 1 tool · workspace');
     expect(serverDescription(st({ state: 'disabled' }))).toBe('disabled');
     expect(serverDescription(st({ state: 'failed' }))).toBe('failed');
+    expect(serverDescription(st({ state: 'needs-auth' }))).toBe('needs sign-in');
   });
 
   it('shows the exact command a catalog entry will run', () => {

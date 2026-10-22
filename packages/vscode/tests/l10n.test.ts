@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { chatHtml } from '../src/chat/html.js';
 import { i18nScript, WEBVIEW_STRINGS, webviewDictionary } from '../src/chat/webview-i18n.js';
+import { SETTINGS_STRINGS } from '../src/settings/settings-i18n.js';
 // @ts-expect-error plain .mjs helper without types
 import { hostKeys } from '../scripts/l10n-keys.mjs';
 
@@ -15,7 +16,7 @@ const placeholders = (s: string) => [...s.matchAll(/\{\d+\}/g)].map((m) => m[0])
 
 describe.each(['es', 'zh-cn'])('l10n bundle (%s)', (locale) => {
   const b = bundle(locale);
-  const required: string[] = [...(hostKeys() as string[]), ...WEBVIEW_STRINGS];
+  const required: string[] = [...(hostKeys() as string[]), ...WEBVIEW_STRINGS, ...SETTINGS_STRINGS];
 
   it('translates every message the extension can show', () => {
     expect(required.filter((k) => !(k in b))).toEqual([]);

@@ -209,6 +209,7 @@ describe('ACP helpers', () => {
   it('maps stop reasons and tool kinds', () => {
     expect(stopReasonFor('aborted')).toBe('cancelled');
     expect(stopReasonFor('max_iterations')).toBe('max_turn_requests');
+    expect(stopReasonFor('loop_detected')).toBe('max_turn_requests');
     expect(stopReasonFor('completed')).toBe('end_turn');
     expect(toolKind('edit_file')).toBe('edit');
     expect(toolKind('run_command')).toBe('execute');

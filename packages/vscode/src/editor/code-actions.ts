@@ -10,9 +10,10 @@ import { t } from '../l10n.js';
 const MAX_FIXES = 3;
 
 export const EXPLAIN_KIND = vscode.CodeActionKind.Refactor.append('forge.explain');
+export const CONTEXT_KIND = vscode.CodeActionKind.Refactor.append('forge.context');
 
 export class ForgeCodeActions implements vscode.CodeActionProvider {
-  static readonly kinds = [vscode.CodeActionKind.QuickFix, vscode.CodeActionKind.RefactorRewrite, EXPLAIN_KIND];
+  static readonly kinds = [vscode.CodeActionKind.QuickFix, vscode.CodeActionKind.RefactorRewrite, EXPLAIN_KIND, CONTEXT_KIND];
 
   provideCodeActions(doc: vscode.TextDocument, range: vscode.Range | vscode.Selection, ctx: vscode.CodeActionContext): vscode.CodeAction[] {
     const actions: vscode.CodeAction[] = [];
@@ -33,7 +34,11 @@ export class ForgeCodeActions implements vscode.CodeActionProvider {
       edit.command = { command: 'forge.inlineEdit', title: edit.title };
       const explain = new vscode.CodeAction(t('Explain with Forge'), EXPLAIN_KIND);
       explain.command = { command: 'forge.explainSelection', title: explain.title };
-      actions.push(edit, explain);
+      const improve = new vscode.CodeAction(t('Improve with Forge'), vscode.CodeActionKind.RefactorRewrite);
+      improve.command = { command: 'forge.improveSelection', title: improve.title };
+      const addContext = new vscode.CodeAction(t('Add to Forge context'), CONTEXT_KIND);
+      addContext.command = { command: 'forge.addToContext', title: addContext.title };
+      actions.push(edit, improve, explain, addContext);
     }
     return actions;
   }

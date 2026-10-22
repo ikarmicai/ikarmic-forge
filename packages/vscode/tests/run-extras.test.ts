@@ -26,6 +26,46 @@ describe('buildRunExtras', () => {
     });
   });
 
+  it('passes the compaction keep-recent count and the tool output cap when they are set', () => {
+    const e = buildRunExtras({ ...base, compaction: { enabled: true, threshold: 0.7, keepRecent: 8 }, tools: { maxOutputChars: 50_000 } }, model, { readOnly: false });
+    expect(e).toMatchObject({ compactionKeepRecent: 8, maxToolOutputChars: 50_000 });
+  });
+
+  it('semantic search carries the extension list, score floor and result limit; the embedder stays the environment one by default', () => {
+    const e = buildRunExtras(
+      { ...base, semanticSearch: true, semantic: { embedder: 'env', model: '', baseUrl: '', apiKeyEnv: '', batchSize: 0, resultLimit: 5, minScore: 0.3, extensions: '.ts, py' } },
+      model,
+      { readOnly: false },
+    );
+    expect(e.semanticSearch).toEqual({ extensions: ['.ts', '.py'], minScore: 0.3, defaultLimit: 5 });
+  });
+
+  it('a chosen embedder is built from the settings; custom needs its url and model or falls back to hashing', () => {
+    const custom = buildRunExtras(
+      { ...base, semanticSearch: true, semantic: { embedder: 'custom', model: 'my-embed', baseUrl: 'https://emb.test/v1', apiKeyEnv: '', batchSize: 16, resultLimit: 0, minScore: 0, extensions: '' } },
+      model,
+      { readOnly: false },
+    );
+    expect(custom.semanticSearch?.embedder?.id).toContain('my-embed');
+    const broken = buildRunExtras(
+      { ...base, semanticSearch: true, semantic: { embedder: 'custom', model: '', baseUrl: '', apiKeyEnv: '', batchSize: 0, resultLimit: 0, minScore: 0, extensions: '' } },
+      model,
+      { readOnly: false },
+    );
+    expect(broken.semanticSearch?.embedder?.id).toMatch(/^hashing/);
+  });
+
+  it('semantic settings do nothing while semantic search is off', () => {
+    const e = buildRunExtras({ ...base, semanticSearch: false, semantic: { embedder: 'ollama', model: '', baseUrl: '', apiKeyEnv: '', batchSize: 0, resultLimit: 3, minScore: 0.2, extensions: 'ts' } }, model, { readOnly: false });
+    expect(e).not.toHaveProperty('semanticSearch');
+  });
+
+  it('leaves both out when unset, so the core defaults apply', () => {
+    const e = buildRunExtras(base, model, { readOnly: false });
+    expect(e).not.toHaveProperty('compactionKeepRecent');
+    expect(e).not.toHaveProperty('maxToolOutputChars');
+  });
+
   it('maps each setting to its AgentConfig field', () => {
     const e = buildRunExtras(
       { ...base, maxCostUsd: 2.5, verifyCommands: ['pnpm test'], semanticSearch: true, browser: { enabled: true, headless: false } },

@@ -14,6 +14,8 @@ export function serverDescription(s: McpServerStatus): string {
       return `disabled${where}`;
     case 'failed':
       return `failed${where}`;
+    case 'needs-auth':
+      return `needs sign-in${where}`;
   }
 }
 

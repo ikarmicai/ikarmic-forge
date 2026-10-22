@@ -23,7 +23,7 @@ describe('getSettingsHtml', () => {
 
   it('keeps the focus ring on form fields and states MCP status in words', () => {
     expect(html).not.toMatch(/input:focus, select:focus, textarea:focus \{[^}]*outline: 0/);
-    expect(html).toContain("{ connected: 'Connected', failed: 'Failed', disabled: 'Off' }");
+    expect(html).toContain("{ connected: 'Connected', failed: 'Failed', disabled: 'Off', 'needs-auth': 'Sign-in needed' }");
     expect(html).toContain('.setting.modified .t::after');
   });
 

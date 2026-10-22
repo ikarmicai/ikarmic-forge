@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { defaultModelFor, fastDefaultFor, hasProviderKey } from '@ikarmic/forge-core';
 import type { ModelConfig, ProviderName } from '@ikarmic/forge-core';
 
+import { namedProviderModel } from './model-ref.js';
 import { emptyApiKeys, type ProviderEnvSettings, type ResolvedApiKeys } from './api-keys.js';
 import { cleanLintCommands } from './chat/run-extras.js';
 import type { VoiceConfig } from './chat/voice-types.js';
@@ -28,6 +29,10 @@ export interface ExtensionConfig {
    * persisted history beyond the active session.
    */
   completionTelemetry: boolean;
+  /** Master switch for inline completion. */
+  completionEnabled: boolean;
+  /** False: suggest only when the user presses the trigger key. */
+  completionAutomatic: boolean;
   /**
    * Voice input settings. The webview reads these via a `voice_config`
    * message on `ready` and after every settings change.
@@ -36,17 +41,25 @@ export interface ExtensionConfig {
   /** Chat checkpoint capture (spec 2026-09-29-vscode-chat-foundation §5). */
   checkpoints: { enabled: boolean; captureCommands: boolean };
   /** Summarize older turns as the conversation nears the model window. */
-  compaction: { enabled: boolean; threshold: number };
+  compaction: { enabled: boolean; threshold: number; keepRecent: number };
+  /** Semantic index and search: which embedder, how many results, how similar a hit must be, which files. */
+  semantic: { embedder: 'env' | 'hashing' | 'openai' | 'ollama' | 'custom'; model: string; baseUrl: string; apiKeyEnv: string; batchSize: number; resultLimit: number; minScore: number; extensions: string };
+  /** Limits on what tools hand back to the model. */
+  tools: { maxOutputChars: number };
   /** Spend fewer prompt tokens: a token budget for compaction, and masking of old tool results. */
   context: { budgetTokens: number; maskOldResults: boolean; keepRecentTurns: number };
   /** Project memory: load it, how much goes in the prompt, how long a saved entry may be, and whether saving asks. */
   memory: { enabled: boolean; injectionBudgetBytes: number; maxBodyChars: number; autoApproveWrites: boolean };
   /** Per-run spend cap in USD; 0 = no cap. */
   maxCostUsd: number;
+  /** Hold the computer awake while a chat run is working. */
+  keepAwake: boolean;
   /** Stop a run after this many identical tool calls in a row; 0 = off. */
   loopGuardThreshold: number;
+  /** The most turns one /goal runs before it pauses. */
+  goalMaxTurns: number;
   /** Notify when a run finishes while the window is not focused. */
-  notifications: { enabled: boolean; minSeconds: number };
+  notifications: { enabled: boolean; minSeconds: number; sound: boolean; osToast: boolean };
   /** Model id (same provider) for read-only exploration steps; empty = always use the main model. */
   cheapModel: string;
   /** Add Anthropic prompt-cache breakpoints (default true). */
@@ -103,6 +116,8 @@ export function readConfig(): ExtensionConfig {
     completionDebounceMs: cfg.get<number>('completionDebounceMs') ?? 350,
     completionMaxTokens: cfg.get<number>('completionMaxTokens') ?? 512,
     completionTelemetry: cfg.get<boolean>('completionTelemetry') ?? false,
+    completionEnabled: cfg.get<boolean>('completionEnabled') ?? true,
+    completionAutomatic: cfg.get<boolean>('completionAutomatic') ?? true,
     voice: {
       enabled: cfg.get<boolean>('voice.enabled') ?? true,
       language: cfg.get<string>('voice.language') ?? '',
@@ -117,6 +132,18 @@ export function readConfig(): ExtensionConfig {
     compaction: {
       enabled: cfg.get<boolean>('compaction.enabled') ?? true,
       threshold: cfg.get<number>('compaction.threshold') ?? 0.7,
+      keepRecent: Math.max(1, cfg.get<number>('compaction.keepRecent') ?? 4),
+    },
+    tools: { maxOutputChars: Math.max(5000, cfg.get<number>('tools.maxOutputChars') ?? 200000) },
+    semantic: {
+      embedder: (cfg.get<string>('semantic.embedder') ?? 'env') as ExtensionConfig['semantic']['embedder'],
+      model: cfg.get<string>('semantic.model') ?? '',
+      baseUrl: cfg.get<string>('semantic.baseUrl') ?? '',
+      apiKeyEnv: cfg.get<string>('semantic.apiKeyEnv') ?? '',
+      batchSize: Math.max(0, cfg.get<number>('semantic.batchSize') ?? 0),
+      resultLimit: Math.max(0, cfg.get<number>('semantic.resultLimit') ?? 0),
+      minScore: Math.max(0, cfg.get<number>('semantic.minScore') ?? 0),
+      extensions: cfg.get<string>('semantic.extensions') ?? '',
     },
     context: {
       budgetTokens: Math.max(0, cfg.get<number>('context.budgetTokens') ?? 60000),
@@ -130,10 +157,14 @@ export function readConfig(): ExtensionConfig {
       autoApproveWrites: cfg.get<boolean>('memory.autoApproveWrites') ?? false,
     },
     maxCostUsd: cfg.get<number>('maxCostUsd') ?? 0,
+    keepAwake: cfg.get<boolean>('keepAwake') ?? false,
     loopGuardThreshold: Math.max(0, Math.floor(cfg.get<number>('loopGuardThreshold') ?? 0)),
+    goalMaxTurns: Math.max(1, Math.floor(cfg.get<number>('goalMaxTurns') ?? 25)),
     notifications: {
       enabled: cfg.get<boolean>('notifications.enabled') ?? false,
       minSeconds: Math.max(0, cfg.get<number>('notifications.minSeconds') ?? 20),
+      sound: cfg.get<boolean>('notifications.sound') ?? false,
+      osToast: cfg.get<boolean>('notifications.osToast') ?? false,
     },
     cheapModel: cfg.get<string>('router.cheapModel') ?? '',
     cachePrompts: cfg.get<boolean>('cachePrompts') ?? true,
@@ -192,6 +223,9 @@ export function readConfig(): ExtensionConfig {
  * Same precedence as the CLI: explicit setting > env var fallback > default.
  */
 export function resolveModel(cfg: ExtensionConfig): ModelConfig {
+  // `id:model` on a named provider needs no built-in key at all.
+  const named = namedProviderModel(cfg.model, cfg.provider);
+  if (named) return named;
   const provider = pickProvider(cfg);
   if (!provider) {
     throw new Error(

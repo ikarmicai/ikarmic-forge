@@ -141,8 +141,8 @@ describe('chatHtml toolbar and composer (direction A)', () => {
     expect(menu).toContain('id="condense-btn"');
   });
 
-  it('has the context ring, attach button and one-box composer', () => {
-    for (const id of ['meter-ring', 'meter-text', 'meter-stat', 'attach']) expect(html).toContain(`id="${id}"`);
+  it('has the context meter, attach button and one-box composer', () => {
+    for (const id of ['meter-text', 'meter-bar', 'meter-cost', 'meter-stat', 'attach']) expect(html).toContain(`id="${id}"`);
     expect(html).toContain('class="composer"');
     expect(html).not.toContain('id="header"');
   });
@@ -190,7 +190,7 @@ describe('chatHtml brand mark', () => {
 
   it('paints the mandala mask with the accent colour, and the CSP allows data images only', () => {
     expect(html).toMatch(/--mandala: url\("data:image\/png;base64,/);
-    expect(html).toMatch(/\.empty-state \.mark \{[^}]*background: var\(--ember\)[^}]*mask: var\(--mandala\)/);
+    expect(html).toMatch(/\.empty-state \.mark \{[^}]*background: var\(--ion\)[^}]*mask: var\(--mandala\)/);
     expect(html).toContain("img-src data:;");
     expect(html).not.toMatch(/img-src[^;]*https?:/);
   });
@@ -198,7 +198,7 @@ describe('chatHtml brand mark', () => {
 
 describe('chatHtml select popups', () => {
   it('gives the transparent mode select a themed option background (else the popup is white with pale text)', () => {
-    expect(chatHtml()).toMatch(/#toolbar select option \{ background: var\(--vscode-dropdown-background/);
+    expect(chatHtml()).toMatch(/\.cchips select option \{ background: var\(--vscode-dropdown-background/);
   });
 });
 
@@ -371,3 +371,16 @@ describe('chat UX: retry, queue, diagrams', () => {
   });
 });
 
+describe('chatHtml layout guards', () => {
+  const html = chatHtml();
+
+  it('styles every button marked "link" as a link, not a filled primary button', () => {
+    expect(html).toMatch(/button\.link \{[^}]*background: none/);
+  });
+
+  it('keeps the icon buttons in one group so a narrow header never orphans an icon', () => {
+    const group = html.match(/<div class="tb-end">([\s\S]*?)<\/div>/)?.[1] ?? '';
+    for (const id of ['new-chat', 'history-btn', 'more-btn']) expect(group).toContain(`id="${id}"`);
+    expect(group).not.toContain('id="meter"');
+  });
+});

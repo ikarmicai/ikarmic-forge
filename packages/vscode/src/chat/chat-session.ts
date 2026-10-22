@@ -104,6 +104,11 @@ export class ChatSession {
     this.totals = { ...EMPTY_TOTALS };
   }
 
+  /** Name (or, with undefined, un-name) this chat; the next save carries it. */
+  setLabel(label: string | undefined): void {
+    this.label = label;
+  }
+
   async recordTurn(result: TurnResult, model: ModelConfig, cwd: string): Promise<SaveOutcome> {
     this._cwd ??= cwd;
     this._history = result.messages.length > 0 ? result.messages : undefined;

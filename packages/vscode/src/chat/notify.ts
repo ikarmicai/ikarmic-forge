@@ -32,6 +32,18 @@ export interface NotifyInput {
   reason: AgentRunReason;
 }
 
+export interface ChannelInput extends NotifyInput {
+  sound: boolean;
+  osToast: boolean;
+}
+
+/** Which channels fire for a run end; `enabled` is the in-editor message, the others are switched on separately. */
+export function notifyChannels(input: ChannelInput): { message: boolean; sound: boolean; toast: boolean } | undefined {
+  const any = input.enabled || input.sound || input.osToast;
+  if (!shouldNotify({ ...input, enabled: any })) return undefined;
+  return { message: input.enabled, sound: input.sound, toast: input.osToast };
+}
+
 export function shouldNotify(input: NotifyInput): boolean {
   return input.enabled && !input.windowFocused && input.durationMs >= input.minSeconds * 1000 && notifyKind(input.reason) !== undefined;
 }

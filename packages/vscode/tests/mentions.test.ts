@@ -151,3 +151,24 @@ describe('web mentions', () => {
   });
 });
 
+describe('@chat mentions', () => {
+  it('parses @chat:<ref>', () => {
+    expect(parseMentions('see @chat:last and @chat:refactor-auth')).toEqual([
+      { kind: 'chat', value: 'last', raw: '@chat:last' },
+      { kind: 'chat', value: 'refactor-auth', raw: '@chat:refactor-auth' },
+    ]);
+  });
+
+  it('attaches the chat text as a context block, or reports it unresolved', async () => {
+    const resolvers = { chat: async (ref: string) => (ref === 'last' ? 'User: hi\n\nAssistant: hello' : null) } as never;
+    const ok = await resolveMentions('continue from @chat:last', resolvers);
+    expect(ok.prompt).toContain('<context type="chat" ref="last">');
+    expect(ok.prompt).toContain('Assistant: hello');
+    const bad = await resolveMentions('see @chat:nope', resolvers);
+    expect(bad.unresolved).toEqual(['@chat:nope']);
+  });
+
+  it('is suggested after typing @c', () => {
+    expect(mentionSuggestions('chat', []).map((s) => s.value)).toContain('chat:last');
+  });
+});

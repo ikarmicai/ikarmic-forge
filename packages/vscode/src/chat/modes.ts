@@ -156,7 +156,7 @@ export function retargetSystemPrompt<M extends ModelMessage>(
 export function modeCanWrite(modeId: string, ctx: Pick<ModeContext, 'specialists' | 'effectiveToolsFor'>): boolean {
   const spec = findSpecialist(modeId, ctx.specialists);
   if (!spec) return true;
-  return ctx.effectiveToolsFor(spec).some((t) => t === 'write_file' || t === 'edit_file' || t === 'edit_notebook');
+  return ctx.effectiveToolsFor(spec).some((t) => t === 'write_file' || t === 'edit_file' || t === 'edit_notebook' || t === 'apply_patch');
 }
 
 /** Sandbox for read-only runs (spec generation): only `tools`, never widening the user's allowlist. */

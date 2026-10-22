@@ -1,4 +1,4 @@
-import { loadForgeConfigFile, resolveModelAlias, type CredentialStore, type ModelConfig } from '@ikarmic/forge-core';
+import { applyResolved, loadForgeConfigFile, resolveModelAlias, type CredentialStore, type ModelConfig } from '@ikarmic/forge-core';
 
 import { resolveModel } from './config.js';
 import { loadRuntimeConfig } from './runtime-config.js';
@@ -12,7 +12,7 @@ export async function resolveCheapModel(store?: CredentialStore): Promise<ModelC
     const cfg = await loadRuntimeConfig(store);
     const main = resolveModel(cfg);
     const { config: shared } = await loadForgeConfigFile();
-    return { ...main, ...resolveModelAlias(cfg.cheapModel.trim() || main.model, shared.aliases, main.provider) };
+    return applyResolved(main, resolveModelAlias(cfg.cheapModel.trim() || main.model, shared.aliases, main.provider));
   } catch {
     return undefined;
   }

@@ -214,6 +214,11 @@ describe("modeCanWrite", () => {
     expect(modeCanWrite("code", mctx)).toBe(true);
     expect(modeCanWrite("ask", mctx)).toBe(false);
   });
+  it("counts apply_patch as a write tool", () => {
+    const patcher = { id: 'patcher', description: 'd', systemPrompt: 'p', allowedTools: ['apply_patch'], forbiddenTools: [] } as never;
+    const only = (spec: { allowedTools: string[] }) => spec.allowedTools;
+    expect(modeCanWrite('patcher', { specialists: [patcher], effectiveToolsFor: only })).toBe(true);
+  });
 });
 
 describe('retargetSystemPrompt', () => {

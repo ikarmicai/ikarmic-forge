@@ -1,0 +1,405 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ikarmic Forge config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "provider": {
+      "description": "The model provider to use.",
+      "enum": [
+        "openai",
+        "anthropic",
+        "google",
+        "ollama",
+        "openrouter",
+        "minimax",
+        "bedrock",
+        "vertex",
+        "azure",
+        "lmstudio",
+        "openai-compatible"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "description": "The model id, an alias, or provider:model."
+    },
+    "completionModel": {
+      "type": "string",
+      "description": "Model for inline completion; empty uses the main model."
+    },
+    "compactionModel": {
+      "type": "string",
+      "description": "Model that writes the summary when a long chat is condensed; empty uses the main model."
+    },
+    "disabledProviders": {
+      "type": "array",
+      "description": "Providers hidden from the model picker.",
+      "items": {
+        "enum": [
+          "openai",
+          "anthropic",
+          "google",
+          "ollama",
+          "openrouter",
+          "minimax",
+          "bedrock",
+          "vertex",
+          "azure",
+          "lmstudio",
+          "openai-compatible"
+        ]
+      }
+    },
+    "reasoningEffort": {
+      "enum": [
+        "none",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
+      "description": "Reasoning effort for models that support it."
+    },
+    "autoApproveTools": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tools that run without asking. Default: the read-only tools. Destructive tools always ask. User config only."
+    },
+    "autoApproveCommands": {
+      "type": "object",
+      "description": "Commands you chose \"Always allow\", per workspace path. Written by Forge; user config only.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "fingerprint": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    "permission": {
+      "type": "object",
+      "description": "Ordered permission rules. Each permission (read, edit, bash, webfetch, websearch, task, external_directory) is an action or a pattern to action map; the last matching rule wins. A project file can only tighten (ask, deny).",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "enum": [
+              "allow",
+              "ask",
+              "deny"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "enum": [
+                "allow",
+                "ask",
+                "deny"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "customProviders": {
+      "type": "object",
+      "description": "Providers beyond the built-in ones, by id. A preset id (groq, deepseek, mistral, ...) needs only a key; any other id needs a baseUrl. A model on one is written id:model. User config only.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "apiKey": {
+            "type": "string",
+            "description": "Stored as plain text; prefer apiKeyEnv."
+          },
+          "apiKeyEnv": {
+            "type": "string",
+            "description": "Name of the environment variable that holds the key."
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "api": {
+            "enum": [
+              "openai-compatible",
+              "anthropic"
+            ]
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chunkTimeoutMs": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "models": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The id sent to the API when it differs from the key here."
+                },
+                "name": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "output": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "cost": {
+                  "type": "object",
+                  "description": "Price per million tokens.",
+                  "properties": {
+                    "input": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "output": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "toolCall": {
+                  "type": "boolean"
+                },
+                "reasoning": {
+                  "type": "boolean"
+                },
+                "modalities": {
+                  "type": "object",
+                  "properties": {
+                    "input": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "output": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "input",
+                    "output"
+                  ]
+                }
+              }
+            }
+          },
+          "whitelist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blacklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "modelOverrides": {
+      "type": "object",
+      "description": "Context and output limits and prices per model, keyed provider:model, id:model or a bare model id.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "output": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "cost": {
+            "type": "object",
+            "description": "Price per million tokens.",
+            "properties": {
+              "input": {
+                "type": "number",
+                "minimum": 0
+              },
+              "output": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "modelFilters": {
+      "type": "object",
+      "description": "Per provider, which model ids the pickers list: whitelist (only these), then blacklist (not these).",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "whitelist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blacklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "subagentModel": {
+      "type": "string",
+      "description": "The model sub-agents use when the model does not name one; empty means the chat model."
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extra instruction sources added to the system prompt: files, globs (relative to the workspace) and http(s) URLs. User config only."
+    },
+    "skillPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extra places to read skills from: folders (absolute, ~/..., or relative to the workspace) or http(s) URLs of a skill file or a skill index. User config only."
+    },
+    "caCertificates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "PEM files of extra certificate authorities to trust (absolute or ~/...), for networks that re-sign TLS. Needs a window reload. User config only."
+    },
+    "aliases": {
+      "type": "object",
+      "description": "Short names for models, for example \"fast\": \"anthropic:claude-haiku-4-5\".",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "modeModels": {
+      "type": "object",
+      "description": "Model for a chat mode that has none of its own: mode id to model.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "sessionRetentionDays": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Delete saved chats not updated for this many days when the extension starts. Unset keeps everything. User config only."
+    },
+    "display": {
+      "type": "object",
+      "description": "How blocks in the chat are shown.",
+      "properties": {
+        "blockDefault": {
+          "enum": [
+            "collapsed",
+            "expanded"
+          ]
+        },
+        "detail": {
+          "enum": [
+            "compact",
+            "full"
+          ]
+        },
+        "showReasoning": {
+          "type": "boolean"
+        },
+        "blocks": {
+          "type": "object",
+          "description": "Per kind of block: reasoning, terminal (command output), edit (file edits), mcp (MCP tool results).",
+          "properties": {
+            "reasoning": {
+              "enum": [
+                "hidden",
+                "collapsed",
+                "expanded"
+              ]
+            },
+            "terminal": {
+              "enum": [
+                "collapsed",
+                "expanded"
+              ]
+            },
+            "edit": {
+              "enum": [
+                "collapsed",
+                "expanded"
+              ]
+            },
+            "mcp": {
+              "enum": [
+                "collapsed",
+                "expanded"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -3,9 +3,11 @@ import process from 'node:process';
 import {
   closeAll,
   connectAll,
+  createMcpResourceTools,
   defaultUserMcpPath,
   loadPluginMcpServers,
   loadMcpConfig,
+  mcpInstructionsBlock,
   type ConnectedMcpServer,
   type McpConfigFile,
   type ToolDefinition,
@@ -31,7 +33,7 @@ import {
  */
 export async function loadMcpTools(
   configPath: string
-): Promise<{ tools: ToolDefinition[]; cleanup: () => Promise<void>; servers: ConnectedMcpServer[] }> {
+): Promise<{ tools: ToolDefinition[]; cleanup: () => Promise<void>; servers: ConnectedMcpServer[]; instructions?: string }> {
   const userMcpPath = defaultUserMcpPath();
 
   // Merge the two sources. Explicit config wins on name conflicts.
@@ -78,13 +80,16 @@ export async function loadMcpTools(
 
   let connected: ConnectedMcpServer[] = [];
   try {
-    connected = await connectAll(merged);
+    // Saved sign-in tokens are used; a server without them is skipped with a hint (never a browser pop-up mid-run).
+    connected = await connectAll(merged, { oauth: { interactive: false, openUrl: () => undefined } });
   } catch (err) {
     process.stderr.write(`forge: MCP connect failed: ${(err as Error).message}\n`);
     return { tools: [], cleanup: async () => {}, servers: [] };
   }
 
-  const tools = connected.flatMap((s) => s.tools);
+  // Resource tools only when there is a server to ask; the servers' own instructions go to the system prompt.
+  const tools = [...connected.flatMap((s) => s.tools), ...(connected.length > 0 ? createMcpResourceTools(() => connected) : [])];
+  const instructions = mcpInstructionsBlock(connected);
   const cleanup = async () => {
     await closeAll(connected);
   };
@@ -94,7 +99,7 @@ export async function loadMcpTools(
       `forge: connected to ${connected.length} MCP server${connected.length === 1 ? '' : 's'} from ${sourcesLoaded.length} source${sourcesLoaded.length === 1 ? '' : 's'}; ${tools.length} tool${tools.length === 1 ? '' : 's'} available\n`
     );
   }
-  return { tools, cleanup, servers: connected };
+  return { tools, cleanup, servers: connected, ...(instructions ? { instructions } : {}) };
 }
 
 /**

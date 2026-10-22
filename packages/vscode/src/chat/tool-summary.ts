@@ -103,6 +103,11 @@ function target(name: string, a: Rec): { target: string; title: string } {
     case 'read_image':
     case 'list_symbols':
       return { target: path ? basename(path) : '', title: path ?? '' };
+    case 'apply_patch': {
+      // Not core's parser: this file is bundled into the webview, which cannot carry node code.
+      const files = [...new Set([...(str(a.patch) ?? '').matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm)].map((m) => m[1]!.trim()))];
+      return { target: clip(files.map(basename).join(', ')), title: files.join(', ') };
+    }
     case 'list_files':
       return { target: path ?? '.', title: path ?? '.' };
     case 'run_command': {
@@ -192,6 +197,8 @@ function resultMeta(name: string, a: Rec, r: Rec): Pick<ToolSummary, 'meta' | 'm
       return len('references') !== undefined ? { meta: count(len('references')!, 'reference') } : {};
     case 'list_symbols':
       return len('symbols') !== undefined ? { meta: count(len('symbols')!, 'symbol') } : {};
+    case 'sub_agent':
+      return r.started === true ? { meta: `in background · ${String(r.id ?? '')}` } : {};
     case 'fetch_url':
       return typeof r.status === 'number' ? { meta: String(r.status), metaTone: r.status >= 400 ? 'err' : undefined } : {};
     default:

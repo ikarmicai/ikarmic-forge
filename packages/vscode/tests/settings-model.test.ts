@@ -2,7 +2,7 @@ import { READ_ONLY_TOOLS } from '@ikarmic/forge-core';
 import { describe, expect, it } from 'vitest';
 
 import {
-  CONFIG_KEYS, DEFAULT_AUTO_APPROVE, sortedTools, SETTINGS_INDEX, agentsToDraft, applyConfig, dirtyKeys, draftToSandbox, emptyDraft, filterSettings, markSaved, sandboxToDraft, saveMessages,
+  CONFIG_KEYS, DEFAULT_AUTO_APPROVE, sortedTools, SETTINGS_INDEX, agentsToDraft, applyConfig, dirtyKeys, draftToSandbox, emptyDraft, filterSettings, markSaved, retentionProblem, sandboxToDraft, saveMessages,
 } from '../src/settings/settings-model.js';
 
 describe('settings draft', () => {
@@ -28,6 +28,15 @@ describe('settings draft', () => {
     const draft = { ...saved, model: 'x', sandbox: { ...saved.sandbox, denyTools: ['fetch_url'] } };
     expect(dirtyKeys(saved, draft)).toEqual(['model', 'sandbox']);
     expect(dirtyKeys(saved, emptyDraft())).toEqual([]);
+  });
+
+  it('does not count an emptied or blank mode-model box as a change', () => {
+    const saved = emptyDraft();
+    expect(dirtyKeys(saved, { ...saved, modeModels: { plan: '' } })).toEqual([]);
+    expect(dirtyKeys(saved, { ...saved, modeModels: { plan: '  ' } })).toEqual([]);
+    expect(dirtyKeys(saved, { ...saved, modeModels: { plan: 'fast' } })).toEqual(['modeModels']);
+    const set = { ...saved, modeModels: { plan: 'fast' } };
+    expect(dirtyKeys(set, { ...set, modeModels: { plan: '' } })).toEqual(['modeModels']);
   });
 
   it('builds one config patch for config keys plus separate sandbox / agents saves', () => {
@@ -78,7 +87,7 @@ describe('filterSettings', () => {
   });
 
   it('indexes every section once at least', () => {
-    expect(new Set(SETTINGS_INDEX.map((e) => e.section))).toEqual(new Set(['model', 'keys', 'agents', 'mcp', 'skills', 'perm', 'display', 'backup']));
+    expect(new Set(SETTINGS_INDEX.map((e) => e.section))).toEqual(new Set(['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'perm', 'context', 'safety', 'tools', 'git', 'advanced', 'display', 'backup']));
   });
 });
 
@@ -144,3 +153,79 @@ describe('filterSettings ranking and keywords', () => {
     expect(rows('   ')).toEqual([]);
   });
 });
+
+describe('permission rules (pattern rules)', () => {
+  const config = { bash: { '*': 'ask', 'git status *': 'allow' }, read: 'deny' } as const;
+
+  it('reads config.permission into an ordered flat list', () => {
+    expect(applyConfig(emptyDraft(), { permission: config }).permissionRules).toEqual([
+      { permission: 'bash', pattern: '*', action: 'ask' },
+      { permission: 'bash', pattern: 'git status *', action: 'allow' },
+      { permission: 'read', pattern: '*', action: 'deny' },
+    ]);
+  });
+
+  it('round-trips through a save patch unchanged, keeping the bare form for a lone catch-all', () => {
+    const d = applyConfig(emptyDraft(), { permission: config });
+    expect(saveMessages(d, ['permissionRules'])).toEqual([{ type: 'save', patch: { permission: config } }]);
+  });
+
+  it('saves null when the list is empty, and drops rules with a blank pattern', () => {
+    expect(saveMessages(emptyDraft(), ['permissionRules'])).toEqual([{ type: 'save', patch: { permission: null } }]);
+    const d = { ...emptyDraft(), permissionRules: [{ permission: 'bash', pattern: '   ', action: 'allow' as const }, { permission: 'edit', pattern: 'docs/**', action: 'allow' as const }] };
+    expect(saveMessages(d, ['permissionRules'])).toEqual([{ type: 'save', patch: { permission: { edit: { 'docs/**': 'allow' } } } }]);
+  });
+
+  it('is a config key, flagged dirty when an action changes, and indexed for search', () => {
+    expect(CONFIG_KEYS).toContain('permissionRules');
+    const saved = applyConfig(emptyDraft(), { permission: config });
+    const draft = { ...saved, permissionRules: saved.permissionRules.map((r, i) => (i === 1 ? { ...r, action: 'deny' as const } : r)) };
+    expect(dirtyKeys(saved, draft)).toEqual(['permissionRules']);
+    expect(filterSettings(SETTINGS_INDEX, 'pattern rules').map((e) => e.rowId)).toContain('row-pattern-rules');
+  });
+});
+
+describe('compaction model and chat retention', () => {
+  it('reads both from config as text and saves them as one patch, null when blank', () => {
+    const d = applyConfig(emptyDraft(), { compactionModel: 'gpt-4o-mini', sessionRetentionDays: 30 });
+    expect(d).toMatchObject({ compactionModel: 'gpt-4o-mini', sessionRetentionDays: '30' });
+    expect(saveMessages(d, ['compactionModel', 'sessionRetentionDays'])).toEqual([{ type: 'save', patch: { compactionModel: 'gpt-4o-mini', sessionRetentionDays: 30 } }]);
+    const blank = { ...d, compactionModel: '  ', sessionRetentionDays: '' };
+    expect(saveMessages(blank, ['compactionModel', 'sessionRetentionDays'])).toEqual([{ type: 'save', patch: { compactionModel: null, sessionRetentionDays: null } }]);
+  });
+
+  it('both are config keys and flagged dirty when they change', () => {
+    expect(CONFIG_KEYS).toEqual(expect.arrayContaining(['compactionModel', 'sessionRetentionDays']));
+    const saved = applyConfig(emptyDraft(), {});
+    expect(dirtyKeys(saved, { ...saved, sessionRetentionDays: '14' })).toEqual(['sessionRetentionDays']);
+  });
+
+  it('retentionProblem refuses anything but a whole number of days from 1 up, and accepts blank', () => {
+    expect(retentionProblem('')).toBeUndefined();
+    expect(retentionProblem('30')).toBeUndefined();
+    expect(retentionProblem('0')).toMatch(/whole number/);
+    expect(retentionProblem('1.5')).toMatch(/whole number/);
+    expect(retentionProblem('abc')).toMatch(/whole number/);
+  });
+
+  it('saveMessages leaves an invalid retention out of the patch', () => {
+    const d = { ...emptyDraft(), sessionRetentionDays: '1.5' };
+    expect(saveMessages(d, ['sessionRetentionDays'])).toEqual([]);
+  });
+});
+
+describe('sub-agent model and the Providers page in search', () => {
+  it('subagentModel round-trips as text and saves null when blank', () => {
+    const d = applyConfig(emptyDraft(), { subagentModel: 'gpt-4o-mini' });
+    expect(d.subagentModel).toBe('gpt-4o-mini');
+    expect(CONFIG_KEYS).toContain('subagentModel');
+    expect(saveMessages(d, ['subagentModel'])).toEqual([{ type: 'save', patch: { subagentModel: 'gpt-4o-mini' } }]);
+    expect(saveMessages({ ...d, subagentModel: '  ' }, ['subagentModel'])).toEqual([{ type: 'save', patch: { subagentModel: null } }]);
+  });
+
+  it('finds the Providers page and the sub-agent model by what people type', () => {
+    expect(filterSettings(SETTINGS_INDEX, 'groq deepseek custom provider').map((e) => e.rowId)).toContain('row-providers');
+    expect(filterSettings(SETTINGS_INDEX, 'subagent').map((e) => e.rowId)).toContain('row-subagent-model');
+  });
+});
+

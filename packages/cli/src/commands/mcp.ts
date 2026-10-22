@@ -7,17 +7,21 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 import process from 'node:process';
 
 import {
   defaultCacheRoot,
+  connectOne,
   defaultUserMcpPath,
   installMcpServer,
+  loadMcpConfig,
   listInstalledServers,
   MARKETPLACE_CATALOG_VERSION,
   uninstallMcpServer,
 } from '@ikarmic/forge-core';
 
+import { openInBrowser } from '../open-browser.js';
 import type { ParsedMcpCommand } from '../options.js';
 
 /** Public marketplace catalog (placeholder for v1). When the marketplace
@@ -25,7 +29,10 @@ import type { ParsedMcpCommand } from '../options.js';
  *  the canonical URL and let users browse by hand. */
 const MARKETPLACE_CATALOG_URL = 'https://github.com/ikarmicai/forge-mcp-registry';
 
-export async function handleMcpCommand(cmd: ParsedMcpCommand, _cwd: string): Promise<number> {
+export async function handleMcpCommand(cmd: ParsedMcpCommand, cwd: string): Promise<number> {
+  if (cmd.login) {
+    return loginToServer(cmd.login.name, cwd);
+  }
   if (cmd.list) {
     return listInstalled();
   }
@@ -42,6 +49,44 @@ export async function handleMcpCommand(cmd: ParsedMcpCommand, _cwd: string): Pro
     'forge mcp: expected one of list|install|remove|browse. Try `forge mcp --help` (not yet implemented; read the README).\n'
   );
   return 2;
+}
+
+/** `forge mcp login <name>`: sign in to an MCP server that uses OAuth; the tokens are saved for later runs. */
+async function loginToServer(name: string, cwd: string): Promise<number> {
+  const files = [defaultUserMcpPath(), join(cwd, '.forge', 'mcp.json')];
+  let spec;
+  for (const file of files) {
+    try {
+      spec = (await loadMcpConfig(file)).mcpServers[name] ?? spec;
+    } catch {
+      // a missing or unreadable file just means the server is not in it
+    }
+  }
+  if (!spec) {
+    process.stderr.write(`forge mcp login: no MCP server named "${name}" in ${files.join(' or ')}\n`);
+    return 2;
+  }
+  if (!spec.url) {
+    process.stderr.write(`forge mcp login: "${name}" is not an HTTP server, so it has nothing to sign in to\n`);
+    return 2;
+  }
+  try {
+    const server = await connectOne(name, spec, {
+      oauth: {
+        interactive: true,
+        openUrl: (url) => {
+          process.stderr.write(`Sign in to ${name} in your browser. If it does not open, visit:\n  ${url}\n`);
+          openInBrowser(url);
+        },
+      },
+    });
+    await server.client.close();
+    process.stdout.write(`Signed in to ${name}. ${server.tools.length} tool${server.tools.length === 1 ? '' : 's'} available.\n`);
+    return 0;
+  } catch (err) {
+    process.stderr.write(`forge mcp login: ${(err as Error).message}\n`);
+    return 1;
+  }
 }
 
 async function listInstalled(): Promise<number> {
