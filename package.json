@@ -25,6 +25,7 @@
   },
   "pnpm": {
     "overrides": {
+      "hono": ">=4.13.11",
       "jsondiffpatch": ">=0.7.6"
     }
   },
