@@ -7,6 +7,7 @@ import { namedProviderModel } from './model-ref.js';
 import { emptyApiKeys, type ProviderEnvSettings, type ResolvedApiKeys } from './api-keys.js';
 import { cleanLintCommands } from './chat/run-extras.js';
 import type { VoiceConfig } from './chat/voice-types.js';
+import { clampSetting } from './setting-range.js';
 
 /**
  * Forge extension configuration. Pulls from VS Code's `forge.*` settings and
@@ -113,8 +114,8 @@ export function readConfig(): ExtensionConfig {
     provider: (cfg.get<string>('provider') ?? 'auto') as ExtensionConfig['provider'],
     model: cfg.get<string>('model') ?? '',
     completionModel: cfg.get<string>('completionModel') ?? '',
-    completionDebounceMs: cfg.get<number>('completionDebounceMs') ?? 350,
-    completionMaxTokens: cfg.get<number>('completionMaxTokens') ?? 512,
+    completionDebounceMs: clampSetting(cfg.get<number>('completionDebounceMs'), 350, 0, 3000),
+    completionMaxTokens: clampSetting(cfg.get<number>('completionMaxTokens'), 512, 32, 2048),
     completionTelemetry: cfg.get<boolean>('completionTelemetry') ?? false,
     completionEnabled: cfg.get<boolean>('completionEnabled') ?? true,
     completionAutomatic: cfg.get<boolean>('completionAutomatic') ?? true,
@@ -131,8 +132,8 @@ export function readConfig(): ExtensionConfig {
     },
     compaction: {
       enabled: cfg.get<boolean>('compaction.enabled') ?? true,
-      threshold: cfg.get<number>('compaction.threshold') ?? 0.7,
-      keepRecent: Math.max(1, cfg.get<number>('compaction.keepRecent') ?? 4),
+      threshold: clampSetting(cfg.get<number>('compaction.threshold'), 0.7, 0.3, 0.95),
+      keepRecent: Math.floor(clampSetting(cfg.get<number>('compaction.keepRecent'), 4, 1, 50)),
     },
     tools: { maxOutputChars: Math.max(5000, cfg.get<number>('tools.maxOutputChars') ?? 200000) },
     semantic: {
@@ -156,7 +157,7 @@ export function readConfig(): ExtensionConfig {
       maxBodyChars: Math.max(1, cfg.get<number>('memory.maxBodyChars') ?? 1200),
       autoApproveWrites: cfg.get<boolean>('memory.autoApproveWrites') ?? false,
     },
-    maxCostUsd: cfg.get<number>('maxCostUsd') ?? 0,
+    maxCostUsd: clampSetting(cfg.get<number>('maxCostUsd'), 0, 0),
     keepAwake: cfg.get<boolean>('keepAwake') ?? false,
     loopGuardThreshold: Math.max(0, Math.floor(cfg.get<number>('loopGuardThreshold') ?? 0)),
     goalMaxTurns: Math.max(1, Math.floor(cfg.get<number>('goalMaxTurns') ?? 25)),

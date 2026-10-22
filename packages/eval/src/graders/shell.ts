@@ -2,6 +2,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 
+import { shellEnv } from '@ikarmic/forge-core';
+
 import type { Grader, GraderContext, GraderResult } from './types.js';
 
 const execFileAsync = promisify(execFile);
@@ -82,7 +84,7 @@ async function runCommand(
   timeoutMs: number,
   extraEnv: Record<string, string> | undefined
 ): Promise<{ stdout: string; stderr: string }> {
-  const env = { ...process.env, ...(extraEnv ?? {}) };
+  const env = shellEnv({ ...process.env, ...(extraEnv ?? {}) });
   if (typeof command === 'string') {
     // Use the platform default shell so users can write shell idioms
     // (pipelines, redirection, etc.). shell-quoting is the caller's job.

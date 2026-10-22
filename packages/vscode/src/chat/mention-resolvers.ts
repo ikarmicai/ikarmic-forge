@@ -115,7 +115,7 @@ export function createMentionResolvers(
       for (const [uri, diags] of vscode.languages.getDiagnostics()) {
         if (uri.scheme !== 'file') continue;
         const rel = path.relative(root, uri.fsPath).replace(/\\/g, '/');
-        if (rel.startsWith('..')) continue;
+        if (rel === '..' || rel.startsWith(`..${path.sep}`) || rel.startsWith('../')) continue;
         for (const d of diags) {
           if (d.severity > vscode.DiagnosticSeverity.Warning) continue;
           const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'error' : 'warning';

@@ -1,18 +1,26 @@
 /** Path helpers for the spec workflow. vscode-free. */
 import path from 'node:path';
 
+import { filesTouchedBy } from '@ikarmic/forge-core';
+
 import { resolveInsideWorkspace } from '../chat/edit-preview.js';
 
 const WRITE_TOOLS = new Set(['write_file', 'edit_file', 'edit_notebook', 'apply_patch']);
 
-/** Workspace-relative posix path a successful write/edit touched, else null. */
+/** Workspace-relative posix paths of every file a successful write/edit/patch touched (a patch can touch several). */
+export function changedFilesFromToolResult(root: string, toolName: string, args: unknown, isError: boolean): string[] {
+  if (isError || !WRITE_TOOLS.has(toolName)) return [];
+  const out: string[] = [];
+  for (const p of filesTouchedBy(toolName, args)) {
+    const abs = resolveInsideWorkspace(root, p);
+    if (abs) out.push(path.relative(root, abs).split(path.sep).join('/'));
+  }
+  return out;
+}
+
+/** The first file a successful write/edit touched, else null (one-file tools; see changedFilesFromToolResult). */
 export function changedFileFromToolResult(root: string, toolName: string, args: unknown, isError: boolean): string | null {
-  if (isError || !WRITE_TOOLS.has(toolName)) return null;
-  const p = (args as { path?: unknown } | undefined)?.path;
-  if (typeof p !== 'string') return null;
-  const abs = resolveInsideWorkspace(root, p);
-  if (!abs) return null;
-  return path.relative(root, abs).split(path.sep).join('/');
+  return changedFilesFromToolResult(root, toolName, args, isError)[0] ?? null;
 }
 
 export interface OpenDoc {

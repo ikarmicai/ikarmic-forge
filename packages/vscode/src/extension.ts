@@ -116,6 +116,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const chatProvider = new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models);
   const openTab = (): void => openChatInTab(context, () => new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models));
   const completionState = new CompletionState();
+  // Output > Forge: why a completion request ended (debug level: set the channel to Debug to see them).
+  const forgeLog = vscode.window.createOutputChannel('Forge', { log: true });
+  context.subscriptions.push(forgeLog);
   const completionStatus = new CompletionStatus(completionState);
   const completionProvider = new ForgeInlineCompletionProvider(
     () => {
@@ -127,7 +130,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     () => readConfig().completionTelemetry,
     credentialStore,
     completionState,
-    () => completionStatus.refresh()
+    () => completionStatus.refresh(),
+    forgeLog
   );
 
   context.subscriptions.push(
@@ -197,7 +201,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (mcp && workspaceRoot) {
     registerMcp(context, mcp);
     registerSkills(context, workspaceRoot);
-    registerImportClaude(context, workspaceRoot, mcp);
+    registerImportClaude(context, workspaceRoot, mcp, () => chatProvider.reloadExtras());
     registerAgents(context, credentialStore, chatProvider);
     context.subscriptions.push(
       vscode.workspace.onDidGrantWorkspaceTrust(() => {

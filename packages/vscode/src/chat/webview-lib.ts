@@ -9,3 +9,4 @@ export { renderTodoSummary } from './todo-summary.js';
 export { blockOpen, reasoningMode } from './block-modes.js';
 export { approvalCopy, approvalLogText, isProgressResult, summarizeTool } from './tool-summary.js';
 export { filterSlash, parseSlash, slashMenuQuery } from './slash-commands.js';
+export { WAVE_W, WAVE_H, WAVE_LEN, formatTokens, meterLevel, wavePath } from './meter-wave.js';

@@ -12,6 +12,7 @@ import {
   getModelWindowTokens,
   mediaPartTokens,
   redact,
+  shellEnv,
   resolveModelAlias,
 } from '@ikarmic/forge-core';
 import type { LanguageModel } from 'ai';
@@ -110,7 +111,7 @@ function killTree(child: ChildProcess): void {
 /** Run a shell command for `/run` and `/test`: the user typed it, so no approval, but with a timeout. */
 export function runShell(command: string, cwd: string, timeoutMs = 120_000): Promise<ShellResult> {
   return new Promise((resolve) => {
-    const child = spawn(command, { cwd, shell: true, windowsHide: true, detached: process.platform !== 'win32' });
+    const child = spawn(command, { cwd, shell: true, windowsHide: true, detached: process.platform !== 'win32', env: shellEnv(process.env) });
     let output = '';
     let settled = false;
     const finish = (result: ShellResult): void => {

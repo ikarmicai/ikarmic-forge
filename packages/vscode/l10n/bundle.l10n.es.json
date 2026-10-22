@@ -417,5 +417,20 @@
   "Forge wants to open {0} in your browser so you can sign in to an MCP server.": "Forge quiere abrir {0} en tu navegador para que inicies sesión en un servidor MCP.",
   "Stop all": "Detener todo",
   "Dismiss": "Descartar",
-  "Background agents": "Agentes en segundo plano"
+  "Background agents": "Agentes en segundo plano",
+  "Context and cost details": "Detalles de contexto y coste",
+  "Close details": "Cerrar detalles",
+  "Context window": "Ventana de contexto",
+  "Chat cost": "Coste del chat",
+  "Input tokens": "Tokens de entrada",
+  "Output tokens": "Tokens de salida",
+  "Run time": "Tiempo de ejecución",
+  "Step": "Paso",
+  "Condense": "Condensar",
+  "Cost is an estimate from known pricing.": "El coste es una estimación según los precios conocidos.",
+  "does not apply": "no se aplica",
+  "new file": "archivo nuevo",
+  "deleted": "eliminado",
+  "changed": "modificado",
+  "This patch changes {0} files: which one to show?": "Este parche cambia {0} archivos: ¿cuál quieres ver?"
 }

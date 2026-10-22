@@ -138,33 +138,62 @@ describe('L4: goal and todo share one row', () => {
   });
 });
 
-describe('Context meter is a labelled row under the composer (C6)', () => {
+describe('Context wave meter under the composer (C6)', () => {
   const chat = chatHtml();
   const header = chat.slice(chat.indexOf('<div id="toolbar"'), chat.indexOf('<div id="panel"'));
   const inputArea = chat.slice(chat.indexOf('<div id="input-area"'), chat.indexOf('<div id="voice-status"'));
+  const meter = inputArea.slice(inputArea.indexOf('id="meter"') - 20);
 
-  it('is out of the header and sits right after the composer', () => {
+  it('is out of the header and sits after the composer', () => {
     expect(header).not.toContain('id="meter"');
-    expect(inputArea).toContain('id="meter"');
-    expect(inputArea.indexOf('id="meter"')).toBeGreaterThan(inputArea.indexOf('<div class="composer">'));
     expect(inputArea.indexOf('id="meter"')).toBeGreaterThan(inputArea.indexOf('class="cfoot"'));
   });
 
-  it('shows a Context label, a percentage, a bar and the cost', () => {
-    const meter = inputArea.match(/<[^>]*id="meter"[\s\S]*?<\/div>/)?.[0] ?? '';
+  it('is a button with a Context label, a percentage, a wave and the cost, that opens a details dialog', () => {
+    expect(meter).toMatch(/<button type="button" class="meter-btn" id="meter-btn"[^>]*aria-haspopup="dialog"[^>]*aria-expanded="false"[^>]*aria-controls="meter-pop"/);
     expect(meter).toContain('<span class="m-label">Context</span>');
-    for (const id of ['meter-text', 'meter-bar', 'meter-cost']) expect(meter, id).toContain(`id="${id}"`);
+    for (const id of ['meter-text', 'meter-cost', 'meter-wave-a', 'meter-wave-b']) expect(meter, id).toContain(`id="${id}"`);
+    expect(meter).toMatch(/<div id="meter-pop" role="dialog" aria-label="Context and cost details" hidden>/);
     expect(chat).not.toContain('meter-ring');
+    expect(chat).not.toContain('meter-bar');
   });
 
-  it('fills the bar from the context percentage and warns from 80%', () => {
-    expect(chat).toContain("meterBar.style.width = (pct || 0) + '%'");
-    expect(chat).toContain("meterCostEl.textContent = cost");
-    expect(chat).toMatch(/\.meter\.warn \.m-bar i \{ background: var\(--warn\); \}/);
+  it('the wave is decoration: hidden from assistive tech, with the numbers as text beside it', () => {
+    expect(meter).toMatch(/<span class="m-cap" aria-hidden="true">/);
   });
 
-  it('keeps the meter an announced status with a title that explains it', () => {
-    expect(chat).toMatch(/id="meter"[^>]*role="status"/);
-    expect(chat).toMatch(/id="meter"[^>]*title="Cost of this chat and how full the context window is"/);
+  it('announces only when the level changes, through a status region of its own', () => {
+    expect(chat).toMatch(/<span id="meter-live" class="sr-only" role="status"><\/span>/);
+    expect(chat).toContain('lastMeterLevel');
+  });
+
+  it('draws the wave from the helper, tones it, and speeds it up while a run works', () => {
+    expect(chat).toContain("meterWaveA.setAttribute('d', UI.wavePath(");
+    expect(chat).toContain("meterEl.classList.toggle('warn'");
+    expect(chat).toContain("meterEl.classList.toggle('crit'");
+    expect(chat).toContain("meterEl.classList.toggle('stream', running)");
+  });
+
+  it('opens and closes the details: button toggles, Escape and a click outside close, focus returns', () => {
+    expect(chat).toContain("meterBtn.addEventListener('click'");
+    expect(chat).toContain('function closeMeterPop(');
+    expect(chat).toMatch(/closeMeterPop\(true\)/);
+    expect(chat).toContain("meterPop.addEventListener('keydown'");
+  });
+
+  it('details show real figures only: used, left, chat cost, last-run tokens, time and step, plus Condense', () => {
+    const pop = chat.slice(chat.indexOf('id="meter-pop"'), chat.indexOf('id="voice-status"'));
+    for (const id of ['mp-used', 'mp-of', 'mp-cost', 'mp-in', 'mp-out', 'mp-time', 'mp-step', 'mp-model', 'mp-condense']) expect(pop, id).toContain(`id="${id}"`);
+    expect(pop).not.toMatch(/cache hit|tok\/s/i);
+  });
+
+  it('styles: fill is the tone, the guide marks 80%, the popover is elevated, forced colours keep the shape', () => {
+    expect(chat).toMatch(/\.m-cap \{[^}]*border: 1px solid var\(--edge\)/);
+    expect(chat).toMatch(/\.meter\.warn \.m-cap \{[^}]*--wave: var\(--warn\)/);
+    expect(chat).toMatch(/\.meter\.crit \.m-cap \{[^}]*--wave: var\(--err\)/);
+    expect(chat).toContain('@keyframes wv');
+    expect(chat).toMatch(/\.m-guide \{[^}]*top: 5\.6px/);
+    expect(chat).toMatch(/#meter-pop \{[^}]*box-shadow: var\(--elev-3\)/);
+    expect(chat).toMatch(/\.m-cap \{ border: 1px solid ButtonText; \}/);
   });
 });

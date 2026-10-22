@@ -2,9 +2,18 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { changedFileFromToolResult, dirtyDocsUnder } from '../src/specs/spec-paths.js';
+import { changedFileFromToolResult, changedFilesFromToolResult, dirtyDocsUnder } from '../src/specs/spec-paths.js';
 
 const root = path.resolve('/ws/project');
+
+describe('changedFilesFromToolResult', () => {
+  it('lists every file an apply_patch changed, inside the workspace', () => {
+    const patch = ['*** Begin Patch', '*** Add File: a.ts', '+x', '*** Update File: src/b.ts', '@@', '-y', '+z', '*** Add File: ../out.ts', '+w', '*** End Patch'].join('\n');
+    expect(changedFilesFromToolResult(root, 'apply_patch', { patch }, false)).toEqual(['a.ts', 'src/b.ts']);
+    expect(changedFilesFromToolResult(root, 'apply_patch', { patch }, true)).toEqual([]);
+    expect(changedFilesFromToolResult(root, 'write_file', { path: 'c.ts' }, false)).toEqual(['c.ts']);
+  });
+});
 
 describe('changedFileFromToolResult', () => {
   it('returns a workspace-relative posix path for successful writes and edits', () => {

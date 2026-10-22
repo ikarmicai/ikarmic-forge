@@ -9,6 +9,7 @@ import {
   isInsideStringOrComment,
   sanitize,
   shouldSuppressAt,
+  suppressAtCursor,
 } from '../src/completion-helpers.js';
 
 describe('sanitize', () => {
@@ -109,6 +110,25 @@ describe('isInsideStringOrComment', () => {
     // should still be evaluated for quote balance.
     const prefix = '/* "note" */ const x = "hel';
     expect(isInsideStringOrComment(prefix, 'typescript')).toBe(true);
+  });
+});
+
+describe('suppressAtCursor: judged on the character just before the cursor, wherever the cursor is in the file', () => {
+  const lines = ['// add two numbers', 'function add(a, b) {', '  return '];
+
+  it('a cursor after a space on a later line is a place to suggest, whatever the first line ends with', () => {
+    expect(suppressAtCursor(lines.join('\n'))).toBe(false);
+    // The old call passed the column (9) as an offset into the whole text, so it looked at "r" of the first line.
+    expect(shouldSuppressAt(lines.join('\n'), '  return '.length)).toBe(true);
+  });
+
+  it('a cursor in the middle of a word on a later line is still skipped', () => {
+    expect(suppressAtCursor([...lines.slice(0, 2), '  return ab'].join('\n'))).toBe(true);
+  });
+
+  it('after an opening bracket or a dot is a place to suggest', () => {
+    expect(suppressAtCursor('const total = items.reduce(')).toBe(false);
+    expect(suppressAtCursor('const first = list.')).toBe(false);
   });
 });
 

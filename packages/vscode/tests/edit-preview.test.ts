@@ -60,3 +60,13 @@ describe('resolveInsideWorkspace', () => {
     expect(resolveInsideWorkspace(root, path.resolve('/ws/project-evil/x'))).toBeNull();
   });
 });
+
+describe('which approvals can be previewed', () => {
+  it('a patch can be shown as a diff, but is kept or refused whole (no per-hunk review)', async () => {
+    const { isHunkReviewable, isPreviewable } = await import('../src/chat/edit-preview.js');
+    expect(isPreviewable('apply_patch')).toBe(true);
+    expect(isHunkReviewable('apply_patch')).toBe(false);
+    expect(isHunkReviewable('edit_file')).toBe(true);
+    expect(isPreviewable('run_command')).toBe(false);
+  });
+});

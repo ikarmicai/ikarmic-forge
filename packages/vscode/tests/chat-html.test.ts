@@ -142,7 +142,7 @@ describe('chatHtml toolbar and composer (direction A)', () => {
   });
 
   it('has the context meter, attach button and one-box composer', () => {
-    for (const id of ['meter-text', 'meter-bar', 'meter-cost', 'meter-stat', 'attach']) expect(html).toContain(`id="${id}"`);
+    for (const id of ['meter-text', 'meter-wave-a', 'meter-cost', 'meter-stat', 'attach']) expect(html).toContain(`id="${id}"`);
     expect(html).toContain('class="composer"');
     expect(html).not.toContain('id="header"');
   });

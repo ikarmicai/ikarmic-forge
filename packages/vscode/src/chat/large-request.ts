@@ -26,6 +26,15 @@ function namesAFile(text: string): boolean {
   return /[\\/]|\.[a-z0-9]{1,5}\b/i.test(text.replace(/[.!?]+(?=\s|$)/g, ''));
 }
 
+/**
+ * What the check is for: the person's own words. A slash command, a skill or an `@agent` mention expands into a long
+ * prompt of its own ("/forge-config …" becomes the whole skill text); judging that would offer a spec for a request
+ * the person made with one short line. `sent` is what goes to the model, `typed` what was written.
+ */
+export function looksLargeMessage(typed: string, sent: string): boolean {
+  return typed.trim() === sent.trim() && looksLarge(sent);
+}
+
 export function looksLarge(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

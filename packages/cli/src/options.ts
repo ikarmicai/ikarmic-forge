@@ -13,6 +13,7 @@ import {
   expandModelAlias,
   HooksBus,
   loadForgeConfigFile,
+  applyResolved,
   resolveAutoApprove,
   loadHooksConfig,
   loadSkillsRegistryAsync,
@@ -1096,13 +1097,16 @@ export async function toAgentConfig(
   mcpInstructions?: string
 ): Promise<AgentConfig> {
   const cwd = options.cwd ?? process.cwd();
-  const [skillsRegistry, hooksConfig, sandboxFromFile, sharedConfig, steering] = await Promise.all([
-    loadSkillsRegistryAsync(cwd),
+  // The user config first: it names extra skill folders (skillPaths) the registry must read.
+  const sharedConfig = await loadForgeConfigFile();
+  const [skillsRegistry, hooksConfig, sandboxFromFile, steering] = await Promise.all([
+    loadSkillsRegistryAsync(cwd, sharedConfig.config.skillPaths ?? [], {
+      onWarning: (w) => process.stderr.write(`forge: skills: ${w}\n`),
+    }),
     loadHooksConfig(cwd),
     // CLI never trusts project-level settings: matches the existing
     // hooks precedent (trustedProjectHooks is never true in the CLI).
     loadToolSandboxConfig(cwd, { trustedProjectSettings: false }),
-    loadForgeConfigFile(),
     loadSteering(cwd),
   ]);
   for (const w of steering.warnings) process.stderr.write(`forge: ${w}\n`);
@@ -1126,6 +1130,9 @@ export async function toAgentConfig(
     ...(options.confirmReads ? {} : { autoApproveTools: resolveAutoApprove(sharedConfig.config.autoApproveTools) }),
     ...(sharedConfig.config.permission && Object.keys(sharedConfig.config.permission).length > 0 ? { permissionRules: sharedConfig.config.permission } : {}),
     ...(sharedConfig.config.instructions?.length ? { extraInstructions: sharedConfig.config.instructions } : {}),
+    ...(sharedConfig.config.subagentModel
+      ? { subAgentModel: applyResolved(model, resolveModelAlias(sharedConfig.config.subagentModel, sharedConfig.config.aliases, model.provider)) }
+      : {}),
     allowDestructive: options.allowDestructive,
     maxIterations: options.maxIterations ?? undefined,
     maxDurationMs: options.maxDurationMs ?? undefined,

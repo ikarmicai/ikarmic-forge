@@ -28,7 +28,8 @@ export function createVsCodeCommandRunner(): { runner: CommandRunner; dispose():
   const deps: TerminalRunDeps = {
     ensureTerminal(cwd, { fresh }) {
       if (fresh || !terminal || terminal.exitStatus !== undefined) {
-        terminal = vscode.window.createTerminal({ name: TERMINAL_NAME, cwd });
+        // Windows with cmd as the terminal: never run a same-named program the repository ships in its root (core shell-env.ts).
+        terminal = vscode.window.createTerminal({ name: TERMINAL_NAME, cwd, ...(process.platform === 'win32' ? { env: { NoDefaultCurrentDirectoryInExePath: '1' } } : {}) });
       }
       terminal.show(true); // reveal without stealing focus from the chat
       return terminal as unknown as TerminalLike;

@@ -7,10 +7,11 @@ import type { CredentialStore } from '@ikarmic/forge-core';
 
 import { CompletionState, completionGate } from './completion-controls.js';
 import {
+  COMPLETION_SYSTEM_PROMPT,
   buildPrompt,
   isInsideStringOrComment,
   sanitize,
-  shouldSuppressAt,
+  suppressAtCursor,
 } from './completion-helpers.js';
 import { loadRuntimeConfig } from './runtime-config.js';
 import { readConfig, resolveCompletionModel } from './config.js';
@@ -19,16 +20,6 @@ import {
   TELEMETRY_REJECT_COMMAND,
   type CompletionTelemetry,
 } from './telemetry.js';
-
-const COMPLETION_SYSTEM_PROMPT = `You are an inline code completion engine. Continue the user's code exactly where they stopped.
-
-Rules:
-- Output ONLY the completion text. No prose, no markdown, no code fences, no commentary.
-- Match the surrounding code's indentation, style, and language.
-- Keep completions concise: prefer a single line when a one-line answer is unambiguous; produce multi-line output only when the cursor is clearly inside a block (function body, multi-statement list, nested structure, etc.).
-- Stop at a natural boundary: end of statement, end of line, closing brace, or blank line. Do not over-generate.
-- Never repeat the prefix. Never include the suffix.
-- If the surrounding code is unclear, output nothing.`;
 
 /**
  * Inline completion provider. Debounces requests, aborts in-flight ones when
@@ -55,7 +46,9 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
     private readonly getTelemetryEnabled: () => boolean,
     private readonly credentialStore?: CredentialStore,
     private readonly controls: CompletionState = new CompletionState(),
-    private readonly onUsage: () => void = () => {}
+    private readonly onUsage: () => void = () => {},
+    /** Why each request ended (Output > Forge): model answers at info, skips at debug. Every early return used to be silent. */
+    private readonly log?: Pick<vscode.LogOutputChannel, 'debug' | 'info' | 'warn'>
   ) {}
 
   async provideInlineCompletionItems(
@@ -84,7 +77,10 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
       now: Date.now(),
       manual: context.triggerKind === vscode.InlineCompletionTriggerKind.Invoke,
     });
-    if (gate !== 'run') return undefined;
+    if (gate !== 'run') {
+      this.log?.debug(`completion: skipped (${gate})`);
+      return undefined;
+    }
     const debounceMs = Math.max(0, cfg.completionDebounceMs);
 
     if (debounceMs > 0) {
@@ -107,8 +103,14 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
 
     const prefix = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
 
-    if (shouldSuppressAt(prefix, position.character)) return undefined;
-    if (isInsideStringOrComment(prefix, document.languageId)) return undefined;
+    if (suppressAtCursor(prefix)) {
+      this.log?.debug('completion: skipped (cursor inside a word)');
+      return undefined;
+    }
+    if (isInsideStringOrComment(prefix, document.languageId)) {
+      this.log?.debug('completion: skipped (inside a string or comment)');
+      return undefined;
+    }
 
     let model;
     try {
@@ -116,9 +118,11 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
       model = resolveCompletionModel(cfg);
       // Inline completions call the model directly (not through Agent), so enforce the org policy here too.
       assertProviderAllowed(model.provider, getOrgPolicy()?.policy);
-    } catch {
+    } catch (err) {
+      this.log?.warn(`completion: no model to ask: ${(err as Error).message}`);
       return undefined;
     }
+    const started = Date.now();
 
     this.activeController?.abort();
     const controller = new AbortController();
@@ -142,9 +146,17 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
       });
       this.controls.usage.add({ inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens });
       this.onUsage();
-      if (token.isCancellationRequested) return undefined;
+      const ms = Date.now() - started;
+      if (token.isCancellationRequested) {
+        this.log?.info(`completion: answer from ${model.model} came after the editor moved on (${ms} ms)`);
+        return undefined;
+      }
       const cleaned = sanitize(text);
-      if (!cleaned) return undefined;
+      if (!cleaned) {
+        this.log?.info(`completion: ${model.model} answered nothing usable in ${ms} ms (${usage?.outputTokens ?? '?'} tokens)`);
+        return undefined;
+      }
+      this.log?.info(`completion: ${model.model} suggested ${cleaned.length} characters in ${ms} ms`);
 
       const telemetry = this.getTelemetryEnabled() ? this.getTelemetry() : null;
       telemetry?.recordShown();
@@ -165,9 +177,8 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
 
       return [item];
     } catch (err) {
-      if (!(err as Error).message?.includes('aborted')) {
-        console.debug('forge completion error:', err);
-      }
+      if ((err as Error).message?.includes('aborted')) this.log?.debug('completion: cancelled (you kept typing)');
+      else this.log?.warn(`completion: request failed: ${(err as Error).message}`);
       return undefined;
     } finally {
       if (this.activeController === controller) {

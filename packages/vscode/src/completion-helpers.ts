@@ -148,6 +148,14 @@ function isEscaped(text: string, pos: number): boolean {
  * help. Returns true to skip. Mirrors the heuristic in the provider's old
  * trigger filter, but extracted so it can be tested in isolation.
  */
+/**
+ * Whether to skip the position at the end of `prefix` (the text from the start of the file to the cursor). Callers hold a
+ * line and column, not an offset into the text: passing the column here looked at a character of the first line.
+ */
+export function suppressAtCursor(prefix: string): boolean {
+  return shouldSuppressAt(prefix, prefix.length);
+}
+
 export function shouldSuppressAt(prefix: string, cursorOffset: number): boolean {
   if (cursorOffset <= 0) return true;
   if (prefix.trim().length < 2) return true;
@@ -184,3 +192,13 @@ function stripBlockComments(prefix: string): string {
   // Replace /* ... */ blocks with spaces (preserve length for offset math).
   return prefix.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length));
 }
+
+export const COMPLETION_SYSTEM_PROMPT = `You are an inline code completion engine. Continue the user's code exactly where they stopped.
+
+Rules:
+- Output ONLY the completion text. No prose, no markdown, no code fences, no commentary.
+- Match the surrounding code's indentation, style, and language.
+- Keep completions concise: prefer a single line when a one-line answer is unambiguous; produce multi-line output only when the cursor is clearly inside a block (function body, multi-statement list, nested structure, etc.).
+- Stop at a natural boundary: end of statement, end of line, closing brace, or blank line. Do not over-generate.
+- Never repeat the prefix. Never include the suffix.
+- If the surrounding code is unclear, output nothing.`;

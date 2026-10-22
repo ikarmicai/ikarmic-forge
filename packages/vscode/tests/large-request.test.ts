@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
-import { looksLarge } from '../src/chat/large-request.js';
+import { looksLarge, looksLargeMessage } from '../src/chat/large-request.js';
+
+describe('looksLargeMessage: judged on what the person typed, not on what a command expands to', () => {
+  const longSkill = Array.from({ length: 12 }, (_, i) => `- step ${i + 1}: you must read the file, check it, and write it back, then report`).join('\n');
+
+  it('a slash command or skill whose body is long and listy is not a big request', () => {
+    expect(looksLarge(longSkill)).toBe(true); // the expanded text alone would trip the check
+    expect(looksLargeMessage('/forge-config hide reasoning', longSkill)).toBe(false);
+  });
+
+  it('an @agent mention that expands to a long brief is not a big request either', () => {
+    expect(looksLargeMessage('@reviewer look at the diff', longSkill)).toBe(false);
+  });
+
+  it('an ordinary message is judged as before', () => {
+    expect(looksLargeMessage('build me a crm for a dental clinic', 'build me a crm for a dental clinic')).toBe(true);
+    expect(looksLargeMessage('fix the typo in README.md', 'fix the typo in README.md')).toBe(false);
+  });
+});
 
 describe('looksLarge', () => {
   it.each([

@@ -417,5 +417,20 @@
   "Forge wants to open {0} in your browser so you can sign in to an MCP server.": "Forge 想在浏览器中打开 {0}，以便你登录 MCP 服务器。",
   "Stop all": "全部停止",
   "Dismiss": "忽略",
-  "Background agents": "后台代理"
+  "Background agents": "后台代理",
+  "Context and cost details": "上下文与费用详情",
+  "Close details": "关闭详情",
+  "Context window": "上下文窗口",
+  "Chat cost": "聊天费用",
+  "Input tokens": "输入 token",
+  "Output tokens": "输出 token",
+  "Run time": "运行时间",
+  "Step": "步骤",
+  "Condense": "压缩",
+  "Cost is an estimate from known pricing.": "费用是根据已知价格估算的。",
+  "does not apply": "无法应用",
+  "new file": "新文件",
+  "deleted": "已删除",
+  "changed": "已修改",
+  "This patch changes {0} files: which one to show?": "此补丁修改了 {0} 个文件：要查看哪一个？"
 }

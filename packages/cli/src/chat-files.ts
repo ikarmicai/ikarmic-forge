@@ -41,7 +41,7 @@ function insideCwd(cwd: string, abs: string): string | null {
     return null;
   }
   const rel = path.relative(root, real);
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  if (rel === '' || rel === '..' || rel.startsWith(`..${path.sep}`) || rel.startsWith('../') || path.isAbsolute(rel)) return null;
   return rel.split(path.sep).join('/');
 }
 

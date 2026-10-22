@@ -31,7 +31,8 @@ function runCli(args: string[]): { status: number | null; stdout: string; stderr
   };
 }
 
-describe('forge-eval CLI', () => {
+// Each test starts a real Node process; under a full parallel run (pnpm -r test) that can take well over 5 s.
+describe('forge-eval CLI', { timeout: 60_000 }, () => {
   it('prints help', () => {
     const r = runCli(['help']);
     expect(r.status).toBe(0);

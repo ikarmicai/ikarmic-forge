@@ -80,13 +80,42 @@ export function chatHtml(
   button.icon[hidden] { display: none; }
   button.icon:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
   button.icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-  .meter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
+  .meter { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
   .meter.empty { display: none; }
-  .meter.no-ctx .m-label, .meter.no-ctx #meter-text, .meter.no-ctx .m-bar { display: none; }
-  .m-bar { width: 48px; height: 4px; border-radius: 2px; background: var(--hair); overflow: hidden; flex: none; }
-  .m-bar i { display: block; height: 100%; width: 0; background: var(--muted); }
-  .meter.warn { color: var(--fg); }
-  .meter.warn .m-bar i { background: var(--warn); }
+  .meter.no-ctx .meter-btn { display: none; }
+  .meter-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px 0 0; background: none; color: inherit; border: 0; border-radius: 14px; cursor: pointer; font: inherit; }
+  .meter-btn:hover #meter-text { text-decoration: underline; }
+  /* The wave is decoration; the numbers beside it carry the meaning. Fill height is context used, the dashed guide is the 80% warning level. */
+  .m-cap { --wave: var(--ion); position: relative; width: 132px; height: 28px; border-radius: 14px; overflow: hidden; border: 1px solid var(--edge); background: var(--sunken); flex: none; }
+  .m-cap svg { position: absolute; left: 0; top: 0; }
+  .wv { animation: wv 5s linear infinite; }
+  .wv.b { animation-duration: 7s; animation-direction: reverse; }
+  .meter.stream .wv { animation-duration: 1.6s; }
+  .meter.stream .wv.b { animation-duration: 2.4s; }
+  .wv.a path { fill: color-mix(in srgb, var(--wave) 90%, transparent); }
+  .wv.b path { fill: color-mix(in srgb, var(--wave) 45%, transparent); }
+  @keyframes wv { from { transform: translateX(0); } to { transform: translateX(-44px); } }
+  .meter.warn .m-cap { --wave: var(--warn); }
+  .meter.crit .m-cap { --wave: var(--err); }
+  .m-guide { position: absolute; left: 0; right: 0; top: 5.6px; border-top: 1px dashed color-mix(in srgb, var(--fg) 35%, transparent); pointer-events: none; }
+  .m-chev { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.5; transition: transform .15s; }
+  .meter-btn[aria-expanded="true"] .m-chev { transform: rotate(180deg); }
+  .meter.warn, .meter.crit { color: var(--fg); }
+  #meter-pop { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 9; display: flex; flex-direction: column; gap: 12px; padding: 12px; white-space: normal; color: var(--fg); background: var(--vscode-menu-background, var(--bg)); border: 1px solid var(--edge); border-radius: var(--r-m); box-shadow: var(--elev-3); }
+  #meter-pop[hidden] { display: none; }
+  .mp-head { display: flex; align-items: flex-start; gap: 8px; }
+  .mp-head .icon { margin-left: auto; }
+  .mp-title { font-weight: 600; }
+  .mp-sub { color: var(--muted); font-size: var(--fs-xs); }
+  .mp-big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .mp-big b { font-family: var(--vscode-editor-font-family); font-size: var(--fs-xl); font-weight: 500; }
+  .mp-big span { color: var(--muted); font-size: var(--fs-xs); }
+  .mp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 0; padding-top: 10px; border-top: 1px solid var(--hair); }
+  .mp-stats div { display: flex; flex-direction: column; min-width: 0; }
+  .mp-stats dt { color: var(--muted); font-size: var(--fs-xs); }
+  .mp-stats dd { margin: 0; font-family: var(--vscode-editor-font-family); font-size: var(--fs-m); }
+  .mp-foot { display: flex; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid var(--hair); }
+  .mp-foot p { margin: 0; flex: 1; color: var(--muted); font-size: var(--fs-xs); }
   #more-menu { position: absolute; right: 8px; top: calc(100% + 2px); z-index: 6; min-width: 220px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--border)); border-radius: var(--r-m); box-shadow: var(--elev-3); }
   #more-menu[hidden] { display: none; }
   #more-menu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--r-s); font-size: var(--fs-m); }
@@ -409,8 +438,8 @@ export function chatHtml(
   }
   @media (forced-colors: active) {
     button, select, textarea, #mention-list, .approval, .error-banner, .warning, .question, .composer, .steps, .cchips select, .cchips .model, .empty-state .ex { border: 1px solid ButtonText; }
-    .m-bar { border: 1px solid ButtonText; }
-    .m-bar i { forced-color-adjust: none; background: Highlight; }
+    .m-cap { border: 1px solid ButtonText; }
+    .wv path { forced-color-adjust: none; fill: Highlight; }
   }
 </style>
 </head>
@@ -479,7 +508,23 @@ export function chatHtml(
       <button id="cancel" class="secondary" type="button" disabled hidden aria-label="Stop the running task">Stop</button>
     </div>
   </div>
-  <div class="meter empty" id="meter" role="status" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is"><span class="m-label">Context</span><span id="meter-text"></span><span class="m-bar" aria-hidden="true"><i id="meter-bar"></i></span><span id="meter-cost"></span></div>
+  <div class="meter empty" id="meter">
+    <button type="button" class="meter-btn" id="meter-btn" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is" aria-haspopup="dialog" aria-expanded="false" aria-controls="meter-pop"><span class="m-cap" aria-hidden="true"><svg width="132" height="28" viewBox="0 0 132 28"><g class="wv a"><path id="meter-wave-a" d=""/></g><g class="wv b"><path id="meter-wave-b" d=""/></g></svg><i class="m-guide"></i></span><span class="m-label">Context</span><span id="meter-text"></span><svg class="m-chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6l3-3 3 3"/></svg></button>
+    <span id="meter-cost"></span>
+    <span id="meter-live" class="sr-only" role="status"></span>
+    <div id="meter-pop" role="dialog" aria-label="Context and cost details" hidden>
+      <div class="mp-head"><div><div class="mp-title">Context window</div><div class="mp-sub" id="mp-model"></div></div><button type="button" class="icon" id="mp-close" aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+      <div class="mp-big"><b id="mp-used"></b><span id="mp-of"></span></div>
+      <dl class="mp-stats">
+        <div><dt>Chat cost</dt><dd id="mp-cost"></dd></div>
+        <div><dt>Input tokens</dt><dd id="mp-in"></dd></div>
+        <div><dt>Output tokens</dt><dd id="mp-out"></dd></div>
+        <div><dt>Run time</dt><dd id="mp-time"></dd></div>
+        <div><dt>Step</dt><dd id="mp-step"></dd></div>
+      </dl>
+      <div class="mp-foot"><p>Cost is an estimate from known pricing.</p><button type="button" class="secondary" id="mp-condense">Condense</button></div>
+    </div>
+  </div>
   <div id="voice-status" aria-live="polite"></div>
 </div>
 
@@ -515,7 +560,11 @@ export function chatHtml(
   const mentionList = document.getElementById('mention-list');
   const moreBtn = document.getElementById('more-btn');
   const moreMenu = document.getElementById('more-menu');
-  const meterBar = document.getElementById('meter-bar');
+  const meterBtn = document.getElementById('meter-btn');
+  const meterPop = document.getElementById('meter-pop');
+  const meterWaveA = document.getElementById('meter-wave-a');
+  const meterWaveB = document.getElementById('meter-wave-b');
+  const meterLive = document.getElementById('meter-live');
   const meterCostEl = document.getElementById('meter-cost');
   const meterText = document.getElementById('meter-text');
   const meterStat = document.getElementById('meter-stat');
@@ -668,7 +717,7 @@ export function chatHtml(
   function closeMore() { moreMenu.hidden = true; moreBtn.setAttribute('aria-expanded', 'false'); }
   function closeRowMenus() { Array.prototype.forEach.call(panelEl.querySelectorAll('.rowmenu'), (m) => m.remove()); }
   /** Menus are transient: close them all together, e.g. before a panel opens. */
-  function closeMenus() { closeMore(); closeModelMenu(); closeRowMenus(); }
+  function closeMenus() { closeMore(); closeModelMenu(); closeRowMenus(); closeMeterPop(false); }
   // A click in another part of VS Code never reaches this document, so a blur is the only signal.
   window.addEventListener('blur', closeMenus);
   document.addEventListener('click', (e) => { if (!e.target.closest || !e.target.closest('.rowmenu')) closeRowMenus(); });
@@ -1165,6 +1214,8 @@ export function chatHtml(
 
   let meterCost = null;
   let meterCtx = null;
+  let meterRun = null;
+  let lastMeterLevel = 'none';
   function renderMeter() {
     let pct = null;
     if (meterCtx && meterCtx.window > 0) pct = Math.min(100, Math.round((meterCtx.tokens / meterCtx.window) * 100));
@@ -1175,13 +1226,58 @@ export function chatHtml(
     const detail = parts.join(' · ');
     meterText.textContent = pct !== null ? pct + '%' : '';
     meterCostEl.textContent = cost;
-    meterBar.style.width = (pct || 0) + '%';
-    meterEl.classList.toggle('no-ctx', pct === null);
-    meterEl.title = detail || 'Cost of this chat and how full the context window is';
+    if (UI) {
+      meterWaveA.setAttribute('d', UI.wavePath(pct || 0, 0, 2.6));
+      meterWaveB.setAttribute('d', UI.wavePath(pct || 0, 2.1, 2.1));
+    }
+    meterBtn.title = detail || 'Cost of this chat and how full the context window is';
+    meterBtn.setAttribute('aria-label', detail ? detail + '. Show usage details' : 'Chat cost and context usage');
     meterStat.textContent = detail;
+    const level = UI ? UI.meterLevel(pct) : 'none';
     meterEl.classList.toggle('empty', !detail);
-    meterEl.classList.toggle('warn', pct !== null && pct >= 80);
+    meterEl.classList.toggle('no-ctx', pct === null);
+    meterEl.classList.toggle('warn', level === 'warn');
+    meterEl.classList.toggle('crit', level === 'crit');
+    // The wave is silent; only a change into a worse level is announced, once.
+    if (level !== lastMeterLevel) {
+      if (level === 'warn') meterLive.textContent = 'Context is ' + pct + '% full';
+      else if (level === 'crit') meterLive.textContent = 'Context is almost full: ' + pct + '%';
+      lastMeterLevel = level;
+    }
+    renderMeterPop(cost);
   }
+  /** The details dialog shows only what the page really knows: the window, the chat cost and the last run's figures. */
+  function renderMeterPop(cost) {
+    const fmt = (v) => (UI ? UI.formatTokens(v) : String(v));
+    const used = meterCtx ? meterCtx.tokens : 0;
+    const win = meterCtx ? meterCtx.window : 0;
+    document.getElementById('mp-model').textContent = (modelLabel.textContent || '') + (win ? ' · ' + fmt(win) + ' token window' : '');
+    document.getElementById('mp-used').textContent = win ? fmt(used) : '–';
+    document.getElementById('mp-of').textContent = win ? 'of ' + fmt(win) + ' tokens used · ' + fmt(Math.max(0, win - used)) + ' left' : '';
+    document.getElementById('mp-cost').textContent = cost || '–';
+    document.getElementById('mp-in').textContent = meterRun ? fmt(meterRun.input) : '–';
+    document.getElementById('mp-out').textContent = meterRun ? fmt(meterRun.output) : '–';
+    document.getElementById('mp-time').textContent = meterRun && meterRun.ms ? (meterRun.ms / 1000).toFixed(1) + 's' : '–';
+    document.getElementById('mp-step').textContent = meterRun && meterRun.max ? meterRun.iter + ' of ' + meterRun.max : '–';
+  }
+  function closeMeterPop(refocus) {
+    if (meterPop.hidden) return;
+    meterPop.hidden = true;
+    meterBtn.setAttribute('aria-expanded', 'false');
+    if (refocus) meterBtn.focus();
+  }
+  meterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!meterPop.hidden) { closeMeterPop(true); return; }
+    closeMenus();
+    meterPop.hidden = false;
+    meterBtn.setAttribute('aria-expanded', 'true');
+    document.getElementById('mp-close').focus();
+  });
+  document.getElementById('mp-close').addEventListener('click', () => closeMeterPop(true));
+  meterPop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMeterPop(true); } });
+  document.addEventListener('click', (e) => { if (!meterPop.hidden && !meterPop.contains(e.target) && !meterBtn.contains(e.target)) closeMeterPop(false); });
+  document.getElementById('mp-condense').addEventListener('click', () => { closeMeterPop(false); closePanel(); vscode.postMessage({ type: 'condense' }); });
   condenseBtn.addEventListener('click', () => { closeMore(); closePanel(); vscode.postMessage({ type: 'condense' }); });
 
   // ---- slash menu: reuses the mention list; a slash as the first character opens it
@@ -1453,6 +1549,7 @@ export function chatHtml(
     cancelBtn.hidden = !running;
     autoToggle.disabled = running;
     modeSelect.disabled = running;
+    meterEl.classList.toggle('stream', running);
   }
 
   function escapeHtml(s) {
@@ -1852,7 +1949,7 @@ export function chatHtml(
     btn.addEventListener('click', (e) => e.preventDefault());
   }
 
-  function appendApproval(id, name, args, destructive, previewable, allowable, preview) {
+  function appendApproval(id, name, args, destructive, previewable, allowable, preview, reviewable) {
     let copy = null;
     if (UI) {
       try { copy = UI.approvalCopy(name, args, !!destructive); } catch (err) { console.warn('[forge] approvalCopy failed', err); }
@@ -1873,7 +1970,7 @@ export function chatHtml(
             ? '<button type="button" class="link file" title="Open diff">' + escapeHtml(copy.target) + '</button>'
             : '<span class="target">' + escapeHtml(copy.target) + '</span>') +
           (copy.meta ? ' <span class="meta">' + escapeHtml(copy.meta) + '</span>' : '') +
-          (previewable ? ' <button type="button" class="link hunks">Review changes</button>' : '') +
+          (previewable && reviewable !== false ? ' <button type="button" class="link hunks">Review changes</button>' : '') +
           (allowable ? ' <button type="button" class="link allow">Always allow this command</button>' : '') +
         '</span>' +
         '<span class="acts">' +
@@ -2446,7 +2543,7 @@ export function chatHtml(
         appendToolResult(msg.id, msg.name, msg.result, msg.isError);
         break;
       case 'approval_request':
-        appendApproval(msg.id, msg.name, msg.args, msg.destructive, msg.previewable, msg.allowable, msg.preview).then((d) => {
+        appendApproval(msg.id, msg.name, msg.args, msg.destructive, msg.previewable, msg.allowable, msg.preview, msg.reviewable).then((d) => {
           if (d === '__host__') return;
           vscode.postMessage(d.note
             ? { type: 'approval_response', id: msg.id, approved: d.approved, note: d.note }
@@ -2487,7 +2584,9 @@ export function chatHtml(
       case 'status':
         lastRunReason = msg.reason || null;
         appendStatus(msg.iteration, msg.maxIter, msg.inputTokens, msg.outputTokens, msg.durationMs, msg.reason);
-        if (msg.contextWindow) { meterCtx = { tokens: msg.contextTokens || 0, window: msg.contextWindow }; renderMeter(); }
+        if (msg.contextWindow) meterCtx = { tokens: msg.contextTokens || 0, window: msg.contextWindow };
+        meterRun = { input: msg.inputTokens || 0, output: msg.outputTokens || 0, ms: msg.durationMs || 0, iter: msg.iteration || 0, max: msg.maxIter || 0 };
+        renderMeter();
         break;
       case 'cost':
         if (msg.known) { meterCost = msg.chatCostUsd; renderMeter(); }
@@ -2495,6 +2594,7 @@ export function chatHtml(
       case 'meter_reset':
         meterCost = typeof msg.costUsd === 'number' ? msg.costUsd : null;
         meterCtx = null;
+        meterRun = null;
         renderMeter();
         break;
       case 'compaction':

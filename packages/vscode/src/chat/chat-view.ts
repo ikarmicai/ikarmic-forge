@@ -33,6 +33,8 @@ import {
   envVarForProvider,
   formatProjectCommandsBlock,
   isAlwaysAllowable,
+  previewPatch,
+  type PatchPreview,
   generateSessionId,
   listSessions,
   formatSessionMarkdown,
@@ -98,7 +100,7 @@ import { friendlyError } from './error-text.js';
 import { ChatSession, type ChatHistory, type ChatSessionDeps } from './chat-session.js';
 import { SessionFollower } from './session-follow.js';
 import { webviewDictionary } from './webview-i18n.js';
-import { isPreviewable, proposedContent, resolveInsideWorkspace } from './edit-preview.js';
+import { isHunkReviewable, isPreviewable, proposedContent, resolveInsideWorkspace } from './edit-preview.js';
 import { handleHistoryMessage, isHistoryMessage, sameDir, transcriptFromMessages, type HistoryDeps, type HistoryMessage } from './history-protocol.js';
 import { chatHtml } from './html.js';
 import { decisionFromSelection, hunksFor } from './hunk-review.js';
@@ -125,12 +127,12 @@ import { KeepAwake } from './keep-awake.js';
 import { runOs, soundCommand, toastCommand } from './notify-os.js';
 import { resolveCheapModel } from '../cheap-model.js';
 import { activeCommands, withEntry } from './command-allow-store.js';
-import { looksLarge } from './large-request.js';
+import { looksLargeMessage } from './large-request.js';
 import { planVerify } from './verify-checks.js';
 import { createVsCodeCommandRunner } from './terminal-runner.js';
 import { parseSpecCommand } from '../specs/spec-command.js';
 import type { RunMode, RunOutcome } from '../specs/spec-controller.js';
-import { changedFileFromToolResult } from '../specs/spec-paths.js';
+import { changedFilesFromToolResult } from '../specs/spec-paths.js';
 
 import {
   DEFAULT_MODE_ID,
@@ -976,6 +978,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private async openDiff(id: string): Promise<void> {
     const pending = this.pendingApprovalArgs.get(id);
     if (!pending || !this.proposed) return;
+    if (pending.name === 'apply_patch') {
+      await this.openPatchDiff(id, String((pending.args as { patch?: unknown }).patch ?? ''));
+      return;
+    }
     const rawPath = (pending.args as { path?: unknown }).path;
     if (typeof rawPath !== 'string') return;
     const abs = resolveInsideWorkspace(this.workspaceRoot(), rawPath);
@@ -998,6 +1004,48 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const right = this.proposed.set(id, preview.content);
     const left = current === null ? vscode.Uri.from({ scheme: PROPOSED_SCHEME, path: `/empty-${id}` }) : fileUri;
     await vscode.commands.executeCommand('vscode.diff', left, right, `${rawPath} (proposed)`);
+  }
+
+  /** A patch can change several files: show the one the person picks (or the only one) as a diff before approval. */
+  private async openPatchDiff(id: string, patch: string): Promise<void> {
+    if (!this.proposed) return;
+    const root = this.workspaceRoot();
+    let previews: PatchPreview[];
+    try {
+      previews = await previewPatch(patch, async (p) => {
+        const abs = resolveInsideWorkspace(root, p);
+        if (!abs) return null;
+        try {
+          return new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.file(abs)));
+        } catch {
+          return null;
+        }
+      });
+    } catch (err) {
+      this.post({ type: 'warning', message: (err as Error).message });
+      return;
+    }
+    const inside = previews.filter((p) => resolveInsideWorkspace(root, p.path));
+    if (inside.length === 0) return;
+    const chosen =
+      inside.length === 1
+        ? inside[0]
+        : (
+            await vscode.window.showQuickPick(
+              inside.map((p) => ({ label: p.path, description: p.error ? t('does not apply') : p.before === null ? t('new file') : p.after === null ? t('deleted') : t('changed'), p })),
+              { title: t('This patch changes {0} files: which one to show?', inside.length) }
+            )
+          )?.p;
+    if (!chosen) return;
+    if (chosen.error) {
+      this.post({ type: 'warning', message: chosen.error });
+      return;
+    }
+    const abs = resolveInsideWorkspace(root, chosen.path)!;
+    const empty = (tag: string): vscode.Uri => vscode.Uri.from({ scheme: PROPOSED_SCHEME, path: `/empty-${id}-${tag}` });
+    const left = chosen.before === null ? empty('before') : vscode.Uri.file(abs);
+    const right = chosen.after === null ? empty('after') : this.proposed.set(`${id}:${chosen.path}`, chosen.after);
+    await vscode.commands.executeCommand('vscode.diff', left, right, `${chosen.path} (proposed)`);
   }
 
   private async handleMessage(msg: ChatMessage | HistoryMessage): Promise<void> {
@@ -1047,7 +1095,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         const plan: CommandRunPlan = mention ? { text: mention } : await this.planMessage(msg.text);
         const typed = plan.text;
         const text = typed.trim() || (attachments.length > 0 ? t('Take a look at the attached files.') : typed);
-        if (this.shouldSuggestSpec(text)) {
+        if (this.shouldSuggestSpec(msg.text, text)) {
           this.pendingLarge = { text, auto: msg.auto ?? false, attachments };
           this.post({ type: 'suggest_spec' });
           return;
@@ -1245,13 +1293,13 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   /** Offer a spec before running a request that asks for a whole system (default mode only). */
-  private shouldSuggestSpec(text: string): boolean {
+  private shouldSuggestSpec(typed: string, sent: string): boolean {
     return (
       !!this.specHandler &&
       this.modeId === DEFAULT_MODE_ID &&
       vscode.workspace.isTrusted &&
       vscode.workspace.getConfiguration('forge').get<boolean>('suggestSpec', true) &&
-      looksLarge(text)
+      looksLargeMessage(typed, sent)
     );
   }
 
@@ -1286,6 +1334,13 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     if (!(await this.ensureView())) return;
     this.post({ type: 'user_message', text: label });
     await this.runTask(task, false, modeId ? { kind: 'chat', modeId } : undefined);
+  }
+
+  /** Agents, modes and commands changed on disk (an import wrote new files): make them usable without a reload. */
+  async reloadExtras(): Promise<void> {
+    await this.refreshAgentFiles();
+    this.announceModes();
+    await this.postSlashCommands();
   }
 
   /** Put text (an @ mention from "Add to Context") at the end of the message being typed. */
@@ -1614,6 +1669,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             args: req.args,
             destructive: req.destructive,
             previewable: isPreviewable(req.name),
+            reviewable: isHunkReviewable(req.name),
             allowable: this.canAlwaysAllow(req.name, req.args),
             ...(req.preview ? { preview: req.preview } : {}),
           });
@@ -1697,8 +1753,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             return;
           case 'tool_result': {
             const call = toolCalls.get(event.id);
-            const file = call ? changedFileFromToolResult(workspaceRoot, event.name, call.args, event.isError) : null;
-            if (file) changedFiles.add(file);
+            for (const file of call ? changedFilesFromToolResult(workspaceRoot, event.name, call.args, event.isError) : []) changedFiles.add(file);
             if (typeof event.result === 'string' && event.result.startsWith('Denied by user')) denied = true;
             this.post({ type: 'tool_result', id: event.id, name: event.name, result: event.result, isError: event.isError });
             return;
