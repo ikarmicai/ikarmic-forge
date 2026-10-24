@@ -2,7 +2,7 @@
 
 An all-in-one AI coding assistant. A shared agent engine that drives a polished terminal CLI today, and a VS Code extension tomorrow. One source of truth for the model loop, the tools, and the prompts: different surfaces on top.
 
-> **Status:** **v5.1.0**: CLI, VS Code extension and eval harness, open source under AGPL-3.0-only. The core engine (`@ikarmic/forge-core`) is proprietary and free to run with them.
+> **Status:** **v5.1.1**: CLI, VS Code extension and eval harness, open source under AGPL-3.0-only. The core engine (`@ikarmic/forge-core`) is proprietary and free to run with them.
 >
 > **Install:** `npm i -g ikarmic-forge` for the CLI, or the VS Code Marketplace / Open VSX listing for the extension. To build from source: `pnpm install && pnpm -r build`.
 
@@ -140,7 +140,7 @@ The same agent engine ships as a VS Code extension with inline completions + a s
 cd packages/vscode
 pnpm build
 pnpm dlx @vscode/vsce package
-code --install-extension ikarmic-forge-1.0.0.vsix
+code --install-extension *.vsix
 ```
 
 Then click the **Forge** icon in the activity bar to open the chat. Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on macOS). Configure provider + API key in Settings (`@ext:ikarmic.ikarmic-forge`) or via environment variables.
