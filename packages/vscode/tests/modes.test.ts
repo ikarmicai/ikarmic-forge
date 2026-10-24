@@ -158,6 +158,31 @@ describe('modeOverrides with modeModels', () => {
   });
 });
 
+describe('a custom agent that reuses a built-in id (RB-38)', () => {
+  const override: SpecialistConfig = { ...ask, description: 'My ask', systemPrompt: 'MY ASK PROMPT' };
+  // listSpecialists() puts the built-ins first and appends the custom entry, so the id is in the list twice.
+  const listed = [ask, code, orchestrator, override];
+
+  it('is one mode in the picker, not two', () => {
+    const ids = listModes(listed).map((m) => m.id);
+    expect(ids).toEqual(['agent', 'ask', 'code']);
+  });
+
+  it('shows the custom description, since it replaces the built-in', () => {
+    expect(listModes(listed).find((m) => m.id === 'ask')?.description).toBe('My ask');
+  });
+
+  it('runs with the custom prompt, the same one the orchestrator uses', () => {
+    expect(modeOverrides('ask', ctx({ specialists: listed })).systemPrompt).toContain('MY ASK PROMPT');
+  });
+
+  it('keeps every mode once when all five built-ins are copied into the custom file', () => {
+    const copies = [ask, code].map((s) => ({ ...s }));
+    const ids = listModes([ask, code, ...copies]).map((m) => m.id);
+    expect(ids).toEqual(['agent', 'ask', 'code']);
+  });
+});
+
 describe("customSpecialistIds", () => {
   it("returns the registered (non built-in) ids, including ones shadowing a built-in, so they can be unregistered before a reload", () => {
     const shadow = { ...ask, description: "override" };

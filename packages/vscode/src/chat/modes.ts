@@ -69,16 +69,27 @@ export function modeModelProblem(modeId: string, ctx: Pick<ModeContext, 'modeMod
   }
 }
 
+/**
+ * `listSpecialists()` puts the built-ins first and appends the custom ones, so a custom agent that
+ * reuses a built-in id is in the list twice. The custom one replaces the built-in (as it does for
+ * the orchestrator): keep one entry per id, in the position of the first, with the last one's content.
+ */
+function dedupeById(specialists: readonly SpecialistConfig[]): SpecialistConfig[] {
+  const byId = new Map<string, SpecialistConfig>();
+  for (const s of specialists) byId.set(s.id, s);
+  return [...byId.values()];
+}
+
 function findSpecialist(modeId: string | undefined, specialists: readonly SpecialistConfig[]): SpecialistConfig | undefined {
   if (!modeId || modeId === DEFAULT_MODE_ID || EXCLUDED_IDS.has(modeId)) return undefined;
-  return specialists.find((s) => s.id === modeId);
+  return dedupeById(specialists).find((s) => s.id === modeId);
 }
 
 export function listModes(specialists: readonly SpecialistConfig[]): ModeOption[] {
   const out: ModeOption[] = [
     { id: DEFAULT_MODE_ID, label: 'Agent', description: 'Full agent with every enabled tool (default).' },
   ];
-  for (const s of specialists) {
+  for (const s of dedupeById(specialists)) {
     if (s.id === DEFAULT_MODE_ID || EXCLUDED_IDS.has(s.id)) continue;
     out.push({ id: s.id, label: s.id.charAt(0).toUpperCase() + s.id.slice(1), description: s.description });
   }
