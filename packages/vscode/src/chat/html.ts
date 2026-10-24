@@ -80,14 +80,14 @@ export function chatHtml(
   button.icon[hidden] { display: none; }
   button.icon:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
   button.icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-  .meter { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
+  .meter { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
   .meter.empty { display: none; }
   .meter.no-ctx .meter-btn { display: none; }
-  .meter-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px 0 0; background: none; color: inherit; border: 0; border-radius: 14px; cursor: pointer; font: inherit; }
+  .meter-btn { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px 0 0; background: none; color: inherit; border: 0; border-radius: 14px; cursor: pointer; font: inherit; }
   .meter-btn:hover #meter-text { text-decoration: underline; }
   /* The wave is decoration; the numbers beside it carry the meaning. Fill height is context used, the dashed guide is the 80% warning level. */
-  .m-cap { --wave: var(--ion); position: relative; width: 132px; height: 28px; border-radius: 14px; overflow: hidden; border: 1px solid var(--edge); background: var(--sunken); flex: none; }
-  .m-cap svg { position: absolute; left: 0; top: 0; }
+  .m-cap { --wave: var(--ion); position: relative; flex: 1 1 auto; min-width: 48px; height: 28px; border-radius: 14px; overflow: hidden; border: 1px solid var(--edge); background: var(--sunken); }
+  .m-cap svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
   .wv { animation: wv 5s linear infinite; }
   .wv.b { animation-duration: 7s; animation-direction: reverse; }
   .meter.stream .wv { animation-duration: 1.6s; }
@@ -416,8 +416,11 @@ export function chatHtml(
     color: var(--muted); font-style: italic;
   }
   #voice-status {
-    font-size: var(--fs-xs); color: var(--muted); padding: 4px 0; min-height: 14px;
+    font-size: var(--fs-xs); color: var(--muted);
   }
+  #voice-status:not(:empty) { padding: 4px 0; min-height: 14px; }
+  /* Empty, it must not add the flex gap above it as dead space under the meter. */
+  #voice-status:empty { margin-top: -6px; }
   #voice-status.error { color: var(--err); }
   #mention-list {
     display: none; border: 1px solid var(--border); border-radius: var(--r-s); margin-bottom: 4px;
@@ -509,7 +512,7 @@ export function chatHtml(
     </div>
   </div>
   <div class="meter empty" id="meter">
-    <button type="button" class="meter-btn" id="meter-btn" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is" aria-haspopup="dialog" aria-expanded="false" aria-controls="meter-pop"><span class="m-cap" aria-hidden="true"><svg width="132" height="28" viewBox="0 0 132 28"><g class="wv a"><path id="meter-wave-a" d=""/></g><g class="wv b"><path id="meter-wave-b" d=""/></g></svg><i class="m-guide"></i></span><span class="m-label">Context</span><span id="meter-text"></span><svg class="m-chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6l3-3 3 3"/></svg></button>
+    <button type="button" class="meter-btn" id="meter-btn" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is" aria-haspopup="dialog" aria-expanded="false" aria-controls="meter-pop"><span class="m-cap" aria-hidden="true"><svg viewBox="0 0 132 28" preserveAspectRatio="none"><g class="wv a"><path id="meter-wave-a" d=""/></g><g class="wv b"><path id="meter-wave-b" d=""/></g></svg><i class="m-guide"></i></span><span class="m-label">Context</span><span id="meter-text"></span><svg class="m-chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6l3-3 3 3"/></svg></button>
     <span id="meter-cost"></span>
     <span id="meter-live" class="sr-only" role="status"></span>
     <div id="meter-pop" role="dialog" aria-label="Context and cost details" hidden>
