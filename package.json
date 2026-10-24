@@ -20,13 +20,15 @@
     "marked": "^15.0.12",
     "tsx": "^4.19.0",
     "typescript": "^5.6.3",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "pnpm": {
     "overrides": {
       "hono": ">=4.13.11",
-      "jsondiffpatch": ">=0.7.6"
+      "jsondiffpatch": ">=0.7.6",
+      "ip-address": ">=10.7.4",
+      "katex": ">=0.18.2"
     }
   },
   "packageManager": "pnpm@10.33.2"
