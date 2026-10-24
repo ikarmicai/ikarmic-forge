@@ -44,7 +44,6 @@ import {
   enhancePrompt,
   loadForgeConfigFile,
   loadMergedForgeConfig,
-  resolveAutoApprove,
   saveForgeConfigFile,
   loadSession,
   BackgroundAgents,
@@ -146,6 +145,7 @@ import {
   retargetSystemPrompt,
   type ModeOverrides,
 } from './modes.js';
+import { approvalLevelOf, autoApproveFor, type ApprovalLevel } from './approval-level.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
 
@@ -197,7 +197,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private webviewReady = false;
   private specHandler: ((task: string) => void) | undefined;
   /** The message held back while the "this looks big" card is on screen; the webview only sends a choice. */
-  private pendingLarge: { text: string; auto: boolean; attachments: Attachment[] } | undefined;
+  private pendingLarge: { text: string; level: ApprovalLevel; attachments: Attachment[] } | undefined;
   /** The last chat message as typed (with its files), and the history before it: what Retry and Edit replace. */
   private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined } | undefined;
   /** Files pasted, dropped or picked for the next message. */
@@ -637,7 +637,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     // The request the user made, not the diff it expands to: without this the transcript starts with the model's reply.
     this.post({ type: 'user_message', text: args.trim() ? `/review ${args.trim()}` : '/review' });
-    await this.runChat(prompt, false, [], resolveModeId('ask', listSpecialists()));
+    await this.runChat(prompt, 'ask', [], resolveModeId('ask', listSpecialists()));
   }
 
   private readonly remoteSkillWarned = new Set<string>();
@@ -737,7 +737,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       runTurn: async (prompt, opts) => {
         this.post({ type: 'user_message', text: t('Continuing the goal') });
         this.lastTurn = undefined;
-        const outcome = await this.runTask(prompt, false, { kind: 'chat', extraTools: opts.tools, disableAskUser: opts.disableAskUser });
+        const outcome = await this.runTask(prompt, 'ask', { kind: 'chat', extraTools: opts.tools, disableAskUser: opts.disableAskUser });
         if (!outcome) return { toolCalls: 0, error: true };
         return {
           toolCalls: outcome.toolCalls ?? 0,
@@ -1096,11 +1096,11 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         const typed = plan.text;
         const text = typed.trim() || (attachments.length > 0 ? t('Take a look at the attached files.') : typed);
         if (this.shouldSuggestSpec(msg.text, text)) {
-          this.pendingLarge = { text, auto: msg.auto ?? false, attachments };
+          this.pendingLarge = { text, level: approvalLevelOf(msg.level, msg.auto), attachments };
           this.post({ type: 'suggest_spec' });
           return;
         }
-        await this.withOverrides(plan, () => this.runChat(text, msg.auto ?? false, attachments, plan.modeId));
+        await this.withOverrides(plan, () => this.runChat(text, approvalLevelOf(msg.level, msg.auto), attachments, plan.modeId));
         return;
       }
       case 'retry_last': {
@@ -1118,7 +1118,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         this.post({ type: 'user_message', text: msg.text?.trim() || last.text, retry: true });
         this.post({ type: 'notice', message: t('Retrying. Files the earlier attempt changed stay changed; use Revert this run or a checkpoint to undo them.') });
         // The files that went with the message go again.
-        await this.withOverrides(edited, () => this.runChat(text, msg.auto ?? false, last.attachments, edited?.modeId, last.historyBefore));
+        await this.withOverrides(edited, () => this.runChat(text, approvalLevelOf(msg.level, msg.auto), last.attachments, edited?.modeId, last.historyBefore));
         return;
       }
       case 'revert_run':
@@ -1139,7 +1139,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           this.attachments.restore(held.attachments);
           this.postAttachments();
           this.specHandler(held.text);
-        } else await this.runChat(held.text, held.auto, held.attachments, msg.choice === 'plan' ? 'plan' : undefined);
+        } else await this.runChat(held.text, held.level, held.attachments, msg.choice === 'plan' ? 'plan' : undefined);
         return;
       }
       case 'run_action':
@@ -1333,7 +1333,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   async runFromEditor(label: string, task: string, modeId?: string): Promise<void> {
     if (!(await this.ensureView())) return;
     this.post({ type: 'user_message', text: label });
-    await this.runTask(task, false, modeId ? { kind: 'chat', modeId } : undefined);
+    await this.runTask(task, 'ask', modeId ? { kind: 'chat', modeId } : undefined);
   }
 
   /** Agents, modes and commands changed on disk (an import wrote new files): make them usable without a reload. */
@@ -1355,7 +1355,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     // A string is the label to show instead of the (long) task, e.g. for a spec sync.
     if (echo) this.post({ type: 'user_message', text: typeof echo === 'string' ? echo : `/spec ${task}` });
     this.lastTurn = undefined; // Retry and Edit are for chat messages only
-    return this.runTask(task, false, { kind: 'spec-generate' });
+    return this.runTask(task, 'ask', { kind: 'spec-generate' });
   }
 
   /** Run one spec task. Fresh runs start a new chat in Agent mode (not persisted). */
@@ -1381,7 +1381,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     this.post({ type: 'user_message', text: label });
     this.lastTurn = undefined; // Retry and Edit are for chat messages only
-    return this.runTask(prompt, false);
+    return this.runTask(prompt, 'ask');
   }
 
   /** `/<name> args` for a command in .forge/commands or ~/.forge/commands; other text unchanged. */
@@ -1429,7 +1429,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   /** A chat message: resolve its @mentions, then run it with its attachments; remembered for Retry and Edit. */
-  private async runChat(text: string, auto: boolean, attachments: Attachment[], modeId?: string, historyBefore = this.session.history): Promise<void> {
+  private async runChat(text: string, level: ApprovalLevel, attachments: Attachment[], modeId?: string, historyBefore = this.session.history): Promise<void> {
     this.lastTurn = { text, attachments, historyBefore };
     // @mentions: attach the referenced files / diagnostics / git diff as context for this turn.
     const resolved = await resolveMentions(text, createMentionResolvers(this.workspaceRoot(), () => this.terminalLog, readConfig().docs, (ref) => this.readChatMention(ref)));
@@ -1438,7 +1438,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     // Background agents that finished since the last message: the model has not seen their answers yet.
     const finished = backgroundResultsBlock(this.background.takeUndelivered());
-    const outcome = await this.runTask(finished ? `${finished}\n\n${resolved.prompt}` : resolved.prompt, auto, { kind: 'chat', ...(modeId ? { modeId } : {}), attachments });
+    const outcome = await this.runTask(finished ? `${finished}\n\n${resolved.prompt}` : resolved.prompt, level, { kind: 'chat', ...(modeId ? { modeId } : {}), attachments });
     if (outcome === null && attachments.length > 0) {
       // Nothing ran (no model, a run already going): don't lose what the user attached.
       this.attachments.restore(attachments);
@@ -1451,7 +1451,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
    * approval prompts interactively via the webview. Returns the run outcome,
    * or null when nothing ran (refused, no view, no model).
    */
-  async runTask(task: string, auto: boolean, options: RunOptions = { kind: 'chat' }): Promise<RunOutcome | null> {
+  async runTask(task: string, level: ApprovalLevel, options: RunOptions = { kind: 'chat' }): Promise<RunOutcome | null> {
+    const auto = level === 'auto';
     const generating = options.kind === 'spec-generate';
     const attachments = options.kind === 'chat' ? (options.attachments ?? []) : [];
     if (!this.view) return null;
@@ -1640,7 +1641,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             },
           }
         : {}),
-      autoApproveTools: resolveAutoApprove(sharedConfig.autoApproveTools),
+      autoApproveTools: autoApproveFor(level, sharedConfig.autoApproveTools),
       ...permissionExtras(sharedConfig),
       ...(sharedConfig.instructions?.length ? { extraInstructions: sharedConfig.instructions } : {}),
       ...(sharedConfig.subagentModel ? { subAgentModel: applyResolved(runModel, resolveModelAlias(sharedConfig.subagentModel, sharedConfig.aliases, runModel.provider)) } : {}),
@@ -2037,7 +2038,7 @@ export interface WorkSource<V, A> {
 
 type ChatMessage =
   | { type: 'ready' }
-  | { type: 'user_input'; text: string; auto: boolean }
+  | { type: 'user_input'; text: string; level?: ApprovalLevel; auto?: boolean }
   | { type: 'approval_response'; id: string; approved: boolean; note?: string }
   | { type: 'cancel' }
   | { type: 'suggest_choice'; choice: 'spec' | 'plan' | 'go' | 'never' }
@@ -2059,7 +2060,7 @@ type ChatMessage =
   | { type: 'copy_resume'; id: string }
   | { type: 'open_settings' }
   | { type: 'mention_query'; q: string }
-  | { type: 'retry_last'; text?: string; auto?: boolean }
+  | { type: 'retry_last'; text?: string; level?: ApprovalLevel; auto?: boolean }
   | { type: 'attach_file'; name: string; dataUrl: string }
   | { type: 'attach_uris'; uris: string[] }
   | { type: 'pick_attachments' }

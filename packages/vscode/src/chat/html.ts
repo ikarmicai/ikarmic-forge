@@ -235,9 +235,13 @@ export function chatHtml(
   .msg.user .files { margin-top: 4px; font-size: var(--fs-xs); opacity: .8; }
   .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 2px 4px 0 6px; min-width: 0; }
   .cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px 8px; }
-  .cfoot .auto { font-size: var(--fs-s); color: var(--muted); display: flex; gap: 6px; align-items: center; min-height: 24px; padding: 0 6px; border-radius: var(--r-s); cursor: pointer; }
+  .cfoot .auto { font-size: var(--fs-s); color: var(--muted); background: transparent; border: 1px solid var(--chip-edge); border-radius: var(--r-s); min-height: 24px; padding: 2px 4px; cursor: pointer; field-sizing: content; }
+  .cfoot .auto:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
+  .cfoot .auto option { background: var(--vscode-dropdown-background, var(--bg)); color: var(--vscode-dropdown-foreground, var(--fg)); font-weight: normal; }
+  .cfoot .auto.edits { color: var(--fg); }
   .cfoot .auto.on { color: var(--err); font-weight: 600; background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .2)); }
   #auto-note { padding: 0 10px 6px; font-size: var(--fs-xs); color: var(--err); }
+  #auto-note.edits { color: var(--muted); }
   #auto-note[hidden] { display: none; }
   #send, #cancel { flex: none; min-height: 24px; }
   #send[hidden], #cancel[hidden] { display: none; }
@@ -440,7 +444,7 @@ export function chatHtml(
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }
   @media (forced-colors: active) {
-    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .question, .composer, .steps, .cchips select, .cchips .model, .empty-state .ex { border: 1px solid ButtonText; }
+    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .question, .composer, .steps, .cchips select, .cchips .model, .cfoot .auto, .empty-state .ex { border: 1px solid ButtonText; }
     .m-cap { border: 1px solid ButtonText; }
     .wv path { forced-color-adjust: none; fill: Highlight; }
   }
@@ -501,7 +505,11 @@ export function chatHtml(
   <button type="button" class="model" id="model-label" title="Model" aria-haspopup="dialog" aria-expanded="false">no model</button>
     </div>
     <div class="cfoot">
-      <label class="auto" id="auto-label" title="Autonomous: Forge runs tools without asking you first"><input type="checkbox" id="auto-toggle" aria-describedby="auto-note" /> Autonomous</label>
+      <select class="auto" id="approval" aria-label="Approvals" aria-describedby="auto-note" title="Forge asks before it changes files or runs commands">
+        <option value="ask" title="Forge asks before it changes files or runs commands" selected>Ask first</option>
+        <option value="edits" title="File edits run without asking. Commands still ask.">Accept edits</option>
+        <option value="auto" title="Forge runs tools without asking you first">Autonomous</option>
+      </select>
       <span class="spacer"></span>
       <button id="attach" class="icon" type="button" title="Attach context (@)" aria-label="Attach context"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M10.5 8v1a2 2 0 0 0 4 0V8a6.5 6.5 0 1 0-2.6 5.2"/></svg></button>
       <button id="attach-file" class="icon" type="button" title="Attach files (or paste / drop them)" aria-label="Attach files"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.3 2.3 0 0 1 3.3 3.3L6.5 11.1a1.2 1.2 0 0 1-1.7-1.7L10 4.2"/></svg></button>
@@ -542,14 +550,24 @@ export function chatHtml(
   const inputEl = document.getElementById('input');
   const sendBtn = document.getElementById('send');
   const cancelBtn = document.getElementById('cancel');
-  const autoToggle = document.getElementById('auto-toggle');
-  const autoLabel = document.getElementById('auto-label');
+  // Approvals: Ask first, Accept edits (file writes run unasked) or Autonomous. Sent as level with each message.
+  const approvalSelect = document.getElementById('approval');
   const autoNote = document.createElement('div');
   autoNote.id = 'auto-note';
   autoNote.hidden = true;
-  autoNote.textContent = 'Approvals are off: Forge runs tools without asking.';
-  autoLabel.closest('.composer').appendChild(autoNote);
-  autoToggle.addEventListener('change', () => { autoLabel.classList.toggle('on', autoToggle.checked); autoNote.hidden = !autoToggle.checked; });
+  approvalSelect.closest('.composer').appendChild(autoNote);
+  const APPROVAL_NOTES = { edits: 'File edits run without asking. Commands still ask.', auto: 'Approvals are off: Forge runs tools without asking.' };
+  function showApproval() {
+    const level = approvalSelect.value;
+    approvalSelect.classList.toggle('on', level === 'auto');
+    approvalSelect.classList.toggle('edits', level === 'edits');
+    autoNote.classList.toggle('edits', level === 'edits');
+    autoNote.textContent = APPROVAL_NOTES[level] || '';
+    autoNote.hidden = !APPROVAL_NOTES[level];
+    const chosen = approvalSelect.options[approvalSelect.selectedIndex];
+    approvalSelect.title = chosen ? chosen.title : '';
+  }
+  approvalSelect.addEventListener('change', showApproval);
   const modelLabel = document.getElementById('model-label');
   const micBtn = document.getElementById('mic');
   const voiceStatusEl = document.getElementById('voice-status');
@@ -1550,7 +1568,7 @@ export function chatHtml(
     cancelBtn.disabled = !running;
     sendBtn.hidden = running;
     cancelBtn.hidden = !running;
-    autoToggle.disabled = running;
+    approvalSelect.disabled = running;
     modeSelect.disabled = running;
     meterEl.classList.toggle('stream', running);
   }
@@ -2322,11 +2340,11 @@ export function chatHtml(
     if (editingLast) {
       // The host redraws the conversation without the old turn, then shows this message.
       setEditing(false);
-      vscode.postMessage({ type: 'retry_last', text, auto: autoToggle.checked });
+      vscode.postMessage({ type: 'retry_last', text, level: approvalSelect.value });
       return;
     }
     appendUserMessage(text, fileNames);
-    vscode.postMessage({ type: 'user_input', text, auto: autoToggle.checked });
+    vscode.postMessage({ type: 'user_input', text, level: approvalSelect.value });
   });
 
   // ---- queue: Enter during a run parks the message; each finished run sends the next one.
@@ -2368,7 +2386,7 @@ export function chatHtml(
     removeTurnActions();
     lastUserText = text;
     appendUserMessage(text, pendingFiles.map((f) => f.name));
-    vscode.postMessage({ type: 'user_input', text, auto: autoToggle.checked });
+    vscode.postMessage({ type: 'user_input', text, level: approvalSelect.value });
   }
 
   // ---- Retry / Edit for the last message, shown after each run.
@@ -2387,7 +2405,7 @@ export function chatHtml(
     retry.addEventListener('click', () => {
       if (taskRunning) return;
       removeTurnActions();
-      vscode.postMessage({ type: 'retry_last', auto: autoToggle.checked });
+      vscode.postMessage({ type: 'retry_last', level: approvalSelect.value });
     });
     const edit = document.createElement('button');
     edit.type = 'button'; edit.className = 'link'; edit.textContent = 'Edit';
@@ -2408,7 +2426,7 @@ export function chatHtml(
         const text = 'Continue where you stopped.';
         lastUserText = text;
         appendUserMessage(text, []);
-        vscode.postMessage({ type: 'user_input', text, auto: autoToggle.checked });
+        vscode.postMessage({ type: 'user_input', text, level: approvalSelect.value });
       });
       row.appendChild(cont);
     }

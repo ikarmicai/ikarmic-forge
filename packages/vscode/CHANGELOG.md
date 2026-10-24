@@ -8,6 +8,12 @@ for every change, including the ones that only affect the CLI.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Approval picker in the chat composer.** The Autonomous checkbox is now a picker with three levels: **Ask first** (as before), **Accept edits** (file edits run without asking; commands, the browser and sub-agents still ask, and permission rules still apply) and **Autonomous**. The level is chosen per message in the chat and cannot be set by a project file.
+
 ## [5.1.1] - 2026-10-24
 
 ### Changed

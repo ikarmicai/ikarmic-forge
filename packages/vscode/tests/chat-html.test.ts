@@ -129,7 +129,7 @@ describe('chatHtml toolbar and composer (direction A)', () => {
   const html = chatHtml();
 
   it('keeps every id the tests and smoke test rely on', () => {
-    for (const id of ['mode', 'model-label', 'meter', 'new-chat', 'history-btn', 'checkpoints-btn', 'condense-btn', 'panel', 'messages', 'input', 'send', 'cancel', 'mic', 'auto-toggle', 'mention-list', 'voice-status', 'toolbar']) {
+    for (const id of ['mode', 'model-label', 'meter', 'new-chat', 'history-btn', 'checkpoints-btn', 'condense-btn', 'panel', 'messages', 'input', 'send', 'cancel', 'mic', 'approval', 'mention-list', 'voice-status', 'toolbar']) {
       expect(html).toContain(`id="${id}"`);
     }
   });
@@ -281,8 +281,8 @@ describe('chatHtml host notices', () => {
 describe('chat UX: retry, queue, diagrams', () => {
   it('sends retry_last for Retry and for an edited last message', () => {
     const html = chatHtml();
-    expect(html).toContain("type: 'retry_last', text, auto");
-    expect(html).toContain("type: 'retry_last', auto");
+    expect(html).toContain("type: 'retry_last', text, level");
+    expect(html).toContain("type: 'retry_last', level");
     expect(html).toContain('id="edit-banner" hidden');
   });
 

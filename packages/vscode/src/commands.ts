@@ -222,7 +222,7 @@ export class CommandRegistry {
       ignoreFocusOut: true,
     });
     if (!task) return;
-    await this.chat.runTask(task, auto);
+    await this.chat.runTask(task, auto ? 'auto' : 'ask');
   }
 
   private async runOnSelection(auto: boolean): Promise<void> {
@@ -248,7 +248,7 @@ export class CommandRegistry {
     });
     if (!task) return;
     const composed = `${task}\n\nFile: ${file}\nLanguage: ${lang}\n\`\`\`${lang}\n${selectedText}\n\`\`\``;
-    await this.chat.runTask(composed, auto);
+    await this.chat.runTask(composed, auto ? 'auto' : 'ask');
   }
 
   /** "Fix with Forge" from the light bulb: the problem and the code around it go to the chat. */
