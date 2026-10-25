@@ -1,6 +1,6 @@
 {
   "name": "ikarmic-forge",
-  "version": "5.1.1",
+  "version": "5.2.0",
   "private": true,
   "description": "IKarmic AI Forge: an all-in-one AI coding assistant (CLI + VS Code extension).",
   "type": "module",

@@ -4,6 +4,24 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.2.0] - 2026-10-25
+
+### Added
+- **Smarter built-in agents.** Plan, Code, Debug, Ask and Review each follow an explicit method now. Plan traces every caller and test and says whether its plan is small or large; Code reads the versions your project uses and the installed library API, then runs your project's own checks; Debug reproduces the failure first; Ask answers with `path:line`; Review reads the real diff and confirms each finding.
+- **Security agent.** A new built-in agent that audits your changes or the whole repository for exploitable problems and vulnerable dependencies, and changes files only for the findings you name.
+- **`git_diff` and `dependency_audit` tools.** `git_diff` shows the current changes without an approval card. `dependency_audit` runs the project's own auditor and asks first, because an auditor follows the project's settings and sends the dependency list to a registry.
+- **Version facts for every agent.** The runtime, language and library versions your workspace's files state, plus its test runner, linter and formatter, are given to the model.
+- **Approval picker in the chat composer.** Ask first, Accept edits (file edits run without asking; commands still ask) or Autonomous.
+- **A large plan can become a spec.** When Plan says a plan is large, the chat offers to draft a spec from it.
+
+### Fixed
+- **Orchestrator steps could not read, and Code could use every tool.** Each step now gets exactly its agent's tools, runs read-only tools without asking, keeps your permission rules and sandbox, and sees what earlier steps produced.
+- **Symbol tools hung in VS Code.** `find_symbol`, `find_references` and `list_symbols` never answered in the extension. The extension now ships tree-sitter and its language grammars, which grows it from 2.45 MB to 3.29 MB.
+- **A custom agent that reuses a built-in id was listed twice, and the built-in ran.** It is now one mode and your version runs.
+
+### Notes
+- **If you copied a built-in agent into your own agents file, check it.** An agent in `~/.forge/specialists.json` with the same id as a built-in (`plan`, `code`, `debug`, `ask`, `review`) replaces the built-in, so you keep the old prompt and do not get the new one. Delete your copy to get the new agent. The mode menu now lists such an agent once, and runs your version (before, it listed both and ran the built-in).
+
 ## [5.1.1] - 2026-10-24
 
 ### Changed

@@ -10,6 +10,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-10-25
+
 ### Added
 
 - **Smarter built-in agents.** Plan, Code, Debug, Ask and Review each work by an explicit method now, written to work on open models as well as frontier ones. Plan traces every caller and test before it plans, names each file and how to check each step, and ends by saying whether the plan is small or large. Code reads the versions the project uses and the installed library API before calling it, writes to current practice for those versions, and runs the project's own checks. Debug reproduces first and tests one hypothesis at a time. Ask answers from the code with `path:line`. Review reads the real diff and confirms each finding before it reports it.
@@ -18,12 +20,18 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Version facts for every agent.** A `<stack>` block in the system prompt lists the runtime, language and library versions the workspace's own files state, and its test runner, linter and formatter.
 - **A large plan can become a spec.** When the Plan agent says a plan is large, the chat offers to draft a spec from it.
 - **Approval picker in the chat composer.** The Autonomous checkbox is now a picker with three levels: **Ask first** (as before), **Accept edits** (file edits run without asking; commands, the browser and sub-agents still ask, and permission rules still apply) and **Autonomous**. The level is chosen per message in the chat and cannot be set by a project file.
+- **Tree-sitter ships with the extension.** The extension grows from 2.45 MB to 3.29 MB because it now carries tree-sitter and its language grammars.
 
 ### Fixed
 
 - **Orchestrator steps could not read, and Code could use every tool.** In a parallel or orchestrator run, Plan, Debug, Ask and Review had every tool call refused, so they answered without reading the code; Code was offered every built-in tool, including ones its list forbids. Each step now gets exactly its agent's tools, runs read-only tools without asking, and keeps your permission rules and sandbox (RB-39).
 - **Orchestrator steps now hand their work on.** A later step gets what the earlier steps produced, so in a "plan, then code" run Code works from Plan's plan instead of the router's one-line task.
 - **Symbol tools hung in VS Code.** `find_symbol`, `find_references` and `list_symbols` never answered in the extension: tree-sitter looked for its wasm file next to the bundle and stopped when it was not there. The extension now ships tree-sitter and its grammars, and a build without them fails at once with a clear message instead of hanging (RB-40).
+- **A custom agent that reuses a built-in id was listed twice, and the built-in ran.** The mode menu showed Plan, Code, Debug, Ask and Review twice when your agents file held entries with those ids, and picking one ran the built-in, not yours. It is now one mode and your version runs (RB-38).
+
+### Notes
+
+- **If you copied a built-in agent into your own agents file, check it.** An agent in `~/.forge/specialists.json` with the same id as a built-in (`plan`, `code`, `debug`, `ask`, `review`) replaces the built-in, so you keep the old prompt and do not get the new one. Delete your copy to get the new agent. The mode menu now lists such an agent once, and runs your version (before, it listed both and ran the built-in).
 
 ## [5.1.1] - 2026-10-24
 

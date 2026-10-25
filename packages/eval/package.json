@@ -1,6 +1,6 @@
 {
   "name": "@ikarmic/forge-eval",
-  "version": "5.1.1",
+  "version": "5.2.0",
   "description": "Eval harness for IKarmic AI Forge. Runs agent tasks against isolated workspaces and grades the results with deterministic checks.",
   "type": "module",
   "main": "./dist/index.js",
@@ -48,7 +48,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@ikarmic/forge-core": "^5.1.1",
+    "@ikarmic/forge-core": "^5.2.0",
     "ai": "^7.0.0",
     "zod": "^4.6.7"
   },

@@ -9,7 +9,7 @@
 
 - **Any model, your key.** Forge talks straight to the provider you configure. Your prompts are not routed through an IKarmic server.
 - **You stay in control.** Read-only tools run without asking; by default anything that writes a file or runs a command shows you a diff or a confirmation first.
-- **Go hands-free when you want.** Autonomous mode stops asking before file edits. Shell commands and other destructive actions still ask first.
+- **Choose how much it asks.** A picker under the message box sets it per message: Ask first, Accept edits (file edits run without asking; commands still ask) or Autonomous. Shell commands and other destructive actions ask first in every mode.
 - **Understands your repo.** Repo map, semantic search, steering files and a spec/plan workflow, so it works on your codebase rather than one file at a time.
 - **Open source where it runs.** The VS Code extension is AGPL-3.0; the agent engine it embeds is proprietary and shipped from npm. See [License](#license).
 
@@ -59,6 +59,17 @@ You can also register your own OpenAI-compatible endpoint (a gateway, a proxy, a
 ### Agentic chat and task runs
 
 Describe a task in the sidebar chat. Forge plans it, calls tools, streams what it is doing as a step list, and asks before anything irreversible. `Forge: Run Task (Autonomous)` does the same without stopping for each safe action.
+
+### Built-in agents
+
+The mode menu under the message box picks an agent for the job. Each follows an explicit method and is written to work on open models as well as frontier ones.
+
+- **Plan** reads the code, traces every caller and test, and writes a step-by-step plan that names each file and how to check each step. A large plan offers to become a spec. It never changes files.
+- **Code** makes the change for the language and library versions your project uses, checks the installed API before calling it, and runs your project's own checks.
+- **Debug** reproduces the failure first and names the root cause at `path:line` with evidence. It does not fix.
+- **Ask** answers from the code and cites `path:line`. It never changes files.
+- **Review** reads the real diff, confirms each finding and reports at most ten. It never changes files.
+- **Security** audits your changes or the whole repository for exploitable problems and vulnerable dependencies, reports first, and changes files only for the findings you name.
 
 ### Inline autocomplete
 
@@ -210,7 +221,8 @@ That table is deliberately short. For the [full list of all 85 settings](https:/
 
 - API keys stay in your VS Code settings or your environment. Forge does not proxy model traffic through an IKarmic service.
 - Read-only tools (list, read, search) run without a prompt. By default anything that writes a file or runs a command asks first, and `apply_patch` shows a diff before you approve it.
-- Autonomous mode removes the prompt for file edits as well as reads. Shell commands, sub-agents, the browser and other destructive tools still ask for your approval each time.
+- Accept edits removes the prompt for file edits as well as reads; Autonomous also removes it for most other tools. Shell commands, sub-agents, the browser and other destructive tools still ask for your approval each time, in every mode.
+- `git_diff` runs without a prompt, with git's hook-running settings turned off. `dependency_audit` asks first, because a package manager follows the project's own settings and sends the dependency list to a registry.
 - Project files can never point Forge at a provider URL, key or header — those settings are yours alone.
 - `forge.caCertificates` and the proxy settings apply to model calls as well as other traffic.
 
