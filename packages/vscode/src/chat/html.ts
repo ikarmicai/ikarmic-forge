@@ -1139,7 +1139,8 @@ export function chatHtml(
 
   // Offered instead of running a request that asks for a whole system; the host holds the message.
   function removeSuggestCard() { const c = messagesEl.querySelector('.approval.suggest'); if (c) c.remove(); }
-  function showSuggestSpec() {
+  // afterPlan: the Plan agent already wrote a large plan, so "Plan first" is left out.
+  function showSuggestSpec(afterPlan) {
     removeSuggestCard();
     const card = document.createElement('div');
     card.className = 'approval suggest';
@@ -1150,7 +1151,7 @@ export function chatHtml(
     const q = document.createElement('span'); q.className = 'q';
     q.textContent = 'A spec turns this into requirements, a design and tasks you approve, then runs them one by one.';
     line.appendChild(q);
-    const choices = [['Draft a spec', 'spec', false], ['Plan first', 'plan', true], ['Just do it', 'go', true]];
+    const choices = afterPlan ? [['Draft a spec', 'spec', false], ['Just do it', 'go', true]] : [['Draft a spec', 'spec', false], ['Plan first', 'plan', true], ['Just do it', 'go', true]];
     for (const [label, choice, secondary] of choices) {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
       b.className = secondary ? 'secondary' : 'primary';
@@ -2765,7 +2766,7 @@ export function chatHtml(
         appendNotice(msg.message);
         break;
       case 'suggest_spec':
-        showSuggestSpec();
+        showSuggestSpec(msg.afterPlan);
         break;
       case 'run_changes':
         showRunChanges(msg.count);

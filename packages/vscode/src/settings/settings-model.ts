@@ -72,7 +72,7 @@ export type SaveMessage =
   | { type: 'saveAgents'; agents: Record<string, unknown>[] };
 
 /** Mirrors READ_ONLY_TOOLS in core (this file is bundled into the page, so it cannot import core; a test keeps them equal). */
-export const DEFAULT_AUTO_APPROVE: readonly string[] = ['read_file', 'list_files', 'search_files', 'find_symbol', 'list_symbols', 'find_references', 'codebase_search', 'memory_read', 'sub_agent_wait'];
+export const DEFAULT_AUTO_APPROVE: readonly string[] = ['read_file', 'list_files', 'search_files', 'find_symbol', 'list_symbols', 'find_references', 'git_diff', 'codebase_search', 'memory_read', 'sub_agent_wait'];
 
 export function sortedTools(list: readonly string[]): string[] {
   return [...new Set(list)].sort();

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import process from 'node:process';
 
-import { findTask, TASKS } from '../tasks/index.js';
+import { DEFAULT_TASKS, findTask, TASKS } from '../tasks/index.js';
 import { formatJsonReport, formatMarkdownReport, formatTerminalSummary } from '../report.js';
 import { resolveModel, runSuite } from '../runner.js';
 
@@ -9,6 +9,10 @@ interface CliArgs {
   command: 'run' | 'list' | 'help';
   model?: string;
   task?: string;
+  /** Run only tasks carrying this tag. */
+  tag?: string;
+  /** Run each selected task this many times (default 1). */
+  runs: number;
   json: boolean;
   markdown: boolean;
   help: boolean;
@@ -18,6 +22,7 @@ function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2);
   const out: CliArgs = {
     command: 'run',
+    runs: 1,
     json: false,
     markdown: false,
     help: false,
@@ -50,6 +55,12 @@ function parseArgs(argv: string[]): CliArgs {
       out.model = takeNext('--model');
     } else if (a === '--task') {
       out.task = takeNext('--task');
+    } else if (a === '--tag') {
+      out.tag = takeNext('--tag');
+    } else if (a === '--runs') {
+      const n = Number(takeNext('--runs'));
+      if (!Number.isInteger(n) || n < 1 || n > 50) throw new Error('--runs must be a whole number from 1 to 50');
+      out.runs = n;
     } else if (a === '--json') {
       out.json = true;
     } else if (a === '--markdown') {
@@ -68,12 +79,14 @@ function printHelp(): void {
   process.stdout.write(
     `forge-eval: run Forge agent tasks and grade the results.\n\n` +
       `Usage:\n` +
-      `  forge-eval run [--model <provider>/<model>] [--task <id>] [--json | --markdown]\n` +
+      `  forge-eval run [--model <provider>/<model>] [--task <id> | --tag <tag>] [--runs <n>] [--json | --markdown]\n` +
       `  forge-eval list\n` +
       `  forge-eval help\n\n` +
       `Flags:\n` +
       `  --model <p>/<m>   Override the model. Defaults to FORGE_DEFAULT_MODEL / provider env vars.\n` +
       `  --task <id>       Run only the named task (see \`forge-eval list\`).\n` +
+      `  --tag <tag>       Run only tasks with this tag (for example: agents).\n` +
+      `  --runs <n>        Run each selected task n times, for pass counts (1-50).\n` +
       `  --json            Emit a single JSON report on stdout.\n` +
       `  --markdown        Emit a markdown report on stdout (in addition to terminal summary).\n\n` +
       `Exit codes: 0 = all passed, 1 = any failed, 2 = run couldn't start.\n`
@@ -112,7 +125,13 @@ async function main(): Promise<void> {
     }
     tasks = [t];
   } else {
-    tasks = TASKS;
+    tasks = args.tag ? TASKS.filter((t) => t.tags?.includes(args.tag!)) : DEFAULT_TASKS;
+    if (tasks.length === 0) {
+      process.stderr.write(`forge-eval: no task has the tag "${args.tag}".
+`);
+      process.exit(2);
+      return;
+    }
   }
 
   let model;
@@ -131,7 +150,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const suite = await runSuite(tasks, model);
+    const suite = await runSuite(Array.from({ length: args.runs }, () => tasks).flat(), model);
 
     if (args.json) {
       const report = formatJsonReport(suite);

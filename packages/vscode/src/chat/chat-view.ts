@@ -146,6 +146,7 @@ import {
   type ModeOverrides,
 } from './modes.js';
 import { approvalLevelOf, autoApproveFor, type ApprovalLevel } from './approval-level.js';
+import { modeForChoice, offerSpecAfterPlan } from './plan-size.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
 
@@ -197,7 +198,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private webviewReady = false;
   private specHandler: ((task: string) => void) | undefined;
   /** The message held back while the "this looks big" card is on screen; the webview only sends a choice. */
-  private pendingLarge: { text: string; level: ApprovalLevel; attachments: Attachment[] } | undefined;
+  private pendingLarge: { text: string; level: ApprovalLevel; attachments: Attachment[]; afterPlan?: boolean } | undefined;
   /** The last chat message as typed (with its files), and the history before it: what Retry and Edit replace. */
   private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined } | undefined;
   /** Files pasted, dropped or picked for the next message. */
@@ -1139,7 +1140,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           this.attachments.restore(held.attachments);
           this.postAttachments();
           this.specHandler(held.text);
-        } else await this.runChat(held.text, held.level, held.attachments, msg.choice === 'plan' ? 'plan' : undefined);
+        } else await this.runChat(held.text, held.level, held.attachments, modeForChoice(msg.choice, held.afterPlan === true));
         return;
       }
       case 'run_action':
@@ -1443,6 +1444,21 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       // Nothing ran (no model, a run already going): don't lose what the user attached.
       this.attachments.restore(attachments);
       this.postAttachments();
+    }
+    // A large plan offers to become a spec; the spec is drafted from the request and the plan together.
+    const offer = outcome
+      ? offerSpecAfterPlan({
+          reason: outcome.reason,
+          mode: modeId ?? this.modeId,
+          finalText: outcome.finalText,
+          hasSpecHandler: !!this.specHandler,
+          trusted: vscode.workspace.isTrusted,
+          suggestSpec: vscode.workspace.getConfiguration('forge').get<boolean>('suggestSpec', true),
+        })
+      : false;
+    if (outcome && offer) {
+      this.pendingLarge = { text: `${text}\n\nPlan from the Plan agent:\n${outcome.finalText}`, level, attachments: [], afterPlan: true };
+      this.post({ type: 'suggest_spec', afterPlan: true });
     }
   }
 

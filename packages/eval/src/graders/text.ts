@@ -34,6 +34,18 @@ export function regex(pattern: RegExp, options: RegexGraderOptions = {}): Grader
   };
 }
 
+/** Grader that passes when `finalText` does NOT match a regex: for "the reply must not say X". */
+export function regexAbsent(pattern: RegExp, options: RegexGraderOptions = {}): Grader {
+  const { flags = '', multiline = true } = options;
+  const merged = mergeFlags(pattern, flags, multiline);
+  return (ctx: GraderContext): GraderResult => {
+    const text = ctx.result.finalText ?? '';
+    return merged.test(text)
+      ? { passed: false, message: `regex ${merged} matched but must not`, details: truncate(text) }
+      : { passed: true, message: `regex ${merged} absent` };
+  };
+}
+
 /** Grader that passes when `finalText` includes a substring (case-sensitive). */
 export function contains(substring: string): Grader {
   return (ctx: GraderContext): GraderResult => {

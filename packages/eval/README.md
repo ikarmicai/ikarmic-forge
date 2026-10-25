@@ -36,6 +36,9 @@ pnpm forge-eval run
 # Run a single task by id.
 pnpm forge-eval run --task read-package-version
 
+# Run the built-in agent tasks five times each, for pass counts.
+pnpm forge-eval run --tag agents --runs 5
+
 # Pin a specific model.
 pnpm forge-eval run --model anthropic/claude-3-5-haiku-latest
 

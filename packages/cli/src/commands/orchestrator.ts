@@ -14,9 +14,14 @@ import process from 'node:process';
 import {
   BUILTIN_SPECIALISTS,
   listSpecialists,
+  loadForgeConfigFile,
+  loadToolSandboxConfig,
   parseRouterOutput,
+  resolveAutoApprove,
   runOrchestrator,
   runRouter,
+  type ForgeConfigFile,
+  type ToolSandbox,
 } from '@ikarmic/forge-core';
 
 import type { ParsedOrchestratorCommand } from '../options.js';
@@ -68,6 +73,24 @@ async function printSpecialistsList(): Promise<number> {
   return 0;
 }
 
+/**
+ * The person's limits for orchestrator steps, which have no one to ask (RB-39): the auto-approve list and
+ * permission rules from ~/.forge/config.json and the tool sandbox from ~/.forge/settings.json, loaded the
+ * way the CLI's own runs load them (project settings are never trusted by the CLI). Paths are for tests.
+ */
+export async function orchestratorLimits(
+  cwd: string,
+  paths: { configPath?: string; settingsPath?: string } = {}
+): Promise<{ autoApproveTools: string[]; permissionRules?: NonNullable<ForgeConfigFile['permission']>; toolSandbox?: ToolSandbox }> {
+  const shared = (await loadForgeConfigFile(paths.configPath)).config;
+  const { sandbox } = await loadToolSandboxConfig(cwd, { trustedProjectSettings: false }, paths.settingsPath);
+  return {
+    autoApproveTools: resolveAutoApprove(shared.autoApproveTools),
+    ...(shared.permission && Object.keys(shared.permission).length > 0 ? { permissionRules: shared.permission } : {}),
+    ...(sandbox && Object.keys(sandbox).length > 0 ? { toolSandbox: sandbox } : {}),
+  };
+}
+
 async function runOrchestratorCli(
   task: string,
   cwd: string,
@@ -105,6 +128,7 @@ async function runOrchestratorCli(
       model: model as never,
       cwd,
       auto: true,
+      ...(await orchestratorLimits(cwd)),
       worktrees: opts.worktrees ?? 'auto',
       // v2.14: delete auto-created branches (default true). Mirror
       // the user's CLI flag via the dispatchOpts field below.

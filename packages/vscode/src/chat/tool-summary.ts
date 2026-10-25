@@ -40,6 +40,8 @@ const VERBS: Record<string, [done: string, running: string]> = {
   codebase_search: ['Searched code', 'Searching code'],
   find_symbol: ['Found', 'Finding'],
   find_references: ['Found references to', 'Finding references to'],
+  git_diff: ['Read the diff', 'Reading the diff'],
+  dependency_audit: ['Audited dependencies', 'Auditing dependencies'],
   list_symbols: ['Listed symbols in', 'Listing symbols in'],
   fetch_url: ['Fetched', 'Fetching'],
   github_pr_read: ['Read pull request', 'Reading pull request'],
@@ -134,6 +136,11 @@ function target(name: string, a: Rec): { target: string; title: string } {
     case 'fetch_url': {
       const u = str(a.url) ?? '';
       return { target: u ? urlLabel(u) : '', title: u };
+    }
+    case 'git_diff': {
+      const base = str(a.base);
+      const t = base ? `against ${clip(base)}` : a.staged === true ? 'staged' : '';
+      return { target: t, title: t };
     }
     case 'memory_read':
     case 'memory_write':

@@ -3,7 +3,9 @@
 import { build, context } from 'esbuild';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
@@ -86,8 +88,25 @@ function copyMermaid() {
   copyFileSync(require.resolve('mermaid/dist/mermaid.min.js'), 'dist/webview/mermaid.js');
 }
 
+/**
+ * tree-sitter's runtime wasm and the grammars core's parser.ts knows (GRAMMAR_FILE_BY_EXT), copied next to
+ * extension.js: the VSIX ships no node_modules, and core's parser looks beside the bundle first (RB-40).
+ * Resolved through core, which owns these dependencies (a workspace link here, the npm package in the public repo).
+ */
+const TREE_SITTER_GRAMMARS = ['typescript', 'tsx', 'javascript', 'python', 'go', 'rust', 'java'];
+
+function copyTreeSitter() {
+  mkdirSync('dist', { recursive: true });
+  const coreRequire = createRequire(fileURLToPath(import.meta.resolve('@ikarmic/forge-core')));
+  const runtimeDir = path.dirname(coreRequire.resolve('web-tree-sitter/package.json'));
+  copyFileSync(path.join(runtimeDir, 'tree-sitter.wasm'), 'dist/tree-sitter.wasm');
+  const grammarDir = path.join(path.dirname(coreRequire.resolve('tree-sitter-wasms/package.json')), 'out');
+  for (const g of TREE_SITTER_GRAMMARS) copyFileSync(path.join(grammarDir, `tree-sitter-${g}.wasm`), `dist/tree-sitter-${g}.wasm`);
+}
+
 if (watch) {
   copyMermaid();
+  copyTreeSitter();
   const ctx = await context(config);
   const voiceCtx = await context(voiceConfig);
   const webviewLibCtx = await context(webviewLibConfig);
@@ -102,5 +121,6 @@ if (watch) {
     build(settingsLibConfig),
   ]);
   copyMermaid();
-  console.log('Build complete: dist/extension.js + dist/webview/{voice-input,forge-ui,settings-ui,mermaid}.js');
+  copyTreeSitter();
+  console.log('Build complete: dist/extension.js + dist/tree-sitter*.wasm + dist/webview/{voice-input,forge-ui,settings-ui,mermaid}.js');
 }

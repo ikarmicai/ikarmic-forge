@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ModelConfig, SpecialistConfig } from '@ikarmic/forge-core';
 
 import { DEFAULT_MODE_ID, customSpecialistIds, listModes, modeModelProblem, modeOverrides, modeCanWrite, readOnlySandbox, resolveModeId, retargetSystemPrompt } from '../src/chat/modes.js';
-import { DEFAULT_SYSTEM_PROMPT } from '@ikarmic/forge-core';
+import { BUILTIN_SPECIALISTS, DEFAULT_SYSTEM_PROMPT } from '@ikarmic/forge-core';
 
 const ask: SpecialistConfig = {
   id: 'ask',
@@ -35,6 +35,10 @@ const ctx = (over: Partial<Parameters<typeof modeOverrides>[1]> = {}) => ({
 });
 
 describe('listModes', () => {
+  it('offers the Security agent from core as a mode', () => {
+    expect(listModes(BUILTIN_SPECIALISTS)).toContainEqual(expect.objectContaining({ id: 'security', label: 'Security' }));
+  });
+
   it('puts Agent first and excludes the orchestrator router', () => {
     const modes = listModes([ask, code, orchestrator]);
     expect(modes.map((m) => m.id)).toEqual(['agent', 'ask', 'code']);

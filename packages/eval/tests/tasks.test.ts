@@ -32,8 +32,8 @@ async function runWithScript(task: TaskDefinition, responses: MockResponse[]): P
 }
 
 describe('task catalog', () => {
-  it('exports 11 tasks', () => {
-    expect(TASKS.length).toBe(11);
+  it('exports 25 tasks', () => {
+    expect(TASKS.length).toBe(25);
   });
 
   it('every task has the required shape', () => {
@@ -43,7 +43,7 @@ describe('task catalog', () => {
       expect(t.name.length).toBeGreaterThan(0);
       expect(t.task.length).toBeGreaterThan(0);
       expect(t.graders.length).toBeGreaterThan(0);
-      expect(['read', 'edit', 'multi-step']).toContain(t.category);
+      expect(['read', 'edit', 'multi-step', 'agents']).toContain(t.category);
       expect(ids.has(t.id)).toBe(false);
       ids.add(t.id);
     }

@@ -26,7 +26,7 @@ describe('@ikarmic/forge-eval public API', () => {
 
   it('exports the task catalog and lookup', () => {
     expect(Array.isArray(pkg.TASKS)).toBe(true);
-    expect(pkg.TASKS.length).toBe(11);
+    expect(pkg.TASKS.length).toBe(25);
     expect(typeof pkg.findTask).toBe('function');
     expect(pkg.findTask('read-package-version')?.id).toBe('read-package-version');
     expect(pkg.findTask('nope')).toBeUndefined();

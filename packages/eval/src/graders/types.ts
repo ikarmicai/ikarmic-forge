@@ -43,7 +43,7 @@ export interface TaskInfo {
   description: string;
 }
 
-export type TaskCategory = 'read' | 'edit' | 'multi-step';
+export type TaskCategory = 'read' | 'edit' | 'multi-step' | 'agents';
 
 /** What a grader returns. `passed` drives the score; `message` shows in the report. */
 export interface GraderResult {
@@ -82,6 +82,11 @@ export interface TaskDefinition {
   memory?: boolean;
   /** Graders run after the agent finishes. All must pass for the task to pass. */
   graders: Grader[];
+  /**
+   * Run as this built-in agent (`plan`, `code`, `debug`, `ask`, `review`, `security`): its prompt, its tool
+   * list and its step limit. Unset: the default agent with every tool.
+   */
+  specialist?: string;
   /** Optional tags for filtering (e.g. "windows", "needs-network"). */
   tags?: string[];
 }

@@ -7,7 +7,7 @@ export type {
   TaskInfo,
   ToolInvocation,
 } from './types.js';
-export { regex, contains, equals, type RegexGraderOptions } from './text.js';
+export { regex, regexAbsent, contains, equals, type RegexGraderOptions } from './text.js';
 export { fileExists, fileMatches, fileMissing, directoryHas } from './fs.js';
 export { commandRuns, type CommandRunsOptions } from './shell.js';
 export {

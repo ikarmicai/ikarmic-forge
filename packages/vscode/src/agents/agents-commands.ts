@@ -4,12 +4,16 @@ import {
   branchChangedFiles,
   branchDiff,
   deleteBranch,
+  loadMergedForgeConfig,
+  loadToolSandboxConfig,
   mergeBranch,
+  resolveAutoApprove,
   runOrchestrator,
   WorktreeManager,
   type CredentialStore,
 } from '@ikarmic/forge-core';
 
+import { permissionExtras } from '../chat/run-extras.js';
 import { resolveModel } from '../config.js';
 import { loadRuntimeConfig } from '../runtime-config.js';
 
@@ -97,10 +101,17 @@ export function registerAgents(
       const started = runs.find((r) => r.id === id);
       if (started) chat?.showRun(runCardView(started));
       try {
+        // Steps have no one to ask: they keep the person's auto-approve list, permission rules and sandbox (RB-39).
+        const trusted = vscode.workspace.isTrusted;
+        const { config: shared } = await loadMergedForgeConfig(repo, { trusted });
+        const { sandbox } = await loadToolSandboxConfig(repo, { trustedProjectSettings: trusted });
         const result = await runOrchestrator({
           task,
           model,
           cwd: repo,
+          autoApproveTools: resolveAutoApprove(shared.autoApproveTools),
+          ...permissionExtras(shared),
+          ...(sandbox ? { toolSandbox: sandbox } : {}),
           worktrees: 'always',
           commitChanges: true,
           cleanupBranches: true,

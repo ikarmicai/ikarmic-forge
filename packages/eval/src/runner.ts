@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { Agent, createLanguageModel } from '@ikarmic/forge-core';
+import { Agent, createLanguageModel, effectiveToolsFor, getSpecialist } from '@ikarmic/forge-core';
 import type {
   AgentConfig,
   AgentEvent,
@@ -99,9 +99,15 @@ export async function runTask(
     // Build an Agent with everything disabled that would add noise: cost
     // tracking (we sum it ourselves), memory (per-task temp dir makes
     // persistent state confusing; a task can opt back in), cache (each task is unique).
+    // A task run as a built-in agent gets that agent's prompt, tool list and step limit.
+    const spec = task.specialist ? getSpecialist(task.specialist) : undefined;
+    if (task.specialist && !spec) throw new Error(`unknown specialist "${task.specialist}"`);
     const config: AgentConfig = {
       model,
       cwd,
+      ...(spec
+        ? { systemPrompt: spec.systemPrompt, maxIterations: spec.maxIterations ?? 10, toolSandbox: { allowTools: effectiveToolsFor(spec) } }
+        : {}),
       auto: true, // evals are autonomous: no interactive approval prompts
       allowDestructive: true, // same reason
       disableCost: true,
