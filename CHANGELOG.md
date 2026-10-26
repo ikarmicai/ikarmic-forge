@@ -4,6 +4,25 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.3.0] - 2026-10-27
+
+### Added
+- **Agent Manager.** Run one prompt as up to four sessions at once, each in its own git worktree; merge the one you want or discard it.
+- **Command sandbox (Linux and macOS).** Commands can write only to the workspace and the temp folder, with the network cut unless allowed.
+- **`/cmd`.** Describe what you want and Forge writes one shell command you can insert into the terminal; it never runs it for you.
+- **First-run approval choice, shortcuts and prompt history.** Pick how much Forge asks before acting, cycle modes with `Ctrl+Alt+M`, toggle Accept edits with `Ctrl+Alt+A`, and recall earlier prompts with Up and Down.
+- **Up-to-date model limits and prices** from models.dev, with an offline copy.
+- **Commit message language** and a **step limit** setting for chat runs.
+
+### Changed
+- **Long chat runs finish cleanly.** There is no time limit on a chat run, and a run that reaches its step limit summarises what is left and offers Continue.
+- **Provider errors are retried** instead of ending the run, and a reply that is empty is asked for again.
+- **Autonomous means no approval cards**, while your permission rules and organisation policy still apply.
+
+### Fixed
+- Multi-line edits to files with Windows line endings.
+- A slow search could freeze the editor; it is now stopped after 20 seconds.
+
 ## [5.2.0] - 2026-10-25
 
 ### Added

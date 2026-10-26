@@ -1,6 +1,6 @@
 {
   "name": "ikarmic-forge",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "description": "IKarmic AI Forge CLI: run AI coding agents from your terminal. Multi-model (OpenAI, Anthropic, Google, Ollama, OpenRouter), MCP, sandbox, project memory, plan mode, context compaction.",
   "type": "module",
   "bin": {
@@ -53,7 +53,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@ikarmic/forge-core": "^5.2.0",
+    "@ikarmic/forge-core": "^5.3.0",
     "@napi-rs/keyring": "^1.0.0",
     "ai": "^7.0.0",
     "commander": "^12.1.0",

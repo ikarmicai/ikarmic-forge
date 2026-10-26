@@ -10,6 +10,33 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-10-27
+
+### Added
+
+- **Agent Manager.** **Forge: Open Agent Manager** runs one prompt as up to four sessions at once. Each gets its own git worktree and a chat tab, where you approve its steps (or tick Autonomous). When a session ends its changes are committed on its branch; **Merge** brings them into your current branch, **Discard** deletes worktree and branch.
+- **Command sandbox (Linux and macOS).** `forge.commandSandbox` runs every command under bubblewrap or sandbox-exec: it can write only to the workspace and the temp folder, and the network is cut unless allowed. Windows has no equivalent; the chat says so once.
+- **Model catalog from models.dev.** Context windows and prices come from models.dev (cached for a day, with a bundled copy for offline use), so new models get their real window and a price instead of a 32k fallback. Your own `modelOverrides` still win.
+- **`/cmd` and Forge: Generate Terminal Command.** Say what you want in plain words and Forge writes one command for your shell. Insert in terminal types it without pressing Enter; a command with several lines is copied instead.
+- **First-run approval card.** The first time you chat, Forge asks how much it should ask before acting (`forge.approvalDefault`). Autonomous is offered only in a trusted workspace.
+- **Shortcuts and prompt history.** `Ctrl+Alt+M` cycles the mode, `Ctrl+Alt+A` turns Accept edits on and off, and Up and Down in the message box bring back earlier prompts.
+- **Reply speed and "what it ran".** Each reply can show how fast it was written (`forge.chat.showSpeed`), a group of steps starts with a one-line summary, and a tool that ran without asking says why.
+- **`forge.maxSteps`** limits how many steps one chat run may take (default 50, 0 for no limit), and **`forge.commitMessage.language`** sets the language of the commit message Forge writes.
+
+### Changed
+
+- **Chat runs no longer stop half-way without saying why.** The 10-minute limit no longer applies to chat runs. On its last allowed step the model is asked to summarise what is done and what is left, and **Continue** is offered after a limit, an error or Stop.
+- **A provider hiccup no longer ends the run.** A 429, a 5xx or "overloaded" reply, or a dropped connection is retried up to five times; an empty reply is asked for again, a prompt that is too long is compacted and resent, and with no network the run waits for it to return.
+- **Autonomous really means no approvals.** Commands, browser, MCP and sub-agent calls no longer show a hold-to-run card. Permission rules that say ask or deny, and an organisation policy that turns Autonomous off, still apply.
+- **Chat modes run like Agent mode.** Code, Debug, Plan, Ask and Review keep the todo list and `ask_user`, and use the chat's step limit.
+- **Open todos keep a run going.** When the model ends a turn with items of its own todo list still open, it is reminded once; it stops if you asked it to wait.
+
+### Fixed
+
+- **Edits on files with Windows line endings.** `edit_file` could not change more than one line of a CRLF file; it now matches on normalised line endings and keeps the file's own.
+- **A slow search can no longer freeze VS Code.** `search_files` is stopped after 20 seconds with a hint to simplify the pattern.
+- **Three tool calls in a row with invalid arguments** now stop the run with a reason.
+
 ## [5.2.0] - 2026-10-25
 
 ### Added
@@ -114,7 +141,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Memory**, **steering files** and per-project instructions.
 - **Verification**: Forge runs your project's own typecheck, lint and tests after edits, with Ask/On/Off.
 
-[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.1.1...HEAD
+[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.3.0...HEAD
+[5.3.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.2.0...v5.3.0
+[5.2.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.1.1...v5.2.0
 [5.1.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.1.0...v5.1.1
 [5.1.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v4.5.0...v5.0.0
