@@ -168,13 +168,15 @@ async function main(): Promise<void> {
   // Organization policy + corporate proxy. The policy file is enforced by every Agent, so a
   // broken one must stop the run here with a clear message rather than fail open.
   try {
-    const { getOrgPolicy, installProxy, loadForgeConfigFile, proxyFromEnv, readCaCertificates } = await import('@ikarmic/forge-core');
+    const { getOrgPolicy, installProxy, loadForgeConfigFile, loadModelCatalog, proxyFromEnv, readCaCertificates } = await import('@ikarmic/forge-core');
     const policy = getOrgPolicy()?.policy;
     // Extra certificate authorities come from the user's config file only (a project file cannot add one).
     const ca = readCaCertificates((await loadForgeConfigFile().catch(() => undefined))?.config.caCertificates ?? []);
     for (const w of ca.warnings) process.stderr.write(`forge: ${w}
 `);
     await installProxy({ ...proxyFromEnv(), ...(policy?.proxy ?? {}) }, ca.pems);
+    // Model limits and prices: a fresh cache answers at once; a refresh from models.dev may hold a command up 1.5 s at most.
+    await Promise.race([loadModelCatalog(), new Promise((resolve) => setTimeout(resolve, 1500).unref())]);
   } catch (err) {
     if (!policyCommand) {
       process.stderr.write(`forge: ${(err as Error).message}\n`);

@@ -13,6 +13,7 @@ import {
   type CredentialStore,
 } from '@ikarmic/forge-core';
 
+import { chatFocus } from './chat/chat-focus.js';
 import type { ForgeChatViewProvider } from './chat/chat-view.js';
 import { resolveCheapModel } from './cheap-model.js';
 import { buildCommitMessageInput } from './commit-message-input.js';
@@ -63,6 +64,9 @@ export class CommandRegistry {
       vscode.commands.registerCommand('forge.generateCommitMessage', (scm?: { rootUri?: vscode.Uri }) => this.generateCommitMessage(scm)),
       vscode.commands.registerCommand('forge.manageMemory', () => this.manageMemory()),
       vscode.commands.registerCommand('forge.startVoiceInput', () => this.chat.toggleVoice()),
+      vscode.commands.registerCommand('forge.cycleChatMode', () => (chatFocus.last() ?? this.chat).cycleMode()),
+      vscode.commands.registerCommand('forge.generateTerminalCommand', () => (chatFocus.last() ?? this.chat).startTerminalCommand()),
+      vscode.commands.registerCommand('forge.toggleAcceptEdits', () => (chatFocus.last() ?? this.chat).toggleAcceptEdits()),
       vscode.commands.registerCommand('forge.openSettings', () => this.openSettings()),
       vscode.commands.registerCommand('forge.inlineEdit', () => runInlineEdit(this.credentialStore, this.inlineEditContent)),
       vscode.commands.registerCommand('forge.explainSelection', () => this.explainSelection()),
@@ -108,7 +112,8 @@ export class CommandRegistry {
         await resolveCheapModel(this.credentialStore),
         undefined,
         undefined,
-        vscode.workspace.getConfiguration('forge').get<string>('commitMessage.prompt') || undefined
+        vscode.workspace.getConfiguration('forge').get<string>('commitMessage.prompt') || undefined,
+        vscode.workspace.getConfiguration('forge').get<string>('commitMessage.language')?.trim() || undefined
       );
     });
   }

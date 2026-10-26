@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ModelConfig, SpecialistConfig } from '@ikarmic/forge-core';
 
 import { DEFAULT_MODE_ID, customSpecialistIds, listModes, modeModelProblem, modeOverrides, modeCanWrite, readOnlySandbox, resolveModeId, retargetSystemPrompt } from '../src/chat/modes.js';
-import { BUILTIN_SPECIALISTS, DEFAULT_SYSTEM_PROMPT } from '@ikarmic/forge-core';
+import { BUILTIN_SPECIALISTS, DEFAULT_SYSTEM_PROMPT, effectiveToolsFor } from '@ikarmic/forge-core';
 
 const ask: SpecialistConfig = {
   id: 'ask',
@@ -72,16 +72,40 @@ describe('modeOverrides', () => {
     expect(modeOverrides('nope', ctx())).toEqual({});
   });
 
-  it('specialist mode sets prompt, iterations and effective tool allowlist', () => {
+  it('specialist mode sets prompt and effective tool allowlist, plus the todo list and questions', () => {
     expect(modeOverrides('ask', ctx())).toEqual({
       systemPrompt: 'ASK PROMPT',
-      maxIterations: 5,
-      toolSandbox: { allowTools: ['read_file', 'list_files'] },
+      toolSandbox: { allowTools: ['read_file', 'list_files', 'todo_write', 'todo_read', 'ask_user'] },
     });
   });
 
-  it('defaults maxIterations to 10', () => {
-    expect(modeOverrides('code', ctx()).maxIterations).toBe(10);
+  // The specialist step caps (Code 20, Ask 5, …) are sized for one orchestrator sub-step; in the chat a
+  // whole task stopped half-way when it hit them. A mode keeps the run's own limit.
+  it('never sets a step limit, so a chat mode runs as long as Agent mode', () => {
+    expect(modeOverrides('ask', ctx())).not.toHaveProperty('maxIterations');
+    expect(modeOverrides('code', ctx())).not.toHaveProperty('maxIterations');
+  });
+
+  it('keeps the todo list and ask_user in every built-in mode, so the todo chip stays in step', () => {
+    for (const spec of BUILTIN_SPECIALISTS) {
+      if (spec.id === 'orchestrator') continue;
+      const tools = modeOverrides(spec.id, ctx({ specialists: BUILTIN_SPECIALISTS, effectiveToolsFor })).toolSandbox?.allowTools;
+      expect(tools, spec.id).toEqual(expect.arrayContaining(['todo_write', 'todo_read', 'ask_user']));
+    }
+  });
+
+  it('does not add a bookkeeping tool the agent forbids', () => {
+    const quiet = { ...ask, id: 'quiet', forbiddenTools: ['todo_write'] };
+    const tools = modeOverrides('quiet', ctx({ specialists: [quiet] })).toolSandbox?.allowTools;
+    expect(tools).not.toContain('todo_write');
+    expect(tools).toContain('todo_read');
+  });
+
+  // The old Code prompt told the model to stop after ~3 files, which in the chat ended a task half-way.
+  it('gives Code mode no rule to stop after a few files', () => {
+    const prompt = modeOverrides('code', ctx({ specialists: BUILTIN_SPECIALISTS, effectiveToolsFor })).systemPrompt ?? '';
+    expect(prompt).toContain('You are Code');
+    expect(prompt).not.toMatch(/more than ~?\d+ files, stop/);
   });
 
   it('intersects with user allowTools so a mode never widens the sandbox', () => {

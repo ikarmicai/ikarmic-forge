@@ -18,8 +18,13 @@ export interface SlashDeps {
   /** `/review` with its scope words (staged, unstaged, last, branch [base]); none reviews all uncommitted changes. */
   review(args: string): Promise<void>;
   reload(): Promise<void>;
+  /** `/cmd` with the request in plain words: writes one shell command and shows it as a card. */
+  terminalCommand(args: string): Promise<void>;
   help(text: string): void;
 }
+
+/** Shown by `/cmd` with no words. The page translates it (it is in WEBVIEW_STRINGS). */
+export const CMD_USAGE = 'Say what you want after /cmd, for example: /cmd list files larger than 10 MB';
 
 /** True when `name` was a built-in and has been run. */
 export async function runSlash(name: string, args: string, deps: SlashDeps, known: readonly SlashEntry[]): Promise<boolean> {
@@ -58,6 +63,10 @@ export async function runSlash(name: string, args: string, deps: SlashDeps, know
       return true;
     case 'reload':
       await deps.reload();
+      return true;
+    case 'cmd':
+      if (args.trim()) await deps.terminalCommand(args.trim());
+      else deps.help(CMD_USAGE);
       return true;
     case 'help':
       deps.help(known.map((e) => `/${e.name} - ${e.description}`).join('\n'));

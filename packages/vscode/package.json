@@ -57,6 +57,9 @@
     "onCommand:forge.configureProvider",
     "onCommand:forge.cancelTask",
     "onCommand:forge.startVoiceInput",
+    "onCommand:forge.cycleChatMode",
+    "onCommand:forge.toggleAcceptEdits",
+    "onCommand:forge.generateTerminalCommand",
     "onCommand:forge.openSettings",
     "onCommand:forge.manageMemory"
   ],
@@ -144,6 +147,21 @@
         "category": "%category.forge%"
       },
       {
+        "command": "forge.cycleChatMode",
+        "title": "%command.forge.cycleChatMode.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.generateTerminalCommand",
+        "title": "%command.forge.generateTerminalCommand.title%",
+        "category": "%category.forge%"
+      },
+      {
+        "command": "forge.toggleAcceptEdits",
+        "title": "%command.forge.toggleAcceptEdits.title%",
+        "category": "%category.forge%"
+      },
+      {
         "command": "forge.addToContext",
         "title": "%command.forge.addToContext.title%",
         "category": "%category.forge%"
@@ -173,6 +191,12 @@
         "title": "%command.forge.openChatInTab.title%",
         "category": "%category.forge%",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "forge.openAgentManager",
+        "title": "%command.forge.openAgentManager.title%",
+        "category": "%category.forge%",
+        "icon": "$(layout)"
       },
       {
         "command": "forge.importClaudeCode",
@@ -516,6 +540,32 @@
           "default": true,
           "description": "%config.forge.suggestSpec.description%"
         },
+        "forge.approvalDefault": {
+          "type": "string",
+          "enum": [
+            "unset",
+            "ask",
+            "edits",
+            "auto"
+          ],
+          "default": "unset",
+          "scope": "application",
+          "description": "%config.forge.approvalDefault.description%"
+        },
+        "forge.chat.promptHistory": {
+          "type": "string",
+          "enum": [
+            "shared",
+            "perChat"
+          ],
+          "default": "shared",
+          "description": "%config.forge.chat.promptHistory.description%"
+        },
+        "forge.chat.showSpeed": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.chat.showSpeed.description%"
+        },
         "forge.chatViewEnabled": {
           "type": "boolean",
           "default": true,
@@ -678,6 +728,22 @@
           "minimum": 0,
           "description": "%config.forge.loopGuardThreshold.description%"
         },
+        "forge.commandSandbox": {
+          "type": "string",
+          "enum": [
+            "off",
+            "on",
+            "on-network"
+          ],
+          "default": "off",
+          "description": "%config.forge.commandSandbox.description%"
+        },
+        "forge.maxSteps": {
+          "type": "integer",
+          "default": 50,
+          "minimum": 0,
+          "description": "%config.forge.maxSteps.description%"
+        },
         "forge.notifications.enabled": {
           "type": "boolean",
           "default": false,
@@ -718,6 +784,11 @@
           "default": "",
           "editPresentation": "multilineText",
           "description": "%config.forge.commitMessage.prompt.description%"
+        },
+        "forge.commitMessage.language": {
+          "type": "string",
+          "default": "",
+          "description": "%config.forge.commitMessage.language.description%"
         },
         "forge.enhancePrompt.instruction": {
           "type": "string",
@@ -960,7 +1031,19 @@
         "command": "forge.startVoiceInput",
         "key": "ctrl+shift+space",
         "mac": "cmd+shift+space",
-        "when": "workbench.view.extension.forge || sidebarFocus"
+        "when": "forge.chatFocused || workbench.view.extension.forge || sidebarFocus"
+      },
+      {
+        "command": "forge.cycleChatMode",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "forge.chatFocused || focusedView == forge.chatView || activeWebviewPanelId == forge.chatTab"
+      },
+      {
+        "command": "forge.toggleAcceptEdits",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "forge.chatFocused || focusedView == forge.chatView || activeWebviewPanelId == forge.chatTab"
       }
     ],
     "menus": {

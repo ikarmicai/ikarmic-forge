@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { McpManager, defaultSessionDir, getOrgPolicy, installProxy, loadForgeConfigFile, proxyFromEnv, pruneByRetention, readCaCertificates } from '@ikarmic/forge-core';
+import { McpManager, defaultSessionDir, getOrgPolicy, installProxy, loadForgeConfigFile, loadModelCatalog, proxyFromEnv, pruneByRetention, readCaCertificates } from '@ikarmic/forge-core';
 
 import { readConfig, resolveModel } from './config.js';
 import { ModelLister } from './model-lister.js';
@@ -9,6 +9,7 @@ import { ForgeChatViewProvider } from './chat/chat-view.js';
 import { PROPOSED_SCHEME, ProposedContentProvider } from './chat/proposed-content-provider.js';
 import { registerAgents } from './agents/agents-commands.js';
 import { registerMcp } from './mcp/mcp-commands.js';
+import { AgentManagerPanel } from './agent-manager/manager-panel.js';
 import { openChatInTab } from './chat/chat-tab.js';
 import { registerImportClaude } from './import-claude.js';
 import { registerOnboarding } from './onboarding.js';
@@ -63,6 +64,8 @@ async function setupNetworkAndPolicy(): Promise<void> {
       },
       ca.pems
     );
+    // Model limits and prices (models.dev, cached a day, bundled snapshot offline); after the proxy so it applies.
+    void loadModelCatalog();
   } catch (err) {
     // A present-but-broken policy file must be visible: every agent run will refuse until it is fixed.
     void vscode.window.showErrorMessage(t('Forge: {0}', (err as Error).message));
@@ -113,12 +116,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return { ollama: p.ollamaBaseUrl, lmstudio: p.lmstudioBaseUrl, 'openai-compatible': p.openaiCompatibleBaseUrl };
     },
   });
-  const chatProvider = new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models);
-  const openTab = (): void => openChatInTab(context, () => new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models));
-  const completionState = new CompletionState();
-  // Output > Forge: why a completion request ended (debug level: set the channel to Debug to see them).
+  // Output > Forge: why a completion request or a /cmd ended (completion logs at debug level: set the channel to Debug to see them).
   const forgeLog = vscode.window.createOutputChannel('Forge', { log: true });
   context.subscriptions.push(forgeLog);
+  const chatProvider = new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog);
+  const makeChatProvider = (): ForgeChatViewProvider => new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog);
+  const openTab = (): void => {
+    openChatInTab(context, makeChatProvider);
+  };
+  const completionState = new CompletionState();
   const completionStatus = new CompletionStatus(completionState);
   const completionProvider = new ForgeInlineCompletionProvider(
     () => {
@@ -180,6 +186,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       telemetry.recordRejected();
     }),
     vscode.commands.registerCommand('forge.openChatInTab', openTab),
+    vscode.commands.registerCommand('forge.openAgentManager', () => AgentManagerPanel.show(context, makeChatProvider)),
     vscode.commands.registerCommand('forge.completion.menu', () => completionStatus.menu()),
     vscode.commands.registerCommand('forge.completion.trigger', () => vscode.commands.executeCommand('editor.action.inlineSuggest.trigger')),
     vscode.commands.registerCommand('forge.completionTelemetry.reset', () => {

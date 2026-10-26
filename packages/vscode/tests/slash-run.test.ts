@@ -17,6 +17,7 @@ function setup() {
     openSettings: async () => { calls.push('settings'); },
     review: async (args) => { calls.push(args ? `review:${args}` : 'review'); },
     reload: async () => { calls.push('reload'); },
+    terminalCommand: async (args) => { calls.push(`cmd:${args}`); },
     help: (text) => { calls.push(`help:${text}`); },
   };
   return { calls, deps };

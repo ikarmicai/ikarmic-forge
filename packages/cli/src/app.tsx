@@ -95,6 +95,12 @@ export function App({ task, baseConfig, model, display = {}, onResult, onError }
           case 'continuation':
             continuedRef.current = true;
             break;
+          case 'retry':
+            // The step is asked again: what it streamed is not part of the answer.
+            setStreaming(false);
+            setStream('');
+            setReasoningText('');
+            break;
           case 'reasoning_delta':
             setReasoningStreaming(true);
             setReasoningText((prev) => prev + event.text);

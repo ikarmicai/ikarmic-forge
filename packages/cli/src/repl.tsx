@@ -1213,6 +1213,10 @@ export function Repl({
                 });
                 break;
               }
+              case 'retry':
+                // The step is asked again: drop what it streamed so far.
+                setMessages((prev) => prev.filter((m) => !(m.kind === 'assistant' && m.streaming)));
+                break;
               case 'text_done': {
                 setMessages((prev) => {
                   const idx = prev.findIndex((m) => m.kind === 'assistant' && m.streaming);

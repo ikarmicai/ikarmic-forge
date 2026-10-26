@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 
 import { generateText } from 'ai';
 
-import { assertProviderAllowed, createLanguageModel, getOrgPolicy, type CredentialStore } from '@ikarmic/forge-core';
+import { assertProviderAllowed, createLanguageModel, getOrgPolicy, withModelRetry, type CredentialStore } from '@ikarmic/forge-core';
 
 import { resolveModel } from '../config.js';
 import { loadRuntimeConfig } from '../runtime-config.js';
@@ -86,12 +86,17 @@ export async function runInlineEdit(store: CredentialStore, content: InlineEditC
         const controller = new AbortController();
         token.onCancellationRequested(() => controller.abort());
         // think-tags: handled in extractReplacement() (editor-tasks.ts), which strips <think> blocks.
-        const { text } = await generateText({
-          model: createLanguageModel(model),
-          system: INLINE_EDIT_SYSTEM,
-          prompt: inlineEditPrompt({ instruction, file, language: doc.languageId, before, selection: original, after }),
-          abortSignal: controller.signal,
-        });
+        const { text } = await withModelRetry(
+          () =>
+            generateText({
+              model: createLanguageModel(model),
+              system: INLINE_EDIT_SYSTEM,
+              prompt: inlineEditPrompt({ instruction, file, language: doc.languageId, before, selection: original, after }),
+              abortSignal: controller.signal,
+              maxRetries: 0,
+            }),
+          { maxRetries: 2, abortSignal: controller.signal }
+        );
         return text;
       }
     );

@@ -48,6 +48,8 @@ export interface CliOptions {
   maxCostUsd: number | null;
   /** `--loop-guard <n>`: stop the run after this many identical tool calls in a row. */
   loopGuardThreshold: number | null;
+  /** `--sandbox [network]`: run commands in the OS sandbox. */
+  commandSandbox: 'off' | 'on' | 'on-network';
   /** `--cheap-model <id>`: same-provider model for read-only exploration steps. */
   cheapModel: string | null;
   /** `--no-cache-prompts`: skip Anthropic prompt-cache breakpoints. */
@@ -193,6 +195,7 @@ export function buildProgram(): Command {
     .option('--max-duration <ms>', 'max wall-clock ms', (v) => parseInt(v, 10), 10 * 60 * 1000)
     .option('--max-cost <usd>', 'stop the run once its cost reaches this many USD', (v) => parseFloat(v))
     .option('--loop-guard <n>', 'stop the run after this many identical tool calls in a row (off by default)', (v) => parseInt(v, 10))
+    .option('--sandbox [network]', 'run commands in an OS sandbox (bubblewrap / sandbox-exec; not Windows); "network" keeps internet access')
     .option('--verify <cmd>', 'run this check after edits and self-fix on failure (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--force', 'with `plugin install`: replace an installed plugin of the same name', false)
     .option('--project', 'with `plugin install|remove`: use the project (.forge/plugins) instead of ~/.forge/plugins', false)
@@ -462,6 +465,7 @@ export function parseOptions(argv: string[]): {
     maxDurationMs: (opts.maxDuration as number | undefined) ?? null,
     maxCostUsd: typeof opts.maxCost === 'number' && Number.isFinite(opts.maxCost) && opts.maxCost > 0 ? opts.maxCost : null,
     loopGuardThreshold: typeof opts.loopGuard === 'number' && Number.isInteger(opts.loopGuard) && opts.loopGuard > 0 ? opts.loopGuard : null,
+    commandSandbox: opts.sandbox === 'network' ? 'on-network' : opts.sandbox ? 'on' : 'off',
     cheapModel: (opts.cheapModel as string | undefined) ?? null,
     noCachePrompts: opts.cachePrompts === false,
     architect: opts.architect === true,
@@ -1138,6 +1142,7 @@ export async function toAgentConfig(
     maxDurationMs: options.maxDurationMs ?? undefined,
     ...(options.maxCostUsd !== null ? { maxCostUsd: options.maxCostUsd } : {}),
     ...(options.loopGuardThreshold !== null ? { loopGuardThreshold: options.loopGuardThreshold } : {}),
+    ...(options.commandSandbox !== 'off' ? { commandSandbox: { network: options.commandSandbox === 'on-network' } } : {}),
     ...(options.audit ? { audit: createFileAuditSink() } : {}),
     ...(options.browser ? { browser: true as const } : {}),
     ...(options.github ? { github: resolveGitHub() } : {}),

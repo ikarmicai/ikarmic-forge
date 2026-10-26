@@ -162,6 +162,12 @@ export function chatHtml(
   #panel .title { font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; }
   .run-footer { font-size: var(--fs-xs); color: var(--muted); padding: 0 0 8px; margin-top: -2px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
   .turn-actions .link, .run-footer .link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
+  .cmd-card { border: 1px solid var(--hair); border-radius: var(--r-m); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--vscode-textBlockQuote-background, transparent); }
+  .cmd-card pre { margin: 0; padding: 6px 8px; overflow-x: auto; background: var(--vscode-editor-background, var(--bg)); border-radius: var(--r-s); font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); line-height: 1.5; white-space: pre; }
+  .cmd-card pre code { background: none; padding: 0; font: inherit; }
+  .cmd-card .cmd-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .cmd-card .cmd-risk { color: var(--err); font-size: var(--fs-s); font-weight: 600; display: inline-flex; gap: 4px; }
+  .cmd-card .cmd-msg { color: var(--muted); font-size: var(--fs-s); }
   .warning.notice { border-left-color: var(--vscode-charts-green, var(--warn)); }
   .warning { color: var(--fg); font-size: var(--fs-s); line-height: 1.5; overflow-wrap: anywhere; padding: 6px 10px; border-left: 2px solid var(--warn); border-radius: 0 4px 4px 0; background: var(--vscode-textBlockQuote-background, transparent); }
   body { position: relative; }
@@ -174,10 +180,12 @@ export function chatHtml(
   /* Consecutive tool rows and approval outcomes live in one group, so their spacing never depends on the message gap. */
   .steps { display: flex; flex-direction: column; gap: 2px; }
   .steps-head { font-size: var(--fs-xs); color: var(--muted); padding: 0 4px 2px; font-variant-numeric: tabular-nums; }
+  .steps-head.auto { color: var(--err); }
+  .tool-body .why { margin: 0 0 4px; font-size: var(--fs-s); color: var(--muted); }
   #input-area { position: relative; border-top: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
   .composer { border: 1px solid var(--edge); border-radius: var(--r-m); background: var(--vscode-input-background, var(--bg)); box-shadow: var(--elev-1); }
   .composer:focus-within { border-color: var(--vscode-focusBorder, var(--accent)); outline: 2px solid var(--vscode-focusBorder, var(--accent)); outline-offset: 1px; }
-  #input { display: block; width: 100%; resize: none; min-height: 32px; max-height: 200px; border: 0; outline: none; background: transparent; color: var(--fg); padding: 8px 10px 2px; font-family: var(--vscode-font-family); font-size: var(--fs-m); }
+  #input { display: block; width: 100%; resize: none; min-height: 32px; max-height: 200px; border: 0; outline: none; background: transparent; color: var(--fg); padding: 10px 12px 6px; font-family: var(--vscode-font-family); font-size: var(--fs-m); }
   #input::placeholder { color: var(--muted); }
   /* In a very narrow sidebar the placeholder wraps; leave room for all of it instead of clipping it behind scroll arrows. */
   @media (max-width: 260px) { #input { min-height: 56px; } }
@@ -206,16 +214,34 @@ export function chatHtml(
   #goal-chip { flex: 1 1 220px; min-width: 0; }
   #todo-chip { flex: 0 1 auto; }
   #todo-chip:has(#todo-list:not([hidden])) { flex-basis: 100%; }
-  #goal-chip, #todo-chip { padding: 2px 8px; font-size: var(--fs-s); color: var(--muted); }
+  #goal-chip { padding: 2px 8px; font-size: var(--fs-s); color: var(--muted); }
   #goal-chip[hidden], #todo-chip[hidden] { display: none; }
   #goal-chip { display: flex; align-items: center; gap: 8px; }
   #goal-chip .gtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #todo-chip .link { padding: 0; text-align: left; }
-  #todo-list { margin: 4px 0 2px; padding: 0 0 0 4px; list-style: none; color: var(--fg); }
+  /* The plan is content, not a control: a card with a hairline edge, a status icon, one summary line and a segment per step. */
+  #todo-chip { border: 1px solid var(--hair); border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); box-shadow: var(--elev-1); overflow: hidden; font-size: var(--fs-m); color: var(--fg); }
+  #todo-toggle { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 12px 6px; background: none; border: 0; border-radius: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+  #todo-toggle:hover { background: var(--sel); }
+  #todo-toggle:focus-visible { outline-offset: -2px; }
+  #todo-toggle .sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #todo-toggle .chev { flex: none; color: var(--muted); transition: transform .14s; }
+  #todo-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  #todo-chip .st-ic { flex: none; display: none; }
+  #todo-chip.s-doing .st-doing, #todo-chip.s-done .st-done, #todo-chip.s-idle .st-idle { display: block; }
+  #todo-bar { display: flex; gap: 2px; padding: 0 12px 10px; }
+  #todo-bar span { flex: 1; height: 3px; border-radius: 2px; background: var(--hair); }
+  #todo-bar span.done { background: var(--ok); }
+  #todo-bar span.doing { background: var(--ion); }
+  #todo-list { margin: 0; padding: 2px 6px 8px; list-style: none; border-top: 1px solid var(--hair); }
   #todo-list[hidden] { display: none; }
-  #todo-list li { padding: 1px 0; overflow-wrap: anywhere; }
-  #todo-list li.done { color: var(--muted); text-decoration: line-through; }
-  #todo-list li.doing { font-weight: 600; }
+  #todo-list li { display: flex; align-items: flex-start; gap: 8px; padding: 4px 6px; min-height: 28px; border-radius: var(--r-s); overflow-wrap: anywhere; }
+  #todo-list li .ic { flex: none; width: 16px; height: 20px; display: flex; align-items: center; justify-content: center; }
+  #todo-list li.done { color: var(--muted); }
+  #todo-list li.done .tx { text-decoration: line-through; }
+  #todo-list li.doing { background: var(--sel); font-weight: 600; }
+  .todo-spin { transform-origin: 50% 50%; animation: todo-spin 1.2s linear infinite; }
+  @keyframes todo-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .todo-spin { animation: none; } }
   .question { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
   .question .qk { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
   .question .qt { overflow-wrap: anywhere; }
@@ -233,15 +259,20 @@ export function chatHtml(
   .chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip button { width: 16px; height: 16px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; line-height: 1; }
   .msg.user .files { margin-top: 4px; font-size: var(--fs-xs); opacity: .8; }
-  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 2px 4px 0 6px; min-width: 0; }
+  /* Mode and model are set once and rarely touched, so they head the composer on a sunken strip, out of the way of typing. */
+  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; min-width: 0; background: var(--sunken); border-bottom: 1px solid var(--hair); border-radius: var(--r-m) var(--r-m) 0 0; }
+  .cchips #mode { font-weight: 600; }
   .cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px 8px; }
+  /* The approval level is a select like the mode and model chips. It stays neutral while Ask first, reads as a mild step at Accept edits, and is the one red control in the composer at Autonomous. */
   .cfoot .auto { font-size: var(--fs-s); color: var(--muted); background: transparent; border: 1px solid var(--chip-edge); border-radius: var(--r-s); min-height: 24px; padding: 2px 4px; cursor: pointer; field-sizing: content; }
-  .cfoot .auto:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
+  .cfoot .auto:hover { color: var(--fg); background: var(--vscode-toolbar-hoverBackground, var(--sel)); }
   .cfoot .auto option { background: var(--vscode-dropdown-background, var(--bg)); color: var(--vscode-dropdown-foreground, var(--fg)); font-weight: normal; }
-  .cfoot .auto.edits { color: var(--fg); }
-  .cfoot .auto.on { color: var(--err); font-weight: 600; background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .2)); }
-  #auto-note { padding: 0 10px 6px; font-size: var(--fs-xs); color: var(--err); }
-  #auto-note.edits { color: var(--muted); }
+  .cfoot .auto.edits { color: var(--fg); border-color: var(--edge); }
+  .cfoot .auto.on { color: var(--err); font-weight: 600; border-color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); }
+  #auto-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 6px; padding: 6px 8px; font-size: var(--fs-s); line-height: 1.4; color: var(--fg); background: color-mix(in srgb, var(--err) 12%, transparent); border-left: 3px solid var(--err); border-radius: var(--r-s); }
+  #auto-note svg { flex: none; margin-top: 1px; color: var(--err); }
+  #auto-note.edits { background: var(--sunken); border-left-color: var(--edge); }
+  #auto-note.edits svg { color: var(--muted); }
   #auto-note[hidden] { display: none; }
   #send, #cancel { flex: none; min-height: 24px; }
   #send[hidden], #cancel[hidden] { display: none; }
@@ -258,6 +289,8 @@ export function chatHtml(
   .msg.assistant .body { overflow-wrap: anywhere; }
   .msg.assistant .body:not(.md) { white-space: pre-wrap; }
   .msg .label { display: none; }
+  .msg.assistant .label.has-speed { display: block; order: 2; margin-top: 2px; font-size: var(--fs-xs); color: var(--ion); font-variant-numeric: tabular-nums; }
+  .msg.assistant .label.has-speed .who { display: none; }
   .md > * { margin: 0; }
   .md > * + * { margin-top: 8px; }
   .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-size: var(--fs-m); font-weight: 600; }
@@ -318,16 +351,21 @@ export function chatHtml(
   @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .approval { animation: none; } }
   .approval.destructive { border-color: var(--err); }
-  .approval .kind { padding: 7px 10px 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
+  .approval .kind { display: flex; align-items: center; gap: 6px; padding: 9px 12px 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
   .approval.destructive .kind { color: var(--err); }
-  .approval .line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 8px 8px 10px; min-width: 0; }
-  .approval .q { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+  .approval .kind .hint { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .approval .line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px 2px; min-width: 0; }
+  .approval .q { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
   .approval .file { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
-  /* The command or path being approved is the focus of the card: a code block that wraps, never a coloured sentence. */
-  .approval .target { display: inline-block; max-width: 100%; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); background: var(--vscode-textCodeBlock-background, var(--tool)); border-radius: var(--r-s); padding: 1px 6px; overflow-wrap: anywhere; vertical-align: top; }
+  /* The command or path being approved is the focus of the card: a code block that wraps (three lines, then "Show full command"), never a coloured sentence. */
+  .approval .target { display: inline-block; max-width: 100%; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); background: var(--sunken); border-radius: var(--r-s); padding: 1px 6px; overflow-wrap: anywhere; vertical-align: top; }
+  .approval .cmd { flex: 1 1 100%; min-width: 0; display: flex; gap: 8px; background: var(--sunken); border-radius: var(--r-s); padding: 8px 10px; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); line-height: 1.5; }
+  .approval .cmd .p { flex: none; color: var(--muted); }
+  .approval .cmd code { min-width: 0; font: inherit; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .approval .cmd.open code { display: block; -webkit-line-clamp: unset; max-height: 200px; overflow: auto; }
   .approval .meta { font-size: var(--fs-xs); color: var(--fg); font-family: var(--vscode-editor-font-family); }
-  .approval button { flex: none; font-size: var(--fs-s); padding: 3px 9px; white-space: nowrap; }
-  .approval .link { padding: 0; }
+  .approval button { flex: none; font-size: var(--fs-s); min-height: 28px; padding: 3px 12px; white-space: nowrap; }
+  .approval .link { padding: 0; min-height: 24px; }
   .approval .link:hover { text-decoration: underline; }
   .approval .fb { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
   .approval .fb[hidden] { display: none; }
@@ -338,8 +376,10 @@ export function chatHtml(
   .approval .note { width: 100%; resize: vertical; min-height: 44px; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: 12px var(--vscode-font-family); padding: 6px 8px; }
   .approval .note:focus { border-color: var(--vscode-focusBorder, var(--accent)); }
   .approval .fb-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-  .approval .acts { display: flex; gap: 6px; margin-left: auto; flex: none; }
-  .approval .hold { position: relative; overflow: hidden; background: transparent; color: var(--err); box-shadow: inset 0 0 0 1px var(--err); user-select: none; touch-action: none; }
+  .approval .bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px 12px; }
+  .approval .bar .sp { flex: 1; }
+  .approval .acts { display: flex; gap: 8px; flex: none; }
+  .approval .hold { position: relative; overflow: hidden; min-width: 116px; font-weight: 600; background: transparent; color: var(--err); box-shadow: inset 0 0 0 1px var(--err); user-select: none; touch-action: none; }
   .approval .hold::before { content: ""; position: absolute; inset: 0; width: 0; background: var(--err); opacity: .25; }
   .approval .hold.holding::before { width: 100%; transition: width .9s linear; }
   .approval .hold span { position: relative; }
@@ -378,6 +418,15 @@ export function chatHtml(
   .empty-state .mark { width: 64px; height: 64px; background: var(--ion); -webkit-mask: var(--mandala) center / contain no-repeat; mask: var(--mandala) center / contain no-repeat; }
   .empty-state h2 { margin: 0; font-size: var(--fs-l); font-weight: 600; color: var(--fg); }
   .empty-state p { margin: 0; line-height: 1.5; max-width: 34ch; }
+  .approval-default-card { width: 100%; text-align: left; border: 1px solid var(--hair); border-radius: var(--r-m); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--elev-1); }
+  .approval-default-card[hidden] { display: none; }
+  .approval-default-card h3 { margin: 0; font-size: var(--fs-m); font-weight: 600; color: var(--fg); }
+  .approval-default-card .adc-opt { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: start; min-height: 24px; padding: 3px 0; cursor: pointer; color: var(--fg); }
+  .approval-default-card .adc-opt input { margin: 3px 0 0; }
+  .approval-default-card .adc-name { font-weight: 600; }
+  .approval-default-card .adc-desc { grid-column: 2; color: var(--muted); font-size: var(--fs-xs); line-height: 1.4; }
+  .approval-default-card .adc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .approval-default-card .adc-note { color: var(--muted); font-size: var(--fs-xs); }
   .empty-state .examples { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
   .empty-state .ex { text-align: left; background: transparent; color: var(--fg); border: 1px solid var(--edge); border-radius: var(--r-m); padding: 6px 10px; font-size: var(--fs-s); min-height: 28px; }
   .empty-state .ex:hover { background: var(--vscode-list-hoverBackground); border-color: var(--vscode-focusBorder, var(--accent)); }
@@ -444,7 +493,7 @@ export function chatHtml(
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }
   @media (forced-colors: active) {
-    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .question, .composer, .steps, .cchips select, .cchips .model, .cfoot .auto, .empty-state .ex { border: 1px solid ButtonText; }
+    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .cmd-card, .approval-default-card, .question, .composer, .steps, .cchips select, .cchips .model, .cfoot .auto, .empty-state .ex { border: 1px solid ButtonText; }
     .m-cap { border: 1px solid ButtonText; }
     .wv path { forced-color-adjust: none; fill: Highlight; }
   }
@@ -474,6 +523,13 @@ export function chatHtml(
     <div class="mark" aria-hidden="true"></div>
     <h2>What should Forge work on?</h2>
     <p>Forge asks before it edits files or runs commands.</p>
+    <div class="approval-default-card" id="approval-default-card" role="group" aria-labelledby="adc-title" hidden>
+      <h3 id="adc-title">How much should Forge do on its own?</h3>
+      <label class="adc-opt"><input type="radio" name="adc" value="ask" checked><span class="adc-name">Ask first</span><span class="adc-desc">Approve each file edit and command. Safest while you get to know Forge.</span></label>
+      <label class="adc-opt"><input type="radio" name="adc" value="edits"><span class="adc-name">Accept edits</span><span class="adc-desc">File edits just happen. Commands still ask.</span></label>
+      <label class="adc-opt"><input type="radio" name="adc" value="auto"><span class="adc-name">Autonomous</span><span class="adc-desc">No approval cards. For trusted projects.</span></label>
+      <div class="adc-foot"><span class="adc-note">You can change this any time in the composer.</span><button type="button" class="primary" id="adc-use">Use this</button></div>
+    </div>
     <div class="examples">
       <button type="button" class="ex">Explain how this project is organized</button>
       <button type="button" class="ex">Find why a test is failing and fix it</button>
@@ -495,15 +551,15 @@ export function chatHtml(
   <div id="edit-banner" hidden><span>Editing your last message</span><button id="edit-cancel" class="link" type="button">Cancel</button></div>
   <div id="chipbar">
   <div id="goal-chip" hidden><span class="gtext" id="goal-text"></span><button type="button" class="link" id="goal-toggle">Pause</button><button type="button" class="link" id="goal-clear">Clear</button></div>
-  <div id="todo-chip" hidden><button type="button" class="link" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"></button><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
+  <div id="todo-chip" class="s-idle" hidden><button type="button" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"><svg class="st-ic st-idle" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--edge)" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><svg class="st-ic st-doing todo-spin" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ion)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="var(--hair)"/><path d="M8 2a6 6 0 0 1 6 6"/></svg><svg class="st-ic st-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ok)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="m5.5 8.2 1.8 1.8 3.3-3.6"/></svg><span class="sum" id="todo-sum"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><div id="todo-bar" aria-hidden="true"></div><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
   </div>
   <div class="composer">
-    <div id="attachments" role="list" aria-label="Attached files"></div>
-    <textarea id="input" rows="1" aria-label="Message to Forge" aria-autocomplete="list" aria-controls="mention-list" placeholder="Ask Forge… (@ to attach context)" title="@ attaches files, @problems or @git context" autofocus></textarea>
     <div class="cchips">
   <select id="mode" title="Mode" aria-label="Mode"></select>
   <button type="button" class="model" id="model-label" title="Model" aria-haspopup="dialog" aria-expanded="false">no model</button>
     </div>
+    <div id="attachments" role="list" aria-label="Attached files"></div>
+    <textarea id="input" rows="1" aria-label="Message to Forge" aria-autocomplete="list" aria-controls="mention-list" placeholder="Ask Forge… (@ to attach context)" title="@ attaches files, @problems or @git context" autofocus></textarea>
     <div class="cfoot">
       <select class="auto" id="approval" aria-label="Approvals" aria-describedby="auto-note" title="Forge asks before it changes files or runs commands">
         <option value="ask" title="Forge asks before it changes files or runs commands" selected>Ask first</option>
@@ -556,18 +612,40 @@ export function chatHtml(
   autoNote.id = 'auto-note';
   autoNote.hidden = true;
   approvalSelect.closest('.composer').appendChild(autoNote);
+  const NOTE_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14.5 13.5h-13z"/><path d="M8 6.5v3.5"/><path d="M8 12h.01"/></svg>';
+  autoNote.innerHTML = NOTE_ICON + '<span></span>';
   const APPROVAL_NOTES = { edits: 'File edits run without asking. Commands still ask.', auto: 'Approvals are off: Forge runs tools without asking.' };
   function showApproval() {
     const level = approvalSelect.value;
     approvalSelect.classList.toggle('on', level === 'auto');
     approvalSelect.classList.toggle('edits', level === 'edits');
     autoNote.classList.toggle('edits', level === 'edits');
-    autoNote.textContent = APPROVAL_NOTES[level] || '';
+    autoNote.lastChild.textContent = APPROVAL_NOTES[level] || '';
     autoNote.hidden = !APPROVAL_NOTES[level];
     const chosen = approvalSelect.options[approvalSelect.selectedIndex];
     approvalSelect.title = chosen ? chosen.title : '';
   }
   approvalSelect.addEventListener('change', showApproval);
+  // The level new chats start at, and whether the first-run card is still to be shown (both come from the host).
+  let approvalDefault = 'ask';
+  let offerApprovalCard = false;
+  function setApprovalLevel(level) { approvalSelect.value = level; showApproval(); }
+  function syncApprovalCard() {
+    const card = document.getElementById('approval-default-card');
+    if (card) card.hidden = !offerApprovalCard;
+  }
+  // Delegated, because the empty state is rebuilt from a saved copy when a new chat starts.
+  document.addEventListener('click', (ev) => {
+    const use = ev.target && ev.target.closest ? ev.target.closest('#adc-use') : null;
+    if (!use) return;
+    const picked = document.querySelector('#approval-default-card input[name=adc]:checked');
+    const level = picked ? picked.value : 'ask';
+    offerApprovalCard = false;
+    approvalDefault = level;
+    setApprovalLevel(level);
+    syncApprovalCard();
+    vscode.postMessage({ type: 'set_approval_default', level: level });
+  });
   const modelLabel = document.getElementById('model-label');
   const micBtn = document.getElementById('mic');
   const voiceStatusEl = document.getElementById('voice-status');
@@ -1122,6 +1200,7 @@ export function chatHtml(
       if (messagesEl.children.length === 0 && EMPTY_HTML) {
         messagesEl.innerHTML = EMPTY_HTML;
         emptyEl = document.getElementById('empty');
+        syncApprovalCard();
       }
     }, 8000);
   }
@@ -1200,6 +1279,64 @@ export function chatHtml(
     autoscroll();
   }
 
+  // /cmd result: the request was shown as a user line; the card holds the whole command (it is never run).
+  function removeCmdPending() { const p = messagesEl.querySelector('.cmd-card.pending'); if (p) p.remove(); }
+  function appendCmdCard(it) {
+    removeCmdPending();
+    hideEmpty();
+    const card = document.createElement('div');
+    card.className = 'cmd-card';
+    if (it.pending) {
+      card.classList.add('pending');
+      card.setAttribute('role', 'status');
+      const wait = document.createElement('span');
+      wait.className = 'cmd-msg';
+      wait.textContent = 'Writing a command…';
+      card.appendChild(wait);
+    } else if (!it.command) {
+      const bad = document.createElement('span');
+      bad.className = 'cmd-msg';
+      bad.textContent = 'Forge could not write a command for that; try rephrasing.';
+      card.appendChild(bad);
+    } else {
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.textContent = it.command;
+      pre.appendChild(code);
+      card.appendChild(pre);
+      const actions = document.createElement('div');
+      actions.className = 'cmd-actions';
+      const ins = document.createElement('button');
+      ins.type = 'button';
+      ins.className = 'link';
+      ins.textContent = 'Insert in terminal';
+      ins.addEventListener('click', () => vscode.postMessage({ type: 'cmd_insert', command: it.command }));
+      const cp = document.createElement('button');
+      cp.type = 'button';
+      cp.className = 'link';
+      cp.textContent = 'Copy';
+      cp.addEventListener('click', () => vscode.postMessage({ type: 'cmd_copy', command: it.command }));
+      actions.appendChild(ins);
+      actions.appendChild(cp);
+      if (it.risk) {
+        // Two text nodes, so the page can translate the label and the reason on their own.
+        const risk = document.createElement('span');
+        risk.className = 'cmd-risk';
+        risk.title = 'A hint from known patterns, not a guarantee.';
+        const label = document.createElement('span');
+        label.textContent = 'Risky:';
+        const why = document.createElement('span');
+        why.textContent = it.risk;
+        risk.appendChild(label);
+        risk.appendChild(why);
+        actions.appendChild(risk);
+      }
+      card.appendChild(actions);
+    }
+    messagesEl.appendChild(card);
+    autoscroll();
+  }
+
   function renderTranscript(items) {
     stickToBottom = true; // a loaded chat opens at its end
     messagesEl.textContent = '';
@@ -1211,9 +1348,11 @@ export function chatHtml(
     if (!items.length && EMPTY_HTML) {
       messagesEl.innerHTML = EMPTY_HTML;
       emptyEl = document.getElementById('empty');
+      syncApprovalCard();
     }
     for (const it of items) {
       if (it.role === 'user') appendUserMessage(it.text);
+      else if (it.role === 'cmd') { appendUserMessage(it.request); appendCmdCard(it); }
       else finalizeAssistant(it.text);
     }
   }
@@ -1511,6 +1650,33 @@ export function chatHtml(
   }
 
   modeSelect.addEventListener('change', () => vscode.postMessage({ type: 'set_mode', id: modeSelect.value }));
+
+  // The shortcuts (Ctrl+Alt+M, Ctrl+Alt+A) change this chat's controls through their own change events, so nothing else
+  // differs from a click. They never write the stored approval default, and Autonomous is never reached from here.
+  function announceChange(prefix, label) {
+    meterLive.textContent = '';
+    const a = document.createElement('span'); a.textContent = prefix;
+    const b = document.createElement('span'); b.textContent = label;
+    meterLive.appendChild(a);
+    meterLive.appendChild(document.createTextNode(' '));
+    meterLive.appendChild(b);
+  }
+  function cycleModeFromShortcut() {
+    if (modeSelect.disabled || modeSelect.options.length < 2) return false;
+    modeSelect.selectedIndex = (modeSelect.selectedIndex + 1) % modeSelect.options.length;
+    modeSelect.dispatchEvent(new Event('change'));
+    announceChange('Mode:', modeSelect.options[modeSelect.selectedIndex].textContent);
+    return true;
+  }
+  function toggleAcceptEditsFromShortcut() {
+    if (approvalSelect.disabled) return;
+    approvalSelect.value = approvalSelect.value === 'ask' ? 'edits' : 'ask';
+    approvalSelect.dispatchEvent(new Event('change'));
+    announceChange('Approvals:', approvalSelect.options[approvalSelect.selectedIndex].textContent);
+  }
+  // The host sends its commands to the chat that last said it had focus.
+  window.addEventListener('focus', () => vscode.postMessage({ type: 'chat_focused' }));
+  window.addEventListener('blur', () => vscode.postMessage({ type: 'chat_blurred' }));
   newChatBtn.addEventListener('click', () => { closePanel(); vscode.postMessage({ type: 'new_chat' }); });
   historyBtn.addEventListener('click', () => { renderPanelMessage('Sessions', 'Loading…', true); vscode.postMessage({ type: 'listSessions' }); });
   checkpointsBtn.addEventListener('click', () => { closeMore(); renderPanelMessage('Checkpoints', 'Loading…', true); vscode.postMessage({ type: 'listCheckpoints' }); });
@@ -1616,7 +1782,7 @@ export function chatHtml(
     streamText = '';
     streamingEl = document.createElement('div');
     streamingEl.className = 'msg assistant';
-    streamingEl.innerHTML = '<div class="label">forge</div><div class="body"><span class="cursor"></span></div>';
+    streamingEl.innerHTML = '<div class="label"><span class="who">forge</span></div><div class="body"><span class="cursor"></span></div>';
     messagesEl.appendChild(streamingEl);
     autoscroll();
   }
@@ -1637,6 +1803,21 @@ export function chatHtml(
     });
   }
 
+  /** The tokens-per-second badge on the label of the latest reply; a second one replaces the first. */
+  function setReplySpeed(tps, title) {
+    const labels = messagesEl.querySelectorAll('.msg.assistant .label');
+    const label = labels[labels.length - 1];
+    if (!label) return;
+    const old = label.querySelector('.speed');
+    if (old) old.remove();
+    const sp = document.createElement('span'); sp.className = 'speed'; sp.title = title;
+    const num = document.createElement('span'); num.textContent = String(tps);
+    const unit = document.createElement('span'); unit.textContent = 'tok/s';
+    sp.appendChild(num); sp.appendChild(document.createTextNode(' ')); sp.appendChild(unit);
+    label.appendChild(sp);
+    label.classList.add('has-speed');
+  }
+
   function finalizeAssistant(text) {
     let bubble = null;
     if (!text || !text.trim()) {
@@ -1653,7 +1834,7 @@ export function chatHtml(
     } else {
       const div = document.createElement('div');
       div.className = 'msg assistant';
-      div.innerHTML = '<div class="label">forge</div><div class="body"></div>';
+      div.innerHTML = '<div class="label"><span class="who">forge</span></div><div class="body"></div>';
       renderReply(div.querySelector('.body'), text);
       messagesEl.appendChild(div);
       bubble = div;
@@ -1683,6 +1864,17 @@ export function chatHtml(
       });
       code.appendChild(more);
     }
+  }
+
+  /** A step is being asked again: what it streamed (text and live reasoning) is thrown away, not kept as an answer. */
+  function discardPartialStep() {
+    if (reasoningEl) {
+      reasoningEl.remove();
+      reasoningEl = null;
+    }
+    if (streamingEl) streamingEl.remove();
+    streamingEl = null;
+    streamText = '';
   }
 
   /** The run ended: drop an unused streaming bubble and any cursor left behind (error, Stop). */
@@ -1741,14 +1933,33 @@ export function chatHtml(
     if (!group) { group = document.createElement('div'); group.className = 'steps'; messagesEl.appendChild(group); }
     group.appendChild(el);
     const n = group.querySelectorAll('.tool-row, .approval-log').length;
+    // Count the calls that ran without asking, by reason (why-ran.ts); the header is built from parts so each translates.
+    const counts = {};
+    group.querySelectorAll('.tool-row').forEach((r) => { if (r.dataset.why) counts[r.dataset.why] = (counts[r.dataset.why] || 0) + 1; });
+    const parts = UI ? UI.stepsHeadParts(n, counts) : (n >= 3 ? [String(n), 'steps'] : undefined);
     let head = group.querySelector('.steps-head');
-    if (n >= 3) {
+    if (parts) {
       if (!head) { head = document.createElement('div'); head.className = 'steps-head'; group.insertBefore(head, group.firstChild); }
-      head.textContent = n + ' steps';
+      head.textContent = '';
+      parts.forEach((p, i) => {
+        if (i > 0) head.appendChild(document.createTextNode(i === 2 ? ' · ' : i > 3 && i % 2 === 1 ? ', ' : ' '));
+        const s = document.createElement('span'); s.textContent = p; head.appendChild(s);
+      });
+      head.classList.toggle('auto', !!counts.autonomous);
     }
   }
 
-  function appendToolCall(id, name, args) {
+  /** The sentence saying why the row's call ran without asking (row.dataset.why), first in its body; rows are rebuilt by the result. */
+  function addWhyNote(row) {
+    const why = row.dataset.why;
+    if (!why || !UI || !UI.WHY_ROW[why] || row.querySelector('.why')) return;
+    let body = row.querySelector('.tool-body');
+    if (!body) { body = document.createElement('div'); body.className = 'tool-body'; row.appendChild(body); }
+    const note = document.createElement('p'); note.className = 'why'; note.textContent = UI.WHY_ROW[why];
+    body.prepend(note);
+  }
+
+  function appendToolCall(id, name, args, why) {
     hideEmpty();
     toolArgs.set(id, { name, args });
     const row = document.createElement('details');
@@ -1756,6 +1967,8 @@ export function chatHtml(
     row.id = 'tool-' + id;
     row.innerHTML = toolSummaryHtml('run', toolSummary(name, args)) +
       '<div class="tool-body"><pre class="args">' + escapeHtml(JSON.stringify(args, null, 2) || '') + '</pre></div>';
+    if (why) row.dataset.why = why;
+    addWhyNote(row);
     appendStep(row);
     toolEls.set(id, row);
     autoscroll();
@@ -1830,7 +2043,8 @@ export function chatHtml(
       if (isLong) bodyHtml += '<button class="show-more" data-expanded="false">Show more</button>';
     }
     row.innerHTML = toolSummaryHtml(failed ? 'err' : 'ok', s) + (bodyHtml ? '<div class="tool-body">' + bodyHtml + '</div>' : '');
-    row.open = UI.blockOpen ? UI.blockOpen(name, displayConfig, !!s.diff) : (!!s.diff || displayConfig.blockDefault === 'expanded');
+    addWhyNote(row);
+    row.open =UI.blockOpen ? UI.blockOpen(name, displayConfig, !!s.diff) : (!!s.diff || displayConfig.blockDefault === 'expanded');
     const btn = row.querySelector('.show-more');
     if (btn) {
       btn.addEventListener('click', () => {
@@ -1983,18 +2197,26 @@ export function chatHtml(
     div.id = 'approval-' + id;
     div.setAttribute('role', 'alertdialog');
     div.setAttribute('aria-label', 'Approval needed: ' + copy.question + ' ' + copy.target);
-    const kind = destructive ? 'Destructive · hold to run' : (name === 'write_file' || name === 'edit_file' || name === 'apply_patch' ? 'File edit' : 'Request') + ' · needs you';
+    const kind = destructive ? 'Destructive' : (name === 'write_file' || name === 'edit_file' || name === 'apply_patch' ? 'File edit' : 'Request');
+    const hint = destructive ? 'Hold to confirm' : 'needs you';
+    const asCommand = !previewable && name === 'run_command' && !!copy.target;
+    const warnIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14.5 13.5h-13z"/><path d="M8 6.5v3.5"/><path d="M8 12h.01"/></svg>';
     div.innerHTML =
-      '<div class="kind">' + kind + '</div>' +
+      '<div class="kind">' + warnIcon + '<span>' + kind + '</span><span class="hint">' + hint + '</span></div>' +
       '<div class="line">' +
         '<span class="q" title="' + escapeHtml(copy.title) + '">' + escapeHtml(copy.question) + ' ' +
           (previewable
             ? '<button type="button" class="link file" title="Open diff">' + escapeHtml(copy.target) + '</button>'
-            : '<span class="target">' + escapeHtml(copy.target) + '</span>') +
+            : (asCommand ? '' : '<span class="target">' + escapeHtml(copy.target) + '</span>')) +
           (copy.meta ? ' <span class="meta">' + escapeHtml(copy.meta) + '</span>' : '') +
-          (previewable && reviewable !== false ? ' <button type="button" class="link hunks">Review changes</button>' : '') +
-          (allowable ? ' <button type="button" class="link allow">Always allow this command</button>' : '') +
         '</span>' +
+        (asCommand ? '<div class="cmd"><span class="p" aria-hidden="true">$</span><code>' + escapeHtml(copy.target) + '</code></div>' : '') +
+      '</div>' +
+      '<div class="bar">' +
+        (asCommand ? '<button type="button" class="link showcmd" aria-expanded="false">Show full command</button>' : '') +
+        (previewable && reviewable !== false ? '<button type="button" class="link hunks">Review changes</button>' : '') +
+        (allowable ? '<button type="button" class="link allow">Always allow this command</button>' : '') +
+        '<span class="sp"></span>' +
         '<span class="acts">' +
           '<button type="button" class="secondary deny-open" aria-expanded="false">Deny</button>' +
           (destructive
@@ -2037,6 +2259,12 @@ export function chatHtml(
     if (allowBtn) allowBtn.addEventListener('click', () => { vscode.postMessage({ type: 'allow_command', id }); resolveApproval(id, true, ''); });
     const hunksBtn = div.querySelector('.hunks');
     if (hunksBtn) hunksBtn.addEventListener('click', () => vscode.postMessage({ type: 'review_hunks', id }));
+    const showBtn = div.querySelector('.showcmd');
+    if (showBtn) showBtn.addEventListener('click', () => {
+      const open = div.querySelector('.cmd').classList.toggle('open');
+      showBtn.setAttribute('aria-expanded', String(open));
+      showBtn.textContent = open ? 'Show less' : 'Show full command';
+    });
 
     // Take focus only when nothing else has it: never steal it from the textarea mid-typing.
     const active = document.activeElement;
@@ -2102,15 +2330,59 @@ export function chatHtml(
     const summary = UI ? UI.renderTodoSummary(todoItems) : '';
     const chip = document.getElementById('todo-chip');
     chip.hidden = !summary;
-    document.getElementById('todo-toggle').textContent = summary;
+    document.getElementById('todo-sum').textContent = summary;
     const list = document.getElementById('todo-list');
+    const bar = document.getElementById('todo-bar');
     list.textContent = '';
+    bar.textContent = '';
+    const svgNs = 'http://www.w3.org/2000/svg';
+    // One status icon per row, built as DOM (the page script is a template literal: no backticks, RB-11).
+    function rowIcon(status) {
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('width', '16'); svg.setAttribute('height', '16'); svg.setAttribute('viewBox', '0 0 16 16');
+      svg.setAttribute('fill', 'none'); svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+      svg.setAttribute('aria-hidden', 'true');
+      const ring = document.createElementNS(svgNs, 'circle');
+      ring.setAttribute('cx', '8'); ring.setAttribute('cy', '8'); ring.setAttribute('r', '6');
+      svg.appendChild(ring);
+      if (status === 'completed') {
+        svg.setAttribute('stroke', 'var(--ok)'); svg.setAttribute('stroke-width', '1.75');
+        const tick = document.createElementNS(svgNs, 'path');
+        tick.setAttribute('d', 'm5.5 8.2 1.8 1.8 3.3-3.6');
+        svg.appendChild(tick);
+      } else if (status === 'in_progress') {
+        svg.setAttribute('class', 'todo-spin'); svg.setAttribute('stroke', 'var(--ion)'); svg.setAttribute('stroke-width', '2');
+        ring.setAttribute('stroke', 'var(--hair)');
+        const arc = document.createElementNS(svgNs, 'path');
+        arc.setAttribute('d', 'M8 2a6 6 0 0 1 6 6');
+        svg.appendChild(arc);
+      } else {
+        svg.setAttribute('stroke', 'var(--edge)'); svg.setAttribute('stroke-width', '1.5');
+      }
+      return svg;
+    }
+    let doneCount = 0;
+    let doingCount = 0;
     todoItems.forEach((item) => {
+      const state = item.status === 'completed' ? 'done' : item.status === 'in_progress' ? 'doing' : '';
+      if (state === 'done') doneCount++;
+      if (state === 'doing') doingCount++;
       const li = document.createElement('li');
-      li.className = item.status === 'completed' ? 'done' : item.status === 'in_progress' ? 'doing' : '';
-      li.textContent = (item.status === 'completed' ? '✓ ' : item.status === 'in_progress' ? '▸ ' : '○ ') + item.content;
+      li.className = state;
+      const ic = document.createElement('span');
+      ic.className = 'ic';
+      ic.appendChild(rowIcon(item.status));
+      const tx = document.createElement('span');
+      tx.className = 'tx';
+      tx.textContent = item.content;
+      li.appendChild(ic);
+      li.appendChild(tx);
       list.appendChild(li);
+      const seg = document.createElement('span');
+      seg.className = state;
+      bar.appendChild(seg);
     });
+    chip.className = doingCount > 0 ? 's-doing' : (todoItems.length > 0 && doneCount === todoItems.length ? 's-done' : 's-idle');
     if (!summary) list.hidden = true;
   }
   document.getElementById('todo-toggle').addEventListener('click', () => {
@@ -2290,7 +2562,34 @@ export function chatHtml(
   syncMicButton();
   micBtn.addEventListener('click', () => toggleVoice());
 
+  // Earlier prompts for the up and down arrows (newest last, from the host); any typing starts over from the draft.
+  let promptItems = [];
+  let histState = { index: -1, draft: '' };
+  function resetHistory() { histState = { index: -1, draft: '' }; }
+  function onHistoryKey(e) {
+    if (!UI || !UI.historyStep || e.isComposing || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    if (mentionList.classList.contains('open')) return;
+    const start = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+    if (start !== end) return;
+    const up = e.key === 'ArrowUp';
+    // The caret moves inside a multi-line draft first: history takes the key only on the first line (up) or the last (down).
+    const before = inputEl.value.slice(0, start);
+    const after = inputEl.value.slice(end);
+    if (up ? before.indexOf('\\n') !== -1 : after.indexOf('\\n') !== -1) return;
+    const step = UI.historyStep(histState, up ? 'up' : 'down', promptItems, inputEl.value);
+    if (!step) return;
+    e.preventDefault();
+    histState = { index: step.index, draft: step.draft };
+    inputEl.value = step.value;
+    inputEl.setSelectionRange(step.value.length, step.value.length);
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+    setSendEnabled();
+  }
   inputEl.addEventListener('input', () => {
+    resetHistory();
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
     setSendEnabled();
@@ -2314,6 +2613,7 @@ export function chatHtml(
         if (sel && sel.dataset.value) { e.preventDefault(); insertMention(sel.dataset.value); return; }
       }
     }
+    onHistoryKey(e);
     if (e.key === 'Escape' && editingLast) {
       e.preventDefault();
       document.getElementById('edit-cancel').click();
@@ -2334,6 +2634,7 @@ export function chatHtml(
     removeTurnActions();
     hideMentions();
     const fileNames = pendingFiles.map((f) => f.name);
+    resetHistory();
     inputEl.value = '';
     inputEl.style.height = 'auto';
     setSendEnabled();
@@ -2375,6 +2676,7 @@ export function chatHtml(
     const text = inputEl.value.trim();
     if (!text) return;
     queued.push(text);
+    resetHistory();
     inputEl.value = '';
     inputEl.style.height = 'auto';
     hideMentions();
@@ -2417,17 +2719,19 @@ export function chatHtml(
       setEditing(true);
       inputEl.focus();
     });
-    if (lastRunReason === 'aborted') {
+    // A run cut short (Stop, a step or time limit, an error after retries) can be picked up where it ended.
+    const CONTINUABLE = ['aborted', 'max_iterations', 'max_duration', 'error'];
+    if (CONTINUABLE.includes(lastRunReason)) {
       const cont = document.createElement('button');
       cont.type = 'button'; cont.className = 'link'; cont.textContent = 'Continue';
-      cont.title = 'Tell the agent to carry on from where you stopped it';
+      cont.title = lastRunReason === 'aborted' ? 'Tell the agent to carry on from where you stopped it' : 'Tell the agent to carry on from where the run ended';
       cont.addEventListener('click', () => {
         if (taskRunning) return;
         removeTurnActions();
         const text = 'Continue where you stopped.';
         lastUserText = text;
         appendUserMessage(text, []);
-        vscode.postMessage({ type: 'user_input', text, level: approvalSelect.value });
+        vscode.postMessage({ type: 'user_input', text, level: approvalSelect.value, resume: true });
       });
       row.appendChild(cont);
     }
@@ -2546,6 +2850,9 @@ export function chatHtml(
       case 'text_delta':
         appendTextDelta(msg.text);
         break;
+      case 'reply_speed':
+        setReplySpeed(msg.tps, msg.title);
+        break;
       case 'text_done':
         finalizeAssistant(msg.text);
         break;
@@ -2559,7 +2866,7 @@ export function chatHtml(
         displayConfig = { blockDefault: 'collapsed', detail: 'compact', showReasoning: true, ...msg.config };
         break;
       case 'tool_call':
-        appendToolCall(msg.id, msg.name, msg.args);
+        appendToolCall(msg.id, msg.name, msg.args, msg.why);
         break;
       case 'tool_result':
         appendToolResult(msg.id, msg.name, msg.result, msg.isError);
@@ -2577,6 +2884,12 @@ export function chatHtml(
         break;
       case 'open_model_menu':
         if (modelMenu.hidden) modelLabel.click();
+        break;
+      case 'cycle_mode':
+        cycleModeFromShortcut();
+        break;
+      case 'toggle_accept_edits':
+        toggleAcceptEditsFromShortcut();
         break;
       case 'open_mode_select':
         modeSelect.focus();
@@ -2600,6 +2913,10 @@ export function chatHtml(
         if (card) card.remove();
         break;
       }
+      case 'prompt_history':
+        promptItems = Array.isArray(msg.items) ? msg.items : [];
+        resetHistory();
+        break;
       case 'ui_flags':
         shiftTabVariant = msg.shiftTabVariant === true;
         break;
@@ -2692,6 +3009,13 @@ export function chatHtml(
       case 'session':
         currentSessionId = msg.id;
         break;
+      case 'approval_default':
+        approvalDefault = msg.level;
+        offerApprovalCard = !!msg.offerCard;
+        syncApprovalCard();
+        // A chat that already has messages keeps its own level; an empty one starts at the stored default.
+        if (document.getElementById('empty') && !taskRunning) setApprovalLevel(msg.level);
+        break;
       case 'transcript':
         closePanel();
         // New chat / resume: the host already denied the old run's approvals, so drop their rows first.
@@ -2700,6 +3024,7 @@ export function chatHtml(
         queued.length = 0;
         renderQueue();
         renderTranscript(msg.items);
+        if (!msg.items.length) setApprovalLevel(approvalDefault);
         lastUserText = null;
         setEditing(false);
         break;
@@ -2759,11 +3084,28 @@ export function chatHtml(
       case 'warning':
         appendWarning(msg.message);
         break;
+      case 'step_retry':
+        discardPartialStep();
+        appendNotice(msg.message);
+        break;
       case 'enhanced':
         applyEnhanced(msg.text);
         break;
       case 'notice':
         appendNotice(msg.message);
+        break;
+      case 'cmd_pending':
+        appendCmdCard({ pending: true });
+        break;
+      case 'cmd_result':
+        appendCmdCard(msg);
+        break;
+      case 'compose_cmd':
+        // Forge: Generate Terminal Command. A draft already in the box becomes the request.
+        var draft = inputEl.value.replace(/^\\s+/, '');
+        inputEl.value = draft.startsWith('/cmd ') ? draft : '/cmd ' + draft;
+        inputEl.dispatchEvent(new Event('input'));
+        inputEl.focus();
         break;
       case 'suggest_spec':
         showSuggestSpec(msg.afterPlan);

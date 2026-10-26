@@ -4,7 +4,9 @@
  * (commands, the browser and sub-agents still ask); Autonomous is the run-level `auto` flag.
  * Chosen per message in the page, never read from a project file (see RB-12).
  */
-import { FILE_WRITE_TOOL_NAMES, resolveAutoApprove } from '@ikarmic/forge-core';
+import { FILE_WRITE_TOOL_NAMES, resolveAutoApprove, type ApprovalSource } from '@ikarmic/forge-core';
+
+import type { WhyRan } from './why-ran.js';
 
 export type ApprovalLevel = 'ask' | 'edits' | 'auto';
 
@@ -21,4 +23,28 @@ export function autoApproveFor(level: ApprovalLevel, configured: readonly string
   const base = resolveAutoApprove(configured);
   if (level !== 'edits') return base;
   return [...new Set([...base, ...FILE_WRITE_TOOL_NAMES])];
+}
+
+/**
+ * Why a call ran without asking, as the chat names it; undefined when the person approved it (or it never asks).
+ * Core reports Accept edits as the auto-approve list, because `autoApproveFor` folds the level into that list.
+ */
+export function whyRan(source: ApprovalSource | undefined, tool: string, level: ApprovalLevel, configured: readonly string[] | undefined): WhyRan | undefined {
+  if (!source || source === 'person') return undefined;
+  if (source === 'list' && level === 'edits' && (FILE_WRITE_TOOL_NAMES as readonly string[]).includes(tool) && !resolveAutoApprove(configured).includes(tool)) return 'edits';
+  return source;
+}
+
+/** What `forge.approvalDefault` holds: a level the person chose on the first-run card, or nothing yet. */
+export type StoredApproval = 'unset' | ApprovalLevel;
+
+export function storedApprovalOf(raw: unknown): StoredApproval {
+  return LEVELS.includes(raw as ApprovalLevel) ? (raw as ApprovalLevel) : 'unset';
+}
+
+/** The level a new chat starts at. A stored Autonomous applies only in a trusted workspace. */
+export function startingLevel(stored: StoredApproval, trusted: boolean): ApprovalLevel {
+  if (stored === 'unset') return 'ask';
+  if (stored === 'auto' && !trusted) return 'ask';
+  return stored;
 }

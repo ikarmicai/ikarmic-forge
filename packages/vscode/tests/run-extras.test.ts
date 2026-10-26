@@ -1,6 +1,43 @@
 import { describe, expect, it } from 'vitest';
 
-import { aliasProblem, buildRunExtras, cleanLintCommands, webSearchFor, type RunExtrasSettings } from '../src/chat/run-extras.js';
+import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, cleanLintCommands, webSearchFor, type RunExtrasSettings } from '../src/chat/run-extras.js';
+
+describe('autonomyFlags', () => {
+  // The Autonomous toggle promises "Approvals are off: Forge runs tools without asking". Core still asks
+  // for a destructive tool (run_command, browser, MCP, sub_agent) under `auto` alone, which showed a
+  // hold-to-run card with Autonomous on.
+  it('Autonomous on also lets destructive tools run without a card', () => {
+    expect(autonomyFlags(true)).toEqual({ auto: true, allowDestructive: true });
+  });
+
+  it('Autonomous off asks for everything', () => {
+    expect(autonomyFlags(false)).toEqual({ auto: false, allowDestructive: false });
+  });
+});
+
+describe('forge.maxSteps', () => {
+  it('sets the run step limit, with 0 meaning no limit', () => {
+    expect(buildRunExtras({ ...base, maxSteps: 80 }, model, { readOnly: false }).maxIterations).toBe(80);
+    expect(buildRunExtras({ ...base, maxSteps: 0 }, model, { readOnly: false }).maxIterations).toBe(Number.POSITIVE_INFINITY);
+    expect(buildRunExtras(base, model, { readOnly: false })).not.toHaveProperty('maxIterations');
+  });
+});
+
+describe('forge.commandSandbox', () => {
+  it('turns into the run command sandbox, network cut unless allowed', () => {
+    expect(buildRunExtras({ ...base, commandSandbox: 'on' }, model, { readOnly: false }).commandSandbox).toEqual({ network: false });
+    expect(buildRunExtras({ ...base, commandSandbox: 'on-network' }, model, { readOnly: false }).commandSandbox).toEqual({ network: true });
+    expect(buildRunExtras({ ...base, commandSandbox: 'off' }, model, { readOnly: false })).not.toHaveProperty('commandSandbox');
+  });
+});
+
+describe('chatRunLimits', () => {
+  // Core stops a run after 10 minutes by default, a guard for unattended CLI runs. In the chat a person is watching
+  // and has Stop; a long task on a slow model (MiniMax takes up to 30 s a step) was cut off in the middle.
+  it('puts no wall-clock limit on a chat run', () => {
+    expect(chatRunLimits().maxDurationMs).toBe(Number.POSITIVE_INFINITY);
+  });
+});
 
 const base: RunExtrasSettings = {
   compaction: { enabled: true, threshold: 0.7 },

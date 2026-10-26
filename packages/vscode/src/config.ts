@@ -5,6 +5,7 @@ import type { ModelConfig, ProviderName } from '@ikarmic/forge-core';
 
 import { namedProviderModel } from './model-ref.js';
 import { emptyApiKeys, type ProviderEnvSettings, type ResolvedApiKeys } from './api-keys.js';
+import { storedApprovalOf, type StoredApproval } from './chat/approval-level.js';
 import { cleanLintCommands } from './chat/run-extras.js';
 import type { VoiceConfig } from './chat/voice-types.js';
 import { clampSetting } from './setting-range.js';
@@ -57,10 +58,20 @@ export interface ExtensionConfig {
   keepAwake: boolean;
   /** Stop a run after this many identical tool calls in a row; 0 = off. */
   loopGuardThreshold: number;
+  /** Steps one run may take before it stops with a summary; 0 = no limit. */
+  maxSteps: number;
+  /** Run commands under the OS sandbox (Linux and macOS). */
+  commandSandbox: 'off' | 'on' | 'on-network';
   /** The most turns one /goal runs before it pauses. */
   goalMaxTurns: number;
   /** Notify when a run finishes while the window is not focused. */
   notifications: { enabled: boolean; minSeconds: number; sound: boolean; osToast: boolean };
+  /** Show the tokens-per-second badge on replies. */
+  showSpeed: boolean;
+  /** Which earlier prompts the arrow keys bring back: all chats or this one. */
+  promptHistory: 'shared' | 'perChat';
+  /** The approval level new chats start at, from the first-run card. */
+  approvalDefault: StoredApproval;
   /** Model id (same provider) for read-only exploration steps; empty = always use the main model. */
   cheapModel: string;
   /** Add Anthropic prompt-cache breakpoints (default true). */
@@ -70,7 +81,7 @@ export interface ExtensionConfig {
   /** Check each file the agent writes (syntax, plus linter commands by extension) and feed problems back. */
   autoLint: { enabled: boolean; commands: Record<string, string> };
   /** Commit the agent's changes after each completed run (git repositories only). */
-  autoCommit: { enabled: boolean; dirtyCommits: boolean; attribute: boolean; runHooks: boolean };
+  autoCommit: { enabled: boolean; dirtyCommits: boolean; attribute: boolean; runHooks: boolean; instruction?: string; language?: string };
   /** Architect mode: main model plans read-only, `editorModel` applies the plan. */
   architect: { enabled: boolean; editorModel: string };
   /** Checks run after edits; failures are fed back to the model. */
@@ -160,6 +171,8 @@ export function readConfig(): ExtensionConfig {
     maxCostUsd: clampSetting(cfg.get<number>('maxCostUsd'), 0, 0),
     keepAwake: cfg.get<boolean>('keepAwake') ?? false,
     loopGuardThreshold: Math.max(0, Math.floor(cfg.get<number>('loopGuardThreshold') ?? 0)),
+    maxSteps: Math.max(0, Math.floor(cfg.get<number>('maxSteps') ?? 50)),
+    commandSandbox: (['on', 'on-network'] as const).find((v) => v === cfg.get<string>('commandSandbox')) ?? 'off',
     goalMaxTurns: Math.max(1, Math.floor(cfg.get<number>('goalMaxTurns') ?? 25)),
     notifications: {
       enabled: cfg.get<boolean>('notifications.enabled') ?? false,
@@ -167,6 +180,9 @@ export function readConfig(): ExtensionConfig {
       sound: cfg.get<boolean>('notifications.sound') ?? false,
       osToast: cfg.get<boolean>('notifications.osToast') ?? false,
     },
+    showSpeed: cfg.get<boolean>('chat.showSpeed') ?? true,
+    promptHistory: cfg.get<string>('chat.promptHistory') === 'perChat' ? 'perChat' : 'shared',
+    approvalDefault: storedApprovalOf(cfg.get<string>('approvalDefault')),
     cheapModel: cfg.get<string>('router.cheapModel') ?? '',
     cachePrompts: cfg.get<boolean>('cachePrompts') ?? true,
     repoMapTokens: Math.max(0, Math.floor(cfg.get<number>('repoMap.tokens') ?? 0)),
@@ -179,6 +195,8 @@ export function readConfig(): ExtensionConfig {
       dirtyCommits: cfg.get<boolean>('autoCommit.dirtyCommits') ?? true,
       attribute: cfg.get<boolean>('autoCommit.attribute') ?? true,
       runHooks: cfg.get<boolean>('autoCommit.runHooks') ?? false,
+      ...(cfg.get<string>('commitMessage.prompt')?.trim() ? { instruction: cfg.get<string>('commitMessage.prompt')!.trim() } : {}),
+      ...(cfg.get<string>('commitMessage.language')?.trim() ? { language: cfg.get<string>('commitMessage.language')!.trim() } : {}),
     },
     architect: {
       enabled: cfg.get<boolean>('architect.enabled') ?? false,

@@ -227,6 +227,44 @@ describe('chatHtml inline approvals', () => {
 
   const caseBody = (t: string) => html.slice(html.indexOf(`case '${t}':`), html.indexOf('break;', html.indexOf(`case '${t}':`)));
 
+  // Release 1, feature 1: the step-group header says what ran without asking; each row says why inside its details.
+  it('passes the reason a tool ran unasked to the row and rebuilds the group header from parts', () => {
+    expect(caseBody('tool_call')).toContain('appendToolCall(msg.id, msg.name, msg.args, msg.why)');
+    const step = html.slice(html.indexOf('function appendStep'), html.indexOf('function appendStep') + 1400);
+    expect(step).toContain('UI.stepsHeadParts(');
+    expect(step).toContain('dataset.why');
+    const call = html.slice(html.indexOf('function appendToolCall'), html.indexOf('function appendToolCall') + 900);
+    expect(call).toContain('row.dataset.why = why');
+    const note = html.slice(html.indexOf('function addWhyNote'), html.indexOf('function addWhyNote') + 600);
+    expect(note).toContain('UI.WHY_ROW[why]');
+    expect(html).toMatch(/\.steps-head\.auto \{[^}]*color: var\(--err\)/);
+  });
+
+  // The result rebuilds the row's innerHTML, which dropped the reason added when the call started (found by why-ran.spec).
+  it('keeps the reason on the row after its result replaces the row body', () => {
+    const result = html.slice(html.indexOf('function appendToolResult'), html.indexOf('function appendToolResult') + 4000);
+    expect(result).toContain('addWhyNote(row)');
+    const call = html.slice(html.indexOf('function appendToolCall'), html.indexOf('function appendToolCall') + 900);
+    expect(call).toContain('addWhyNote(row)');
+  });
+
+  it('offers Continue after a run stopped at a limit or an error, not only after Stop', () => {
+    const actions = html.slice(html.indexOf('const CONTINUABLE'), html.indexOf('const CONTINUABLE') + 200);
+    for (const r of ['aborted', 'max_iterations', 'max_duration', 'error']) expect(actions).toContain(`'${r}'`);
+    expect(html).toContain('CONTINUABLE.includes(lastRunReason)');
+  });
+
+  // Core asks a failed or empty step again (provider-retry.test.ts) and discards it; the half answer it streamed
+  // must not stay on screen in front of the real one.
+  it('drops the partial text of a step that is retried, then says why', () => {
+    expect(caseBody('step_retry')).toContain('discardPartialStep()');
+    expect(caseBody('step_retry')).toContain('appendNotice(msg.message)');
+    const fn = html.slice(html.indexOf('function discardPartialStep'), html.indexOf('function discardPartialStep') + 600);
+    expect(fn).toContain('streamingEl.remove()');
+    expect(fn).toContain('reasoningEl.remove()');
+    expect(fn).toContain("streamText = ''");
+  });
+
   it('clears pending approvals when a task finishes or another transcript loads (new chat, resume)', () => {
     expect(caseBody('task_finished')).toContain('cancelPendingApprovals()');
     expect(caseBody('transcript')).toContain('cancelPendingApprovals()');
@@ -382,5 +420,29 @@ describe('chatHtml layout guards', () => {
     const group = html.match(/<div class="tb-end">([\s\S]*?)<\/div>/)?.[1] ?? '';
     for (const id of ['new-chat', 'history-btn', 'more-btn']) expect(group).toContain(`id="${id}"`);
     expect(group).not.toContain('id="meter"');
+  });
+});
+
+describe('the /cmd card', () => {
+  const html = chatHtml();
+  it('handles the host messages and posts Insert and Copy with the whole command', () => {
+    for (const t of ['cmd_pending', 'cmd_result', 'compose_cmd']) expect(html).toContain(`case '${t}':`);
+    expect(html).toContain("type: 'cmd_insert', command: it.command");
+    expect(html).toContain("type: 'cmd_copy', command: it.command");
+    expect(html).toContain('code.textContent = it.command');
+  });
+  it('shows "Risky:" and the reason as separate text nodes so each can be translated', () => {
+    expect(html).toContain("label.textContent = 'Risky:'");
+    expect(html).toContain('why.textContent = it.risk');
+    expect(html).toContain("risk.title = 'A hint from known patterns, not a guarantee.'");
+  });
+  it('is drawn with a border in forced-colors mode', () => {
+    expect(html).toMatch(/forced-colors: active\) \{[^}]*\.cmd-card/);
+  });
+  it('draws the first-run approval card with a border in forced-colors mode', () => {
+    expect(html).toMatch(/forced-colors: active\) \{[^}]*\.approval-default-card/);
+  });
+  it('does not double the /cmd prefix when the draft already starts with it', () => {
+    expect(html).toContain("startsWith('/cmd ')");
   });
 });

@@ -6,8 +6,8 @@ import * as webviewLib from '../src/chat/webview-lib.js';
 const custom = (name: string): SlashEntry => ({ name, description: `custom ${name}`, source: 'custom', takesArgs: true });
 
 describe('BUILTIN_SLASH', () => {
-  it('lists the eleven built-in commands', () => {
-    expect(BUILTIN_SLASH.map((e) => e.name)).toEqual(['new', 'compact', 'export', 'model', 'mode', 'variant', 'goal', 'memory', 'settings', 'review', 'reload', 'help']);
+  it('lists the built-in commands', () => {
+    expect(BUILTIN_SLASH.map((e) => e.name)).toEqual(['new', 'compact', 'export', 'model', 'mode', 'variant', 'goal', 'memory', 'settings', 'review', 'cmd', 'reload', 'help']);
     expect(BUILTIN_SLASH.every((e) => e.source === 'builtin' && e.description.length > 0)).toBe(true);
   });
 });

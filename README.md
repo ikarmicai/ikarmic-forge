@@ -42,6 +42,7 @@ An all-in-one AI coding assistant. A shared agent engine that drives a polished 
 
 ## Unreleased
 
+- **First ten minutes in VS Code**: a first-run card sets how much Forge asks, a one-line summary above each group of steps, reply speed, prompt history (Up/Down), `Ctrl+Alt+M` / `Ctrl+Alt+A` in the chat, `/cmd` to write one shell command you insert (never run), and `forge.commitMessage.language`.
 - **Permission rules, goals, slash menu** (VS Code): ordered `allow`/`ask`/`deny` rules (`permission` in `~/.forge/config.json`, last match wins, `.env` reads always ask), a todo checklist and `ask_user` questions, `/goal` to keep working on one objective, a `/` command menu, a Settings row for every `forge.*` setting, and a per-project `.forge/config.json` that can only tighten what you allowed.
 - **Prompt caching**: Anthropic (and Anthropic on Bedrock) requests now carry cache breakpoints, so long agent runs re-read earlier context at a tenth of the price. Cost and the CLI footer account for cached tokens. Off with `--no-cache-prompts` / `forge.cachePrompts`.
 - **Infinite output**: a reply cut off by the model's output limit is continued automatically (up to 3 times).

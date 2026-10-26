@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { generateText } from 'ai';
 
-import { assertProviderAllowed, createLanguageModel, getOrgPolicy } from '@ikarmic/forge-core';
+import { assertProviderAllowed, createLanguageModel, getOrgPolicy, withModelRetry } from '@ikarmic/forge-core';
 import type { CredentialStore } from '@ikarmic/forge-core';
 
 import { CompletionState, completionGate } from './completion-controls.js';
@@ -136,14 +136,20 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
 
     try {
       // think-tags: handled in sanitize() (completion-helpers.ts), which strips <think> blocks.
-      const { text, usage } = await generateText({
-        model: lm,
-        system: COMPLETION_SYSTEM_PROMPT,
-        prompt: buildPrompt(languageId, prefix, suffix),
-        abortSignal: controller.signal,
-        maxOutputTokens: cfg.completionMaxTokens,
-        temperature: 0.2,
-      });
+      // One retry: a keystroke aborts the request, and with it any wait, so a retry never shows a stale suggestion.
+      const { text, usage } = await withModelRetry(
+        () =>
+          generateText({
+            model: lm,
+            system: COMPLETION_SYSTEM_PROMPT,
+            prompt: buildPrompt(languageId, prefix, suffix),
+            abortSignal: controller.signal,
+            maxOutputTokens: cfg.completionMaxTokens,
+            temperature: 0.2,
+            maxRetries: 0,
+          }),
+        { maxRetries: 1, abortSignal: controller.signal }
+      );
       this.controls.usage.add({ inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens });
       this.onUsage();
       const ms = Date.now() - started;

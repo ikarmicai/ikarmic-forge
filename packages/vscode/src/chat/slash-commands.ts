@@ -21,6 +21,7 @@ export const BUILTIN_SLASH: readonly SlashEntry[] = [
   { name: 'memory', description: 'Open or edit project memory (add, list, forget)', source: 'builtin', takesArgs: true },
   { name: 'settings', description: 'Open Forge settings', source: 'builtin', takesArgs: false },
   { name: 'review', description: 'Review your changes: /review, staged, unstaged, last or branch [base]', source: 'builtin', takesArgs: true },
+  { name: 'cmd', description: 'Write a shell command for a task: /cmd <what you want>', source: 'builtin', takesArgs: true },
   { name: 'reload', description: 'Re-read agents, skills, commands and MCP servers', source: 'builtin', takesArgs: false },
   { name: 'help', description: 'List the slash commands', source: 'builtin', takesArgs: false },
 ];

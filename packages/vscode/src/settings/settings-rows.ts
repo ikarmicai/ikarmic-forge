@@ -52,6 +52,8 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   // Safety and cost
   n('forge.maxCostUsd', 'safety', 'Spending cap per run (USD)', { min: 0 }),
   n('forge.loopGuardThreshold', 'safety', 'Stop after identical calls', { min: 0 }),
+  n('forge.maxSteps', 'safety', 'Most steps in one run', { min: 0, integer: true }),
+  e('forge.commandSandbox', 'safety', 'Run commands in an OS sandbox', ['off', 'on', 'on-network']),
   n('forge.goalMaxTurns', 'safety', 'Most turns in one /goal', { min: 1, integer: true }),
   b('forge.notifications.enabled', 'safety', 'Notify when a run ends'),
   e('forge.language', 'safety', 'Language', ['auto', 'en', 'es', 'zh-cn']),
@@ -62,6 +64,7 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.audit.enabled', 'safety', 'Audit log'),
   s('forge.router.cheapModel', 'safety', 'Cheaper model for exploring'),
   s('forge.commitMessage.prompt', 'git', 'Commit message instructions'),
+  s('forge.commitMessage.language', 'git', 'Commit message language'),
   s('forge.enhancePrompt.instruction', 'advanced', 'Enhance prompt instructions'),
 
   b('forge.shiftTabCyclesVariant', 'advanced', 'Shift+Tab cycles reasoning effort'),
@@ -103,6 +106,9 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.completionEnabled', 'advanced', 'Inline completion'),
   b('forge.completionAutomatic', 'advanced', 'Suggest while typing'),
   b('forge.suggestSpec', 'advanced', 'Suggest a spec for big requests'),
+  e('forge.approvalDefault', 'advanced', 'Starting approval level', ['unset', 'ask', 'edits', 'auto']),
+  e('forge.chat.promptHistory', 'advanced', 'Prompt history', ['shared', 'perChat']),
+  b('forge.chat.showSpeed', 'advanced', 'Show reply speed'),
   b('forge.chatViewEnabled', 'advanced', 'Show Forge in the sidebar'),
   b('forge.voice.enabled', 'advanced', 'Voice input'),
   s('forge.voice.language', 'advanced', 'Voice language'),

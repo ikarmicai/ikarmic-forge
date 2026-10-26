@@ -42,6 +42,10 @@ describe('proposedContent', () => {
     });
   });
 
+  it('edit_file shows the same result the tool writes for a CRLF file and LF old_text', () => {
+    expect(proposedContent('edit_file', { path: 'a', old_text: 'a\nb', new_text: 'a\nB' }, 'a\r\nb\r\n')).toEqual({ ok: true, content: 'a\r\nB\r\n' });
+  });
+
   it('rejects malformed args and non-previewable tools', () => {
     expect(proposedContent('write_file', { path: 'a' }, null)).toEqual({ ok: false, reason: 'malformed arguments' });
     expect(proposedContent('run_command', { command: 'ls' }, null)).toEqual({ ok: false, reason: 'not previewable' });

@@ -28,10 +28,14 @@ export type HistoryMessage =
   | { type: 'listCheckpoints' }
   | { type: 'restoreCheckpoint'; id: string };
 
-export interface TranscriptItem {
+/** A message of the conversation. */
+export interface TextItem {
   role: 'user' | 'assistant';
   text: string;
 }
+
+/** A chat line: a message, or a `/cmd` result (kept beside the history, see cmd-entries.ts). */
+export type TranscriptItem = TextItem | { role: 'cmd'; request: string; command?: string; risk?: string; failed?: boolean };
 
 export type HistoryResponse =
   | { type: 'sessionsListed'; sessions: ListEntry[]; /** Set for search results; each preview is then the matching snippet. */ query?: string }
@@ -105,8 +109,8 @@ function textOf(content: unknown): string {
     .join('');
 }
 
-export function transcriptFromMessages(messages: readonly unknown[], strip: (text: string) => string = (t) => t): TranscriptItem[] {
-  const out: TranscriptItem[] = [];
+export function transcriptFromMessages(messages: readonly unknown[], strip: (text: string) => string = (t) => t): TextItem[] {
+  const out: TextItem[] = [];
   for (const m of messages) {
     if (!m || typeof m !== 'object') continue;
     const { role, content } = m as { role?: unknown; content?: unknown };

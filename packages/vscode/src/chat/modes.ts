@@ -15,6 +15,12 @@ const NO_TOOLS_SENTINEL = '__forge_no_tools__';
 /** Specialists that only make sense inside the orchestrator loop. */
 const EXCLUDED_IDS = new Set(['orchestrator']);
 
+/**
+ * Tools every chat mode keeps unless the agent forbids them: they write nothing, and without
+ * `todo_write` a mode left the todo chip frozen at whatever the last Agent-mode turn set.
+ */
+const BOOKKEEPING_TOOLS = ['todo_write', 'todo_read', 'ask_user'];
+
 export interface ModeOption {
   id: string;
   label: string;
@@ -117,16 +123,18 @@ export function modeOverrides(modeId: string, ctx: ModeContext): ModeOverrides {
   const spec = findSpecialist(modeId, ctx.specialists);
   if (!spec) return ctx.baseSandbox ? { toolSandbox: ctx.baseSandbox } : {};
 
-  const modeTools = ctx.effectiveToolsFor(spec);
+  const specTools = ctx.effectiveToolsFor(spec);
+  const modeTools = [...specTools, ...BOOKKEEPING_TOOLS.filter((t) => !specTools.includes(t) && !spec.forbiddenTools.includes(t))];
   const userAllow = ctx.baseSandbox?.allowTools;
   const narrowed = userAllow ? modeTools.filter((t) => userAllow.includes(t)) : modeTools;
   // Core's applySandbox treats an empty allowTools as "no whitelist" (every tool), so
   // "no tools" must be a non-empty list that matches nothing.
   const allowTools = narrowed.length > 0 ? narrowed : [NO_TOOLS_SENTINEL];
 
+  // No maxIterations: the specialist's cap is sized for one orchestrator step, and a chat
+  // task stopped half-way when it hit it. The run keeps its own limit.
   const out: ModeOverrides = {
     systemPrompt: spec.systemPrompt,
-    maxIterations: spec.maxIterations ?? 10,
     toolSandbox: { ...(ctx.baseSandbox ?? {}), allowTools },
   };
   const chosen = spec.model

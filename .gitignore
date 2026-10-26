@@ -17,3 +17,8 @@ coverage/
 .vscode-test/
 out/
 site/
+
+# Kilo Code reference source and docs (third-party, local study only)
+/kilocode/
+/kilocode-main.zip
+/Kilo docs/

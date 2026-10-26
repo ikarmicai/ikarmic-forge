@@ -27,6 +27,23 @@ export function permissionExtras(shared: Pick<ForgeConfigFile, 'permission'>): P
   return rules && Object.keys(rules).length > 0 ? { permissionRules: rules } : {};
 }
 
+/**
+ * The Autonomous toggle as AgentConfig flags. Core still asks for a destructive tool (run_command, browser,
+ * MCP, sub_agent) under `auto` alone; the toggle promises no approvals, so it sets both. Permission rules
+ * that say ask or deny, and an org policy's disableAutonomous, still apply inside the Agent.
+ */
+export function autonomyFlags(auto: boolean): Pick<AgentConfig, 'auto' | 'allowDestructive'> {
+  return { auto, allowDestructive: auto };
+}
+
+/**
+ * Core stops a run after 10 minutes, a guard for unattended CLI runs. A chat run has a person watching it with
+ * Stop at hand, and a long task on a slow model was cut off half-way, so the chat sets no wall-clock limit.
+ */
+export function chatRunLimits(): Pick<AgentConfig, 'maxDurationMs'> {
+  return { maxDurationMs: Number.POSITIVE_INFINITY };
+}
+
 /** Per-check cap for commands detected from the project (explicit commands keep the 5-minute default). */
 const AUTO_VERIFY_TIMEOUT_MS = 120_000;
 
@@ -62,6 +79,10 @@ export interface RunExtrasSettings {
   maxCostUsd: number;
   /** Stop a run after this many identical tool calls in a row; 0 or absent = off. */
   loopGuardThreshold?: number;
+  /** `forge.maxSteps`: steps a run may take; 0 = no limit, absent = core's default (50). */
+  maxSteps?: number;
+  /** `forge.commandSandbox`: run commands under bubblewrap / sandbox-exec; absent = off. */
+  commandSandbox?: 'off' | 'on' | 'on-network';
   cheapModel: string;
   verifyCommands: string[];
   verifyLsp?: boolean;
@@ -138,6 +159,8 @@ export function buildRunExtras(
   extras.maskOldResults = settings.context.maskOldResults ? { keepRecentTurns: settings.context.keepRecentTurns } : false;
   if (settings.maxCostUsd > 0) extras.maxCostUsd = settings.maxCostUsd;
   if ((settings.loopGuardThreshold ?? 0) > 0) extras.loopGuardThreshold = settings.loopGuardThreshold;
+  if (settings.commandSandbox && settings.commandSandbox !== 'off') extras.commandSandbox = { network: settings.commandSandbox === 'on-network' };
+  if (settings.maxSteps !== undefined) extras.maxIterations = settings.maxSteps > 0 ? settings.maxSteps : Number.POSITIVE_INFINITY;
   const cheap = settings.cheapModel.trim();
   if (cheap) {
     const cheapModel = applyResolved(model, resolveModelAlias(cheap, opts.aliases, model.provider));

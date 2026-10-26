@@ -13,6 +13,10 @@ export interface AutoCommitSettings {
   attribute: boolean;
   /** Run git pre-commit hooks. */
   runHooks: boolean;
+  /** Your own commit-message instructions (`forge.commitMessage.prompt`). */
+  instruction?: string;
+  /** Language for the message (`forge.commitMessage.language`); unset = English. */
+  language?: string;
 }
 
 export interface AutoCommitRun {
@@ -42,7 +46,13 @@ export async function startAutoCommit(
   return {
     saved,
     finish: (task) =>
-      afterRun(cwd, { leftDirty }, { ...options, ...(commitModel ? { model: commitModel } : {}), task }).catch(() => null),
+      afterRun(cwd, { leftDirty }, {
+        ...options,
+        ...(commitModel ? { model: commitModel } : {}),
+        task,
+        ...(settings.instruction ? { instruction: settings.instruction } : {}),
+        ...(settings.language ? { language: settings.language } : {}),
+      }).catch(() => null),
   };
 }
 

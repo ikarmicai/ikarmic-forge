@@ -1,10 +1,11 @@
 /**
  * Compute what a write_file / edit_file call WOULD produce, so the chat
- * can open a native diff before the user approves it. edit_file
- * semantics (and error wording) mirror core's editFileTool exactly:
- * keep them in sync with it.
+ * can open a native diff before the user approves it. edit_file goes
+ * through core's applyTextEdit, the same function the tool writes with.
  */
 import path from 'node:path';
+
+import { applyTextEdit } from '@ikarmic/forge-core';
 
 export type PreviewResult = { ok: true; content: string } | { ok: false; reason: string };
 
@@ -21,17 +22,6 @@ export function isHunkReviewable(toolName: string): boolean {
   return HUNK_REVIEWABLE.has(toolName);
 }
 
-function countOccurrences(haystack: string, needle: string): number {
-  if (needle.length === 0) return 0;
-  let count = 0;
-  let idx = 0;
-  while ((idx = haystack.indexOf(needle, idx)) !== -1) {
-    count++;
-    idx += needle.length;
-  }
-  return count;
-}
-
 export function proposedContent(toolName: string, args: unknown, current: string | null): PreviewResult {
   if (!isHunkReviewable(toolName)) return { ok: false, reason: 'not previewable' };
   const a = (args ?? {}) as Record<string, unknown>;
@@ -46,21 +36,11 @@ export function proposedContent(toolName: string, args: unknown, current: string
     return { ok: false, reason: 'malformed arguments' };
   }
   if (current === null) return { ok: false, reason: `File not found: ${a.path}` };
-  const oldText = a.old_text;
-  const newText = a.new_text;
-  const occurrences = countOccurrences(current, oldText);
-  if (occurrences === 0) {
-    return { ok: false, reason: `old_text not found in ${a.path}. Re-read the file (it may have changed) and try again.` };
+  try {
+    return { ok: true, content: applyTextEdit(current, a.old_text, a.new_text, a.replace_all === true, a.path).content };
+  } catch (err) {
+    return { ok: false, reason: (err as Error).message };
   }
-  const replaceAll = a.replace_all === true;
-  if (!replaceAll && occurrences > 1) {
-    return {
-      ok: false,
-      reason: `old_text matches ${occurrences} times in ${a.path}. Pass more context to make it unique, or set replace_all=true to replace all occurrences.`,
-    };
-  }
-  const content = replaceAll ? current.split(oldText).join(newText) : current.replace(oldText, () => newText);
-  return { ok: true, content };
 }
 
 /** Resolve `p` against `root`; null when the result escapes the workspace. */

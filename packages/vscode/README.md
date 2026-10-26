@@ -60,6 +60,8 @@ You can also register your own OpenAI-compatible endpoint (a gateway, a proxy, a
 
 Describe a task in the sidebar chat. Forge plans it, calls tools, streams what it is doing as a step list, and asks before anything irreversible. `Forge: Run Task (Autonomous)` does the same without stopping for each safe action.
 
+A short sentence above each group of steps says what Forge did, replies can show how fast they were written (`forge.chat.showSpeed`), and Up and Down in the message box bring back earlier prompts (`forge.chat.promptHistory`). The first time you chat, a card asks how much Forge should ask before acting and remembers it (`forge.approvalDefault`). `/cmd` (or `Forge: Generate Terminal Command`) turns a plain request into one shell command that you insert in the terminal, never run for you.
+
 ### Built-in agents
 
 The mode menu under the message box picks an agent for the job. Each follows an explicit method and is written to work on open models as well as frontier ones.
@@ -97,7 +99,7 @@ Turn a large request into a written spec with `Forge: Generate Spec`, work throu
 
 ### Verification, checkpoints and git
 
-After edits, Forge runs your project's own typecheck, lint and tests — it detects them, or you set `forge.verify.commands`. Checkpoints snapshot your work before risky changes, and `Forge: Generate Commit Message` writes the message from the real diff.
+After edits, Forge runs your project's own typecheck, lint and tests — it detects them, or you set `forge.verify.commands`. Checkpoints snapshot your work before risky changes, and `Forge: Generate Commit Message` writes the message from the real diff. Pick the language of that message with `forge.commitMessage.language`.
 
 ### More
 
@@ -117,6 +119,8 @@ Every command is available from the Command Palette (`Ctrl+Shift+P`).
 - `Forge: Get Started`
 - `Forge: Show Usage Statistics`
 - `Forge: Resume a Session...`
+- `Forge: Cycle Chat Mode`
+- `Forge: Toggle Accept Edits`
 
 **Editing code**
 
@@ -144,9 +148,11 @@ Every command is available from the Command Palette (`Ctrl+Shift+P`).
 - `Forge: Open Settings`
 - `Forge: Configure Provider`
 - `Forge: Open Chat in Editor Tab`
+- `Forge: Open Agent Manager` (run one prompt as up to four parallel sessions, each in its own git worktree, then merge the one you want)
 - `Forge: Open Project Memory`
 - `Forge: Manage Memory`
 - `Forge: Generate Commit Message`
+- `Forge: Generate Terminal Command` (puts `/cmd ` in the chat: say what you want in plain words, Forge writes one command for your shell and you insert it in the terminal)
 - `Forge: Import from Claude Code`
 
 **MCP servers**
@@ -199,6 +205,8 @@ Every command is available from the Command Palette (`Ctrl+Shift+P`).
 | Edit with Forge | `Ctrl+Shift+Alt+I` | `Cmd+Shift+Alt+I` |
 | Suggest now | `Ctrl+Alt+\` | `Ctrl+Alt+\` |
 | Voice input | `Ctrl+Shift+Space` | `Ctrl+Shift+Space` |
+| Cycle chat mode (in the chat) | `Ctrl+Alt+M` | `Cmd+Alt+M` |
+| Toggle Accept edits (in the chat) | `Ctrl+Alt+A` | `Cmd+Alt+A` |
 
 ## Settings
 

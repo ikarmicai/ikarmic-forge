@@ -60,6 +60,9 @@ import {
   redact,
   resolveProviderEndpoint,
   splitModelRef,
+  generateShellCommand,
+  shellKindOf,
+  commandRisk,
   runArchitect,
   saveSession,
   SPEC_READONLY_TOOLS,
@@ -114,13 +117,15 @@ import { agentDirs } from '../agent-dirs.js';
 import type { SwitchLink } from '../switch-link.js';
 import { expandAgentMention } from './agent-mention.js';
 import { planCommandRun, type CommandRunPlan } from './command-run.js';
+import { chatFocus } from './chat-focus.js';
 import { chatTranscriptText, findChatEntry } from './chat-ref.js';
 import { saveSessionDigest } from './digest-save.js';
 import { runMemoryCommand } from './memory-command.js';
 import { buildReviewPrompt, parseReviewScope, reviewDiffArgs, reviewScopeLabel } from './review.js';
 import { runSlash } from './slash-run.js';
+import { cmdEntriesMarkdown, cmdKey, insertPlan, mergeCmdEntries, type CmdEntry } from './cmd-entries.js';
 import { effortLabel, nextEffort } from './variant.js';
-import { aliasProblem, buildRunExtras, permissionExtras } from './run-extras.js';
+import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, permissionExtras } from './run-extras.js';
 import { notifyChannels, notifyKind } from './notify.js';
 import { KeepAwake } from './keep-awake.js';
 import { runOs, soundCommand, toastCommand } from './notify-os.js';
@@ -145,7 +150,9 @@ import {
   retargetSystemPrompt,
   type ModeOverrides,
 } from './modes.js';
-import { approvalLevelOf, autoApproveFor, type ApprovalLevel } from './approval-level.js';
+import { replySpeed } from './reply-speed.js';
+import { pushPrompt, userPrompts } from './prompt-history.js';
+import { approvalLevelOf, autoApproveFor, startingLevel, storedApprovalOf, whyRan, type ApprovalLevel } from './approval-level.js';
 import { modeForChoice, offerSpecAfterPlan } from './plan-size.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
@@ -169,9 +176,10 @@ const VERIFY_APPROVED_KEY = 'forge.verify.approved';
 const execFileAsync = promisify(execFile);
 
 const FAVOURITE_MODELS_KEY = 'forge.favouriteModels';
+const PROMPT_HISTORY_KEY = 'forge.promptHistory';
 
 /** What the chat needs from the place it is shown: the sidebar view, or an editor tab (see chat-tab.ts). */
-export type ChatHost = Pick<vscode.WebviewView, 'webview' | 'onDidDispose' | 'onDidChangeVisibility'>;
+export type ChatHost = Pick<vscode.WebviewView, 'webview' | 'onDidDispose' | 'onDidChangeVisibility'> & { readonly visible?: boolean };
 
 export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewId = 'forge.chatView';
@@ -213,6 +221,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private bgTicker: NodeJS.Timeout | undefined;
   private readonly steeringWarned = new Set<string>();
   private readonly mcpWarned = new Set<string>();
+  /** The Windows "no command sandbox" note is shown once per window. */
+  private sandboxWarned = false;
   private readonly terminal = createVsCodeCommandRunner();
   /** Tail of what the agent ran in the Forge terminal, for the @terminal mention. */
   private terminalLog = '';
@@ -228,7 +238,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     private readonly credentialStore?: CredentialStore,
     private readonly proposed?: ProposedContentProvider,
     private readonly mcp?: McpManager,
-    private readonly models?: ModelLister
+    private readonly models?: ModelLister,
+    /** Output > Forge: why a `/cmd` gave up. */
+    private readonly log?: Pick<vscode.LogOutputChannel, 'info' | 'warn'>
   ) {
     this.modeId = context.workspaceState.get<string>(MODE_STATE_KEY) ?? DEFAULT_MODE_ID;
     this.background.onChange(() => this.postBackground());
@@ -247,6 +259,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   dispose(): void {
+    if (chatFocus.last() === this) void vscode.commands.executeCommand('setContext', 'forge.chatFocused', false);
+    chatFocus.forget(this);
     this.follower?.stop();
     this.terminal.dispose();
     this.keepAwake.dispose();
@@ -280,10 +294,17 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: 'ui_flags', shiftTabVariant: vscode.workspace.getConfiguration('forge').get<boolean>('shiftTabCyclesVariant') === true });
   }
 
+  /** The level new chats start at (the first-run card's choice) and whether the card is still to be shown. */
+  private postApprovalDefault(): void {
+    const stored = storedApprovalOf(vscode.workspace.getConfiguration('forge').get<string>('approvalDefault'));
+    this.post({ type: 'approval_default', level: startingLevel(stored, vscode.workspace.isTrusted), offerCard: stored === 'unset' });
+  }
+
   resolveWebviewView(view: ChatHost): void {
     this.view = view;
     const configWatch = vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('forge.shiftTabCyclesVariant')) this.postUiFlags();
+      if (e.affectsConfiguration('forge.approvalDefault')) this.postApprovalDefault();
     });
     view.onDidDispose(() => configWatch.dispose());
     this.followSession();
@@ -327,6 +348,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     });
 
     view.onDidChangeVisibility(() => {
+      // Hiding a chat does not always blur its page, and a stuck forge.chatFocused would let the shortcuts change a hidden chat.
+      if (view.visible === false && chatFocus.last() === this) void vscode.commands.executeCommand('setContext', 'forge.chatFocused', false);
       // No-op for now: could pause/resume streams if we had any
     });
   }
@@ -522,8 +545,23 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     return wasRunning;
   }
 
+  /** Set for an Agent Manager session: the chat works in the session's worktree instead of the workspace folder. */
+  private rootOverride: string | undefined;
+
+  setWorkspaceRoot(root: string): void {
+    this.rootOverride = root;
+  }
+
   private workspaceRoot(): string {
-    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+    return this.rootOverride ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+  }
+
+  /** An Agent Manager session's prompt: shown as typed, then run; resolves with the run's outcome. */
+  async runSession(task: string, level: ApprovalLevel): Promise<RunOutcome | null> {
+    for (let i = 0; i < 100 && !(this.view && this.webviewReady); i++) await new Promise((r) => setTimeout(r, 100));
+    if (!this.view || !this.webviewReady) return null;
+    this.post({ type: 'user_message', text: task });
+    return this.runTask(task, level);
   }
 
   private checkpointStore(session: ChatSession = this.session): CheckpointStore {
@@ -689,7 +727,55 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       },
       // Answers to a command stay on screen (a warning fades after a few seconds).
       help: (text) => this.post({ type: 'notice', message: text }),
+      terminalCommand: (request) => this.terminalCommand(request),
     };
+  }
+
+  /** `/cmd`: write one command for the shell the terminal uses and show it as a card. It is never run. */
+  private async terminalCommand(request: string): Promise<void> {
+    const session = this.session; // pinned: the person may switch chats while the model answers
+    this.post({ type: 'user_message', text: request });
+    this.post({ type: 'cmd_pending' });
+    const entry: CmdEntry = { at: transcriptFromMessages(session.history ?? []).length, request };
+    let model: Awaited<ReturnType<typeof resolveCheapModel>> | undefined;
+    const shell = shellKindOf(vscode.env.shell, process.platform);
+    let result: Awaited<ReturnType<typeof generateShellCommand>> = { error: 'empty' };
+    try {
+      model = await resolveCheapModel(this.credentialStore);
+      if (model) result = await generateShellCommand(request, { model, shell, platform: process.platform });
+    } catch (err) {
+      this.log?.warn('/cmd failed: ' + (err instanceof Error ? err.message : String(err)));
+    }
+    if ('command' in result) {
+      entry.command = result.command;
+      const risk = commandRisk(result.command);
+      if (risk) entry.risk = risk;
+    } else {
+      entry.failed = true;
+      // Core reports no cause (network, key, an empty or reasoning-only reply all look the same here).
+      this.log?.warn(model ? `/cmd gave up (${shell}): no usable command from ${model.provider}/${model.model}` : '/cmd gave up: no model is set up');
+    }
+    const key = cmdKey(session.id);
+    void this.context.workspaceState.update(key, [...(this.context.workspaceState.get<CmdEntry[]>(key) ?? []), entry]);
+    if (session === this.session) this.post({ type: 'cmd_result', ...entry });
+  }
+
+  /** Insert in terminal: type the command into the terminal without Enter. A multi-line command is copied instead (see insertPlan). */
+  private async insertTerminalCommand(command: string): Promise<void> {
+    const terminal = vscode.window.activeTerminal ?? vscode.window.createTerminal('Forge');
+    terminal.show();
+    if (insertPlan(command) === 'type') {
+      terminal.sendText(command, false);
+      return;
+    }
+    await vscode.env.clipboard.writeText(command);
+    this.post({ type: 'warning', message: t('This command has several lines, so it was copied instead of typed. Paste it in the terminal and check it before you press Enter.') });
+  }
+
+  /** Forge: Generate Terminal Command: open the chat with `/cmd ` waiting in the box. */
+  async startTerminalCommand(): Promise<void> {
+    if (!(await this.ensureView())) return;
+    this.post({ type: 'compose_cmd' });
   }
 
   /** Save the open chat as a Markdown file (from the saved session, so it matches History and the CLI). */
@@ -701,7 +787,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         filters: { Markdown: ['md'] },
       });
       if (!target) return;
-      await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(formatSessionMarkdown(session)));
+      const extra = cmdEntriesMarkdown(this.context.workspaceState.get<CmdEntry[]>(cmdKey(this.session.id)) ?? []);
+      await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(formatSessionMarkdown(session) + (extra ? `\n\n${extra}` : '')));
       this.post({ type: 'warning', message: t('Saved the chat to {0}.', target.fsPath) });
     } catch {
       this.post({ type: 'warning', message: t('There is nothing to export yet: send a message first.') });
@@ -792,8 +879,26 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     this.restoreGoal();
     this.post({ type: 'meter_reset' });
     this.post({ type: 'transcript', items: [] });
+    this.postPromptHistory();
     this.repostRuns();
     this.announceModes();
+  }
+
+  /** Earlier prompts for the arrow keys, newest last: all chats (kept in globalState) or this chat's own messages. */
+  private postPromptHistory(sent?: string): void {
+    const shared = readConfig().promptHistory === 'shared';
+    let items: string[];
+    if (shared) {
+      items = this.context.globalState.get<string[]>(PROMPT_HISTORY_KEY) ?? [];
+      if (sent !== undefined) {
+        items = pushPrompt(items, sent);
+        void this.context.globalState.update(PROMPT_HISTORY_KEY, items);
+      }
+    } else {
+      items = userPrompts(transcriptFromMessages(this.session.history ?? [], (x) => stripContextBlocks(stripSteering(x))));
+      if (sent !== undefined) items = pushPrompt(items, sent);
+    }
+    this.post({ type: 'prompt_history', items });
   }
 
   private followSession(): void {
@@ -828,7 +933,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       this.todos = [];
       this.post({ type: 'todo_updated', todos: [] });
       this.restoreGoal();
-      this.post({ type: 'transcript', items: res.transcript });
+      this.post({ type: 'transcript', items: mergeCmdEntries(res.transcript, this.context.workspaceState.get<CmdEntry[]>(cmdKey(this.session.id)) ?? []) });
+      this.postPromptHistory();
       this.repostRuns();
       this.post({ type: 'meter_reset', costUsd: this.session.totalCostUsd });
       this.announceModes();
@@ -1061,11 +1167,25 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         await this.refreshAgentFiles();
         this.announceModes();
         this.postUiFlags();
+        this.postApprovalDefault();
+        this.postPromptHistory();
         this.post({ type: 'session', id: this.session.id });
         this.repostRuns();
         this.postAttachments();
         this.postBackground();
         await this.postSlashCommands();
+        return;
+      case 'chat_focused':
+        chatFocus.mark(this);
+        // VS Code does not set focusedView for the inside of a webview in the sidebar, so a keybinding needs a key of our own.
+        void vscode.commands.executeCommand('setContext', 'forge.chatFocused', true);
+        return;
+      case 'chat_blurred':
+        if (chatFocus.last() === this) void vscode.commands.executeCommand('setContext', 'forge.chatFocused', false);
+        return;
+      case 'set_approval_default':
+        // Only the first-run card's button sends this; the picker and the shortcut never do (they change the current chat only).
+        await vscode.workspace.getConfiguration('forge').update('approvalDefault', approvalLevelOf(msg.level), vscode.ConfigurationTarget.Global);
         return;
       case 'bg_stop':
         this.background.stop(msg.id);
@@ -1077,6 +1197,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         this.background.dismiss(msg.id);
         return;
       case 'user_input': {
+        // Only what the person typed in the box is remembered; the Continue button reuses this message type and says so.
+        this.postPromptHistory(msg.resume ? undefined : msg.text);
         const slash = parseSlash(msg.text, await this.slashEntries());
         if (slash && slash.entry.source === 'builtin') {
           await runSlash(slash.name, slash.args, this.slashDeps(), await this.slashEntries());
@@ -1164,7 +1286,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         await this.postSlashCommands();
         return;
       case 'slash_run':
+        // A /cmd request is a prompt the person may want back with the arrow keys.
+        if (msg.name.toLowerCase() === 'cmd' && msg.args.trim()) this.postPromptHistory(`/cmd ${msg.args.trim()}`);
         await runSlash(msg.name.toLowerCase(), msg.args.trim(), this.slashDeps(), await this.slashEntries());
+        return;
+      case 'cmd_insert':
+        await this.insertTerminalCommand(msg.command);
+        return;
+      case 'cmd_copy':
+        await vscode.env.clipboard.writeText(msg.command);
         return;
       case 'new_chat':
         this.pendingLarge = undefined;
@@ -1257,6 +1387,16 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       case 'voice_unsupported':
         return;
     }
+  }
+
+  /** The "Cycle Chat Mode" shortcut: the page picks the next mode, so a running chat and the page's own rules stay in one place. */
+  cycleMode(): void {
+    this.view?.webview.postMessage({ type: 'cycle_mode' });
+  }
+
+  /** The "Toggle Accept Edits" shortcut: changes this chat's approval level only, never the stored default. */
+  toggleAcceptEdits(): void {
+    this.view?.webview.postMessage({ type: 'toggle_accept_edits' });
   }
 
   /**
@@ -1597,6 +1737,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       if (github) extras.github = github;
       else this.post({ type: 'warning', message: t('GitHub tools are on, but you are not signed in to GitHub: sign in from the Accounts menu or set GITHUB_TOKEN.') });
     }
+    if (extras.commandSandbox && process.platform === 'win32' && !this.sandboxWarned) {
+      this.sandboxWarned = true;
+      this.post({ type: 'warning', message: t('The command sandbox (forge.commandSandbox) is not available on Windows: commands run unconfined and still ask for approval.') });
+    }
     if (cfg.webSearch.provider !== 'off' && !extras.webSearch) {
       this.post({
         type: 'warning',
@@ -1627,7 +1771,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const agentConfig: AgentConfig = {
       model: runModel,
       cwd: workspaceRoot,
-      auto,
+      ...autonomyFlags(auto),
+      ...chatRunLimits(),
       abortSignal: controller.signal,
       ...(runSandbox ? { toolSandbox: runSandbox } : {}),
       ...(generating ? { specMode: true } : {}),
@@ -1721,6 +1866,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     let outputBase = 0;
     let costBase = 0;
     let runCost = 0;
+    // Reply speed: per model step. The agent's usage event is cumulative over the run, so a step is the difference.
+    let stepStartAt = Date.now();
+    let stepFirstTokenAt: number | undefined;
+    let stepStreamed = false;
+    let usageSeenOut = 0;
+    let usageSeenIn = 0;
 
     const onEvent = (event: AgentEvent): void => {
         // A stopped run unwinds a moment after New chat or Resume swapped the conversation: its late status line,
@@ -1733,10 +1884,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
               inputBase = inputTokens;
               outputBase = outputTokens;
               costBase = runCost;
+              usageSeenOut = 0;
+              usageSeenIn = 0;
             }
             this.post({ type: 'model', provider: event.provider, model: event.model });
             return;
           case 'iteration':
+            stepStartAt = Date.now();
+            stepFirstTokenAt = undefined;
+            stepStreamed = false;
             iteration = iterationBase + event.iteration;
             maxIter = iterationBase + event.maxIterations;
             this.post({
@@ -1750,12 +1906,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             });
             return;
           case 'text_delta':
+            stepFirstTokenAt ??= Date.now();
+            stepStreamed = true;
             this.post({ type: 'text_delta', text: event.text });
             return;
           case 'text_done':
             this.post({ type: 'text_done', text: event.text });
             return;
           case 'reasoning_delta':
+            stepFirstTokenAt ??= Date.now();
             this.post({ type: 'reasoning_delta', text: event.text });
             return;
           case 'steering':
@@ -1764,9 +1923,26 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           case 'reasoning_done':
             this.post({ type: 'reasoning_done', text: event.text });
             return;
+          case 'todo_nudge':
+            this.post({ type: 'notice', message: t('{0} items of the todo list are still open: Forge asked the model to carry on, or to stop if it is waiting for you.', event.open) });
+            return;
+          case 'retry': {
+            const seconds = Math.max(1, Math.round(event.delayMs / 1000));
+            const message =
+              event.kind === 'offline'
+                ? t('You seem to be offline ({0}). Forge carries on when the network is back; press Stop to end the run.', event.reason)
+                : event.kind === 'empty_reply'
+                  ? t('The model sent an empty reply. Asking again in {0} s ({1} of {2}).', seconds, event.attempt, event.maxRetries)
+                  : t('The model call failed ({0}). Trying again in {1} s ({2} of {3}).', event.reason, seconds, event.attempt, event.maxRetries);
+            this.post({ type: 'step_retry', message });
+            return;
+          }
           case 'tool_call':
             toolCalls.set(event.id, { name: event.name, args: event.args });
-            this.post({ type: 'tool_call', id: event.id, name: event.name, args: event.args });
+            {
+              const why = whyRan(event.approval, event.name, level, sharedConfig.autoApproveTools);
+              this.post({ type: 'tool_call', id: event.id, name: event.name, args: event.args, ...(why ? { why } : {}) });
+            }
             return;
           case 'tool_result': {
             const call = toolCalls.get(event.id);
@@ -1806,6 +1982,18 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             outputTokens = outputBase + event.outputTokens;
             contextTokens = event.contextTokens;
             contextWindow = event.contextWindow;
+            {
+              const stepOut = event.outputTokens - usageSeenOut;
+              const stepIn = event.inputTokens - usageSeenIn;
+              usageSeenOut = event.outputTokens;
+              usageSeenIn = event.inputTokens;
+              const endAt = Date.now();
+              const tps = stepStreamed && cfg.showSpeed ? replySpeed({ outputTokens: stepOut, firstTokenAt: stepFirstTokenAt, endAt }) : undefined;
+              if (tps !== undefined && stepFirstTokenAt !== undefined) {
+                const title = t('First token after {0} s · {1} tokens in', ((stepFirstTokenAt - stepStartAt) / 1000).toFixed(1), Math.max(0, stepIn));
+                this.post({ type: 'reply_speed', tps, title });
+              }
+            }
             this.post({
               type: 'status',
               iteration,
@@ -1830,6 +2018,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
               if (channels.message) void vscode.window.showInformationMessage(text);
               if (channels.sound) runOs(soundCommand(process.platform));
               if (channels.toast) runOs(toastCommand(process.platform, 'Ikarmic Forge', text));
+            }
+            if (event.reason === 'max_iterations') {
+              this.post({ type: 'warning', message: t('Stopped: this run used all {0} of its steps. Press Continue to carry on.', maxIter) });
+            }
+            if (event.reason === 'max_duration') {
+              this.post({ type: 'warning', message: t('Stopped: this run reached its time limit. Press Continue to carry on.') });
             }
             if (event.reason === 'budget_exceeded') {
               this.post({ type: 'warning', message: t('Stopped: this run reached the {0}cost cap (forge.maxCostUsd).', cfg.maxCostUsd > 0 ? '$' + cfg.maxCostUsd + ' ' : '') });
@@ -2054,7 +2248,7 @@ export interface WorkSource<V, A> {
 
 type ChatMessage =
   | { type: 'ready' }
-  | { type: 'user_input'; text: string; level?: ApprovalLevel; auto?: boolean }
+  | { type: 'user_input'; text: string; level?: ApprovalLevel; auto?: boolean; resume?: boolean }
   | { type: 'approval_response'; id: string; approved: boolean; note?: string }
   | { type: 'cancel' }
   | { type: 'suggest_choice'; choice: 'spec' | 'plan' | 'go' | 'never' }
@@ -2069,6 +2263,9 @@ type ChatMessage =
   | { type: 'bg_stop_all' }
   | { type: 'bg_dismiss'; id: string }
   | { type: 'new_chat' }
+  | { type: 'set_approval_default'; level: ApprovalLevel }
+  | { type: 'chat_focused' }
+  | { type: 'chat_blurred' }
   | { type: 'set_mode'; id: string }
   | { type: 'open_diff'; id: string }
   | { type: 'review_hunks'; id: string }
@@ -2090,12 +2287,14 @@ type ChatMessage =
   | { type: 'goal_command'; args: string }
   | { type: 'question_answer'; id: string; answer: string }
   | { type: 'slash_list' }
-  | { type: 'slash_run'; name: string; args: string };
+  | { type: 'slash_run'; name: string; args: string }
+  | { type: 'cmd_insert'; command: string }
+  | { type: 'cmd_copy'; command: string };
 
 const CHAT_TYPES = new Set([
   'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
   'review_hunks', 'condense', 'mention_query', 'retry_last', 'attach_file', 'attach_uris', 'pick_attachments', 'enhance_prompt', 'remove_attachment', 'copy_resume', 'open_settings', 'list_models', 'select_model', 'toggle_favourite_model', 'bg_stop', 'bg_stop_all', 'bg_dismiss', 'work_load', 'work_act',
-  'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'run_action', 'goal_command', 'question_answer', 'slash_list', 'slash_run',
+  'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'run_action', 'goal_command', 'question_answer', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
 ]);
 
 function isChatMessage(msg: unknown): msg is ChatMessage {
@@ -2112,6 +2311,7 @@ function isChatMessage(msg: unknown): msg is ChatMessage {
   if (m.type === 'remove_attachment' && typeof m.id !== 'string') return false;
   if (m.type === 'goal_command' && typeof m.args !== 'string') return false;
   if (m.type === 'slash_run' && (typeof m.name !== 'string' || typeof m.args !== 'string')) return false;
+  if ((m.type === 'cmd_insert' || m.type === 'cmd_copy') && typeof m.command !== 'string') return false;
   if (m.type === 'question_answer' && (typeof m.id !== 'string' || typeof m.answer !== 'string')) return false;
   if (m.type === 'run_action' && (typeof m.runId !== 'string' || typeof m.index !== 'number' || !['review', 'merge', 'discard', 'clear'].includes(m.action as string))) return false;
   return true;

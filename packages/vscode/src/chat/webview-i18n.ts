@@ -9,6 +9,12 @@
 
 /** Every English label the swap may need to translate. Keep in step with l10n/bundle.l10n.*.json. */
 export const WEBVIEW_STRINGS: readonly string[] = [
+  'How much should Forge do on its own?',
+  'Approve each file edit and command. Safest while you get to know Forge.',
+  'File edits just happen. Commands still ask.',
+  'No approval cards. For trusted projects.',
+  'You can change this any time in the composer.',
+  'Use this',
   'Chat actions',
   'Always allow this command',
   'Revert this run',
@@ -73,6 +79,18 @@ export const WEBVIEW_STRINGS: readonly string[] = [
   'Background agents',
   'Close',
   'Copy',
+  'Insert in terminal',
+  'Writing a command…',
+  'Risky:',
+  'A hint from known patterns, not a guarantee.',
+  'deletes files',
+  'forces',
+  'runs as administrator',
+  'rewrites git history',
+  'drops data',
+  'formats a disk',
+  'Forge could not write a command for that; try rephrasing.',
+  'Say what you want after /cmd, for example: /cmd list files larger than 10 MB',
   'Show more',
   'Show less',
   'Clear finished',
@@ -158,6 +176,27 @@ export const WEBVIEW_STRINGS: readonly string[] = [
   'running',
   'done',
   'failed',
+  // Why a tool ran without asking (why-ran.ts): the step-group header and the sentence in each row.
+  'step',
+  'steps',
+  'ran without asking:',
+  'auto-approve list',
+  'Accept edits',
+  'always allowed',
+  'permission rule',
+  'memory writes allowed',
+  'Autonomous',
+  'Ran without asking: it is on your auto-approve list.',
+  'Ran without asking: the approval level is Accept edits.',
+  'Ran without asking: you chose Always allow for this command.',
+  'Ran without asking: a permission rule allows it.',
+  'Ran without asking: you allowed memory writes without asking.',
+  'Ran without asking: the approval level is Autonomous.',
+  // Announcements of the mode and approval shortcuts; the option label follows as its own text node.
+  'Mode:',
+  'Approvals:',
+  // Reply speed badge: the unit; the number stays its own text node.
+  'tok/s',
 ];
 
 /** The entries of `WEBVIEW_STRINGS` whose translation differs from the English text. */

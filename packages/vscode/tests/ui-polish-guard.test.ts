@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { agentManagerHtml } from '../src/agent-manager/manager-html.js';
 import { chatHtml } from '../src/chat/html.js';
 import { getSettingsHtml } from '../src/settings/settings-html.js';
 import { BASE_CSS } from '../src/webview-base-css.js';
@@ -7,6 +8,7 @@ import { BASE_CSS } from '../src/webview-base-css.js';
 const pages: Array<[string, string]> = [
   ['chat', chatHtml()],
   ['settings', getSettingsHtml()],
+  ['agent manager', agentManagerHtml()],
 ];
 
 describe('UI polish guard (RB-8)', () => {
@@ -55,7 +57,9 @@ describe('UI polish guard (RB-8)', () => {
     expect(html).toMatch(/\.approval \{ border: 1px solid var\(--warn\)/);
     expect(html).toMatch(/\.approval \.kind \{[^}]*color: var\(--warn\)/);
     expect(html).toMatch(/\.cfoot \.auto\.on \{ color: var\(--err\)/);
-    expect(html).toMatch(/#auto-note \{[^}]*color: var\(--err\)/);
+    // The note is a tinted banner with an --err edge and icon; its text stays --fg so it reads on the tint in every theme.
+    expect(html).toMatch(/#auto-note \{[^}]*color-mix\(in srgb, var\(--err\)[^}]*border-left: 3px solid var\(--err\)/);
+    expect(html).toMatch(/#auto-note svg \{[^}]*color: var\(--err\)/);
   });
 
   describe('chat buttons are opt-in (RB-7, RB-8)', () => {
@@ -159,7 +163,9 @@ describe('Chat: consecutive steps are one group (C8)', () => {
 
   it('a group of three or more steps says how many', () => {
     expect(html).toContain("head.className = 'steps-head'");
-    expect(html).toContain("n + ' steps'");
+    // The count and the word come from stepsHeadParts (why-ran.ts), which keeps "from three steps" when nothing ran unasked.
+    expect(html).toContain('UI.stepsHeadParts(n, counts)');
+    expect(html).toContain("n >= 3 ? [String(n), 'steps'] : undefined");
   });
 });
 
@@ -172,12 +178,26 @@ describe('Chat: approval card puts the command first and names the risk (C7)', (
   });
 
   it('the command or path is a code-styled block that wraps', () => {
-    expect(html).toMatch(/\.approval \.target \{[^}]*vscode-textCodeBlock-background[^}]*overflow-wrap: anywhere/);
+    expect(html).toMatch(/\.approval \.target \{[^}]*var\(--sunken\)[^}]*overflow-wrap: anywhere/);
+    // A shell command gets its own block: wraps, stops at three lines, opens in full from "Show full command".
+    expect(html).toMatch(/\.approval \.cmd \{[^}]*var\(--sunken\)/);
+    expect(html).toMatch(/\.approval \.cmd code \{[^}]*overflow-wrap: anywhere[^}]*-webkit-line-clamp: 3/);
+    expect(html).toMatch(/\.approval \.cmd\.open code \{[^}]*-webkit-line-clamp: unset/);
+    expect(html).toContain('Show full command');
   });
 
   it('the label says in words what is needed and how a destructive run is confirmed', () => {
-    expect(html).toContain("'Destructive · hold to run'");
-    expect(html).toContain("' · needs you'");
+    expect(html).toContain("'Destructive'");
+    expect(html).toContain("'Hold to confirm'");
+    expect(html).toContain("'needs you'");
+  });
+
+  it('the plan is a content card: hairline edge, a segment per step, icons that are not text glyphs', () => {
+    expect(html).toMatch(/#todo-chip \{[^}]*border: 1px solid var\(--hair\)/);
+    expect(html).toMatch(/#todo-bar span\.done \{ background: var\(--ok\)/);
+    expect(html).toMatch(/#todo-bar span\.doing \{ background: var\(--ion\)/);
+    expect(html).toMatch(/#todo-toggle \{[^}]*min-height: 36px/);
+    expect(html).not.toContain("'✓ '");
   });
 });
 
@@ -197,6 +217,9 @@ describe('Chat: mode and model sit in the composer, the header keeps actions (C6
     expect(composer).toContain('<div class="cchips">');
     expect(composer.indexOf('id="mode"')).toBeGreaterThan(composer.indexOf('class="cchips"'));
     expect(composer.indexOf('id="model-label"')).toBeLessThan(composer.indexOf('class="cfoot"'));
+    // The chips head the composer, above the text box, on a sunken strip with a hairline under it.
+    expect(composer.indexOf('class="cchips"')).toBeLessThan(composer.indexOf('id="input"'));
+    expect(html).toMatch(/\.cchips \{[^}]*background: var\(--sunken\)[^}]*border-bottom: 1px solid var\(--hair\)/);
     expect(html).toContain('id="model-menu"');
     expect(html.indexOf('id="model-menu"')).toBeGreaterThan(html.indexOf('id="input-area"'));
   });
