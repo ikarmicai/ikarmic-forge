@@ -7,6 +7,8 @@
 // job is skipped, not failed. A scheduled run re-checks, so CI turns green by itself after the approval.
 
 import { appendFileSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** @returns {{ ready: boolean, reason: string }} */
 export function coreGate(stamp, times) {
@@ -55,4 +57,6 @@ async function main() {
   if (env.GITHUB_STEP_SUMMARY && !ready) appendFileSync(env.GITHUB_STEP_SUMMARY, `CI tests skipped: ${reason}\n`);
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href) await main();
+// Compare paths, not hand-built URLs: "file:///" + "/home/…" has four slashes on Linux, so main() never ran and the
+// public CI skipped its tests on every run (RB-100).
+if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) await main();
