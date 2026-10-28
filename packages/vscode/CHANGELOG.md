@@ -10,6 +10,33 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-10-28
+
+### Added
+
+- **Open a pull request from an Agent Manager session.** "Create pull request" shows exactly what will be sent (branch, repository, title, description, base branch, draft or not), all editable, and only then pushes and opens it. The row then shows its state, checks and reviews in words.
+- **Agent Manager: a terminal, health and setup per session.** A Terminal button opens a terminal in the session's worktree; each row shows commits ahead and behind and files changed; "Check worktrees" lists problems in words and fixes them only after you confirm. `forge.agentManager.setupScript` and `forge.agentManager.copyFiles` prepare each new worktree before the agent starts (your own settings only).
+- **Rate a reply.** "Helpful" and "Not helpful" under each reply, with an optional note on a "Not helpful". Saved in that chat's file only; no telemetry.
+- **Plan first when the request is big.** Forge can suggest planning before it changes anything, and a finished plan is saved as `.forge/plans/<date>-<name>.md` with an "Implement this plan" card.
+- **Read a folder outside the project, when you allow it.** Forge asks once per folder, naming the real folder. Reading only; drive roots, your home folder and credential folders are never offered.
+- **Asked before code leaves your machine for search by meaning.** The prompt names the host and model; a status bar item shows progress and size, and "Forge: Delete Code Index and Forget Consent" removes the index and your choices.
+- **Word and Excel files can be read**, `fetch_url` returns Markdown with structure, the model can see and load every skill, schedule wakeups, run background commands, ask the language server for problems, read a public repository, and run your formatter on every file it writes.
+
+### Changed
+
+- **The Agent Manager, Settings and the chat moved onto the iKarmic design system.** Same features in a new, consistent look for dark, light and narrow windows. Versions of one prompt are now one task card; Ask, Allow and Block in Settings are a group you can move through with the arrow keys.
+- **Plain words instead of internal names.** "Step limit reached" instead of `max_iterations`; tools, settings values and custom agents are shown in words.
+- **Built-in agent prompts stay private.** Settings → Agents no longer receives them and the Duplicate button is gone.
+- **A sandbox with the network off now holds Forge's own tools too**, not only shell commands (`forge.commandSandbox.allowedHosts`).
+
+### Fixed
+
+- A detached worktree is really detached; a stopped command no longer hangs the chat on Windows; an allowed command that discards its output no longer asks, and one that writes a file always does.
+- A long chat keeps its whole history on screen after it is condensed, sees changes to `AGENTS.md` and steering files on later turns, reuses the provider's prompt cache across turns, and no longer forgets earlier work.
+- Switching model in the middle of a chat no longer breaks the next turn; unknown models are no longer condensed too early.
+- Session export no longer leaks secrets from tool data; MCP servers with unusual names no longer make a provider refuse the request; no single tool result can fill the prompt.
+- `edit_file` finds its text more often, `search_files` with `include: "*.ts"` finds files at any depth, and inline completion with MiniMax-M3 no longer comes up empty now and then.
+
 ## [5.3.0] - 2026-10-27
 
 ### Added
@@ -141,7 +168,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Memory**, **steering files** and per-project instructions.
 - **Verification**: Forge runs your project's own typecheck, lint and tests after edits, with Ask/On/Off.
 
-[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.3.0...HEAD
+[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.0...HEAD
+[5.4.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.3.0...v5.4.0
 [5.3.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.1.1...v5.2.0
 [5.1.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.1.0...v5.1.1

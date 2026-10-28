@@ -4,6 +4,24 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.4.0] - 2026-10-28
+
+### Added
+- **Pull requests from the Agent Manager.** Review exactly what will be sent, then push the branch and open the pull request from a finished session.
+- **Agent Manager terminal, health check and worktree setup** for each session.
+- **Rate a reply**, **plan first when a request is big**, and **read a folder outside the project when you allow it**.
+- **Asked before code is sent for search by meaning**, naming the host and model.
+- **Word and Excel files can be read**, fetched pages keep their structure, and the model can see every skill, schedule wakeups, run background commands and read a public repository.
+
+### Changed
+- **A new look**: the Agent Manager, Settings and the chat share one design system for dark, light and narrow windows.
+- **Plain words instead of internal names** across the chat, Settings and the terminal app.
+- **A sandbox with the network off now holds Forge's own tools too.**
+
+### Fixed
+- Long chats keep their history on screen, see changed instructions on later turns and reuse the provider's prompt cache.
+- Switching model mid-chat, session export of tool data, MCP server names and oversized tool results no longer cause errors or leaks.
+
 ## [5.3.0] - 2026-10-27
 
 ### Added
