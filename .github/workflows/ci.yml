@@ -5,14 +5,40 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Re-checks whether the core this commit needs has reached npm, so CI runs by itself after the
+  # npm approval. A commit that already passed is skipped.
+  schedule:
+    - cron: '17 */3 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # This repository is generated from the private one and gets @ikarmic/forge-core from npm. Until the
+  # matching core is published the build cannot succeed, so the tests wait instead of failing.
+  gate:
+    name: matching core is on npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/core-gate.mjs
+
   test:
     name: typecheck + build + test (${{ matrix.os }})
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
