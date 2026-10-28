@@ -114,6 +114,7 @@ describe('the agent tasks', () => {
     for (const t of agentTasks) expect([['agents', t.specialist], ['agents-hard', t.specialist]], t.id).toContainEqual(t.tags);
   });
 
+  // Every fixture in turn, some with git repositories: the public Windows runner took over 5 s (RB-100 let it run).
   it('build their fixtures without throwing', async () => {
     for (const t of agentTasks) {
       const dir = await mkdtemp(join(tmpdir(), `forge-eval-fixture-${t.id}-`));
@@ -123,7 +124,7 @@ describe('the agent tasks', () => {
         await rm(dir, { recursive: true, force: true });
       }
     }
-  });
+  }, 60_000);
 });
 
 describe('the default run', () => {
