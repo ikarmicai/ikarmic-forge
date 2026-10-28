@@ -487,13 +487,16 @@ export const CHAT_CSS = `  :root {
  *   (e.g. unit tests), the external script load is blocked same as before.
  */
 export function chatHtml(
-  options: { voiceScriptUri?: string; forgeUiScriptUri?: string; mermaidScriptUri?: string; cspSource?: string; strings?: Record<string, string> } = {}
+  options: { voiceScriptUri?: string; forgeUiScriptUri?: string; mermaidScriptUri?: string; cspSource?: string; strings?: Record<string, string>; approvalLevel?: 'ask' | 'edits' | 'auto' } = {}
 ): string {
   const voiceScriptUri = options.voiceScriptUri ?? '';
   const mermaidScriptUri = options.mermaidScriptUri ?? '';
   const forgeUiScriptUri = options.forgeUiScriptUri ?? '';
   const i18n = i18nScript(options.strings ?? {});
   const i18nBlock = i18n ? `<script>${i18n}</script>` : '';
+  // The saved starting level is in the page from the first paint: a message sent before the host's ready reply must not run at "ask" (RB-91).
+  const level = options.approvalLevel === 'edits' || options.approvalLevel === 'auto' ? options.approvalLevel : 'ask';
+  const sel = (v: string) => (v === level ? ' selected' : '');
   const scriptSrc = options.cspSource ? `'unsafe-inline' ${options.cspSource}` : `'unsafe-inline'`;
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -567,9 +570,9 @@ export function chatHtml(
     <textarea id="input" rows="1" aria-label="Message to Forge" aria-autocomplete="list" aria-controls="mention-list" placeholder="Ask Forge… (@ to attach context)" title="@ attaches files, @problems or @git context" autofocus></textarea>
     <div class="cfoot">
       <select class="auto" id="approval" aria-label="Approvals" aria-describedby="auto-note" title="Forge asks before it changes files or runs commands">
-        <option value="ask" title="Forge asks before it changes files or runs commands" selected>Ask first</option>
-        <option value="edits" title="File edits run without asking. Commands still ask.">Accept edits</option>
-        <option value="auto" title="Forge runs tools without asking you first">Autonomous</option>
+        <option value="ask" title="Forge asks before it changes files or runs commands"${sel('ask')}>Ask first</option>
+        <option value="edits" title="File edits run without asking. Commands still ask."${sel('edits')}>Accept edits</option>
+        <option value="auto" title="Forge runs tools without asking you first"${sel('auto')}>Autonomous</option>
       </select>
       <span class="spacer"></span>
       <button id="attach" class="icon" type="button" title="Attach context (@)" aria-label="Attach context"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M10.5 8v1a2 2 0 0 0 4 0V8a6.5 6.5 0 1 0-2.6 5.2"/></svg></button>
@@ -632,7 +635,7 @@ export function chatHtml(
   }
   approvalSelect.addEventListener('change', showApproval);
   // The level new chats start at, and whether the first-run card is still to be shown (both come from the host).
-  let approvalDefault = 'ask';
+  let approvalDefault = '${level}';
   let offerApprovalCard = false;
   function setApprovalLevel(level) { approvalSelect.value = level; showApproval(); }
   function syncApprovalCard() {

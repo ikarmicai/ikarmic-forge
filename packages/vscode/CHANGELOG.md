@@ -10,6 +10,23 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.4.1] - 2026-10-28
+
+### Fixed
+
+- **Agent Manager: several versions of one prompt now run.** With a prompt longer than about 45 characters the second version failed at once ("Worktree path already exists"); each version now gets its own worktree (RB-94).
+- **Agent Manager: Merge reports what happened.** A merge that had landed was shown as "Could not merge" when a terminal still had the worktree folder open; terminals inside the worktree are now closed first, the branch is always removed, and a folder that is still busy is reported in words (RB-95).
+- **Autonomous no longer stops to ask before running your project checks.** In an Agent Manager session that question waited in a tab nobody was watching, and a small change showed "Running" for half an hour (RB-96).
+- **Worktrees no longer show up in git status.** Forge keeps `.forge/worktrees/` out of git through the repository's own exclude file, so `git add -A` cannot commit one (RB-97).
+- **Agent Manager: "Discard the others" after a merge.** Once one version was merged the others stayed with no way to clear them in one step (RB-98).
+- **Agent Manager: line counts stay after a version finishes.** A finished version showed "+0 −0" for files it had changed (RB-99).
+- **Autonomous applies from the first message.** With Autonomous saved as the starting level, a message sent in the first seconds after VS Code opened could still run at "Ask first" and show an approval card (RB-91).
+- **An account out of credit is reported at once.** When a provider says your plan or credit is used up (for example MiniMax "Token Plan usage limit reached" or OpenAI "insufficient_quota"), Forge no longer retries five times over about a minute before showing the same error; a real rate limit is still retried (RB-89).
+- **The "Big request" question is asked once.** After you chose "Just do it" (or Plan first) on the card, the model could ask the same question again a few seconds later (RB-88).
+- **DeepSeek and other named providers are priced at their own rates.** A model reached as `deepseek:deepseek-v4-pro` was priced from another host that lists the same model (Azure), with no cache discount: about twenty times the real cost, so the cost cap stopped runs early, and its context window was slightly wrong. The model list in the chat shows the right price too (RB-87).
+- **Screenshots and PDFs no longer flood MiniMax, DeepSeek and other OpenAI-style providers.** Their tool results are text only, so an image read by the model arrived as tens of thousands of tokens of base64 that it could not see, and the model sometimes described it anyway. Forge now tells the model it cannot see the image, which costs a few tokens; Claude, Gemini and OpenAI models still see it (RB-86).
+- **A chat no longer gets stuck on `400 invalid params (2013)`.** When the model sent a tool call with invalid arguments, Forge answered it twice, and MiniMax (and other providers that check) refused every later message in that chat, Continue included. A call now gets one answer, and a chat already stuck this way works again without any change on your side (RB-84).
+
 ## [5.4.0] - 2026-10-28
 
 ### Added
@@ -168,7 +185,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Memory**, **steering files** and per-project instructions.
 - **Verification**: Forge runs your project's own typecheck, lint and tests after edits, with Ask/On/Off.
 
-[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.0...HEAD
+[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.1...HEAD
+[5.4.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.0...v5.4.1
 [5.4.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.3.0...v5.4.0
 [5.3.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.1.1...v5.2.0

@@ -11,7 +11,7 @@ import * as vscode from 'vscode';
 import { openChatInTab } from '../chat/chat-tab.js';
 import type { ForgeChatViewProvider } from '../chat/chat-view.js';
 import { t } from '../l10n.js';
-import { collectChanges, discardWorktree, mergeWorktree, prepareSetup, prepareWorktree, pushBranch, setupSettingsFrom } from './manager-flow.js';
+import { collectChanges, discardWorktree, isInsideFolder, mergeWorktree, prepareSetup, prepareWorktree, pushBranch, setupSettingsFrom } from './manager-flow.js';
 import { agentManagerHtml } from './manager-html.js';
 import { nextPollDelay, PR_POLL_MS, prDraftFor, validatePrForm } from './manager-pr.js';
 import { finishSession, managerView, newSessions, pollableSessions, restoreSessions, terminalName, type AgentSession, type SessionAction } from './manager-model.js';
@@ -97,6 +97,31 @@ export class AgentManagerPanel {
 
   private repoRoot(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  }
+
+  /**
+   * Before a worktree is removed: close every terminal working inside it (the session's own, and the one its agent
+   * ran commands in) and wait until those shells have exited, so Windows lets the folder go (RB-95).
+   */
+  private async releaseWorktree(id: string, folder: string): Promise<void> {
+    const own = this.terminals.get(id);
+    this.terminals.delete(id);
+    const inside = vscode.window.terminals.filter((term) => term === own || terminalIsInside(term, folder));
+    if (inside.length === 0) return;
+    const gone = new Promise<void>((resolve) => {
+      const left = new Set(inside);
+      const sub = vscode.window.onDidCloseTerminal((term) => {
+        left.delete(term);
+        if (left.size === 0) {
+          sub.dispose();
+          resolve();
+        }
+      });
+    });
+    for (const term of inside) term.dispose();
+    await Promise.race([gone, new Promise((resolve) => setTimeout(resolve, 5000))]);
+    // The shell process can outlive its tab by a moment.
+    await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
   /** A session's terminal goes with its worktree: a shell left in a deleted folder only confuses. */
@@ -313,10 +338,12 @@ export class AgentManagerPanel {
   private async discardOne(session: AgentSession, root: string): Promise<void> {
     if (!session.worktree) return;
     this.live.get(session.id)?.panel.dispose();
-    await this.closeTerminal(session.id);
-    await discardWorktree(root, session.worktree).catch((err: unknown) => {
+    await this.releaseWorktree(session.id, session.worktree.path);
+    const left = await discardWorktree(root, session.worktree).catch((err: unknown) => {
       void this.panel.webview.postMessage({ type: 'error', message: (err as Error).message });
+      return undefined;
     });
+    if (left) void this.panel.webview.postMessage({ type: 'error', message: folderLeftMessage(left) });
     this.update(session.id, (s) => ({ ...s, status: 'discarded' }));
   }
 
@@ -384,12 +411,13 @@ export class AgentManagerPanel {
         return;
       case 'merge': {
         if (!root || !session.worktree) return;
-        await this.closeTerminal(id); // a shell inside the folder would keep it from being removed
+        await this.releaseWorktree(id, session.worktree.path); // a shell inside the folder would keep it from being removed
         const merged = await mergeWorktree(root, session.worktree, session.prompt).catch((err: unknown) => ({ ok: false as const, message: (err as Error).message }));
         if (!merged.ok) {
           void this.panel.webview.postMessage({ type: 'error', message: t('Could not merge "{0}": {1}', session.label, merged.message) });
           return;
         }
+        if (merged.leftFolder) void this.panel.webview.postMessage({ type: 'error', message: folderLeftMessage(merged.leftFolder) });
         tab?.panel.dispose();
         this.update(id, (s) => ({ ...s, status: 'merged' }));
         return;
@@ -409,4 +437,15 @@ export class AgentManagerPanel {
         return;
     }
   }
+}
+
+/** True when a terminal was opened with its working folder inside `folder` (RB-95). */
+function terminalIsInside(term: vscode.Terminal, folder: string): boolean {
+  const cwd = (term.creationOptions as vscode.TerminalOptions).cwd;
+  return isInsideFolder(typeof cwd === 'string' ? cwd : cwd?.fsPath, folder);
+}
+
+/** The merge or discard is done, but the worktree folder could not be deleted yet (RB-95). */
+function folderLeftMessage(folder: string): string {
+  return t('The worktree folder is still in use and was not deleted: {0}. Close anything open in it, then use Check worktrees to delete it.', folder);
 }

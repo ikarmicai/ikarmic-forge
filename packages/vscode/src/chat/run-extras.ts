@@ -37,6 +37,14 @@ export function autonomyFlags(auto: boolean): Pick<AgentConfig, 'auto' | 'allowD
 }
 
 /**
+ * Whether to ask before running the project's detected checks after edits. Autonomous promises no approval cards,
+ * and in an Agent Manager session nobody is watching the tab, so a question there stalled the run (RB-96).
+ */
+export function verifyNeedsAsking(needsConsent: boolean, auto: boolean): boolean {
+  return needsConsent && !auto;
+}
+
+/**
  * Core stops a run after 10 minutes, a guard for unattended CLI runs. A chat run has a person watching it with
  * Stop at hand, and a long task on a slow model was cut off half-way, so the chat sets no wall-clock limit.
  */

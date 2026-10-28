@@ -4,6 +4,17 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.4.1] - 2026-10-28
+
+### Fixed
+- **Agent Manager:** several versions of one prompt now run; Merge reports a merge that landed; "Discard the others" works after a merge; line counts stay after a version finishes; worktrees no longer show in git status.
+- **Autonomous** applies from the first message and no longer stops to ask before running your project checks.
+- **A chat no longer gets stuck** on `400 invalid params (2013)` after a tool call with invalid arguments.
+- **Screenshots and PDFs** no longer flood MiniMax, DeepSeek and other OpenAI-style providers as text.
+- **DeepSeek and other named providers** are priced at their own rates, and work in the terminal app.
+- **An account out of credit** is reported at once instead of being retried for a minute.
+- The "Big request" question is asked once; the terminal app hides old tool results in long runs; `apply_patch` accepts a bare blank line in a new file.
+
 ## [5.4.0] - 2026-10-28
 
 ### Added

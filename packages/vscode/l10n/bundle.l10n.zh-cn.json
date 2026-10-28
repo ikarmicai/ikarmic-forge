@@ -149,7 +149,6 @@
   "Just deny": "仅拒绝",
   "Resume": "恢复",
   "CLI command": "命令行命令",
-  "Delete": "删除",
   "Restore": "还原",
   "you": "你",
   "running": "运行中",
@@ -506,5 +505,6 @@
   "Forge could not write a command for that; try rephrasing.": "Forge 无法为此写出命令，请换个说法再试。",
   "Say what you want after /cmd, for example: /cmd list files larger than 10 MB": "在 /cmd 后说明你想做什么，例如：/cmd 列出大于 10 MB 的文件",
   "Writing a command…": "正在写命令…",
-  "This command has several lines, so it was copied instead of typed. Paste it in the terminal and check it before you press Enter.": "此命令有多行，因此已复制而不是直接输入。请粘贴到终端并检查后再按回车。"
+  "This command has several lines, so it was copied instead of typed. Paste it in the terminal and check it before you press Enter.": "此命令有多行，因此已复制而不是直接输入。请粘贴到终端并检查后再按回车。",
+  "The worktree folder is still in use and was not deleted: {0}. Close anything open in it, then use Check worktrees to delete it.": "工作树文件夹仍在使用中，未被删除：{0}。请关闭其中打开的内容，然后使用“Check worktrees”将其删除。"
 }

@@ -128,7 +128,7 @@ import { buildReviewPrompt, parseReviewScope, reviewDiffArgs, reviewScopeLabel }
 import { runSlash } from './slash-run.js';
 import { cmdEntriesMarkdown, cmdKey, insertPlan, mergeCmdEntries, type CmdEntry } from './cmd-entries.js';
 import { effortLabel, nextEffort } from './variant.js';
-import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, permissionExtras, runnerShellOf } from './run-extras.js';
+import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, permissionExtras, runnerShellOf, verifyNeedsAsking } from './run-extras.js';
 import { notifyChannels, notifyKind } from './notify.js';
 import { KeepAwake } from './keep-awake.js';
 import { runOs, soundCommand, toastCommand } from './notify-os.js';
@@ -159,7 +159,7 @@ import { replySpeed } from './reply-speed.js';
 import { pushPrompt, userPrompts } from './prompt-history.js';
 import { approvalLevelOf, autoApproveFor, startingLevel, storedApprovalOf, whyRan, type ApprovalLevel } from './approval-level.js';
 import { followUpAfterSuggestion, requestOfFollowUp, savePlan } from './plan-file.js';
-import { modeForChoice, offerSpecAfterPlan } from './plan-size.js';
+import { offerSpecAfterPlan, runAfterCard } from './plan-size.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
 
@@ -364,6 +364,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       mermaidScriptUri: mermaidScriptUri.toString(),
       cspSource: view.webview.cspSource,
       strings: webviewDictionary((s) => t(s)),
+      approvalLevel: startingLevel(storedApprovalOf(vscode.workspace.getConfiguration('forge').get<string>('approvalDefault')), vscode.workspace.isTrusted),
     });
 
     view.webview.onDidReceiveMessage(async (msg: unknown) => {
@@ -1317,7 +1318,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           this.attachments.restore(held.attachments);
           this.postAttachments();
           this.specHandler(held.text);
-        } else await this.runChat(held.text, held.level, held.attachments, modeForChoice(msg.choice, held.afterPlan === true));
+        } else {
+          const run = runAfterCard(msg.choice === 'spec' ? 'go' : msg.choice, held.afterPlan === true);
+          await this.runChat(held.text, held.level, held.attachments, run.modeId, undefined, run.planDeclined);
+        }
         return;
       }
       case 'run_action':
@@ -1818,7 +1822,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     });
     const verifyAuto =
       plan.source === 'detected'
-        ? plan.needsConsent
+        ? verifyNeedsAsking(plan.needsConsent, auto)
           ? { approve: (commands: string[]) => this.askToRunChecks(commands, plan.hash, controller.signal) }
           : {}
         : undefined;

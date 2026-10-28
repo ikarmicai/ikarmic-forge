@@ -47,3 +47,9 @@ export function modeForChoice(choice: 'spec' | 'plan' | 'go' | 'never', afterPla
   if (choice === 'plan') return 'plan';
   return afterPlan ? 'agent' : undefined;
 }
+
+/** How a request held by Forge's own big-request card runs once the person answered: the question is settled, so the model may not ask it again (RB-88). */
+export function runAfterCard(choice: 'plan' | 'go' | 'never', afterPlan: boolean): { modeId?: string; planDeclined: true } {
+  const modeId = modeForChoice(choice, afterPlan);
+  return { ...(modeId ? { modeId } : {}), planDeclined: true };
+}

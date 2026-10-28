@@ -380,9 +380,12 @@ export function agentManagerHtml(opts: { cspSource?: string } = {}): string {
     } else {
       sum.textContent = 'Pick a version to merge or open as a pull request.';
     }
-    const others = task.versions.filter(function (v) { return selected && v.id !== selected.id && (v.status === 'done' || v.status === 'failed' || v.status === 'stopped') && v.actions.indexOf('discard') >= 0; });
-    if (multi && selected && others.length > 0) {
-      foot.appendChild(button('ik-btn--link mgr-danger', 'Discard the others', 'Delete the worktrees and branches of the other versions', function () { vscode.postMessage({ type: 'discard_others', taskId: task.id, keepId: selected.id }); }));
+    // Once a version is merged it is the one kept, so the rest can still be cleared in one step (RB-98).
+    const merged = task.versions.filter(function (v) { return v.status === 'merged'; })[0];
+    const keep = merged || selected;
+    const others = task.versions.filter(function (v) { return keep && v.id !== keep.id && (v.status === 'done' || v.status === 'failed' || v.status === 'stopped') && v.actions.indexOf('discard') >= 0; });
+    if (multi && keep && others.length > 0) {
+      foot.appendChild(button('ik-btn--link mgr-danger', 'Discard the others', 'Delete the worktrees and branches of the other versions', function () { vscode.postMessage({ type: 'discard_others', taskId: task.id, keepId: keep.id }); }));
     } else if (!multi && selected && selected.actions.indexOf('discard') >= 0) {
       foot.appendChild(button('ik-btn--link mgr-danger', 'Discard', TITLES.discard, function () { act(selected.id, 'discard'); }));
     }

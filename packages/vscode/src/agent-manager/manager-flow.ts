@@ -3,6 +3,7 @@
  * ends, then merged into the workspace's branch or thrown away. Built on core's worktree and branch helpers.
  */
 import { execFile } from 'node:child_process';
+import path from 'node:path';
 
 import { branchChangedFiles, commitAllInWorktree, deleteBranch, mergeBranch, setupWorktree, WorktreeManager, type SetupOutcome } from '@ikarmic/forge-core';
 
@@ -50,7 +51,8 @@ export function pushBranch(worktreePath: string, branch: string): Promise<void> 
 }
 
 export async function prepareWorktree(repoRoot: string, label: string): Promise<SessionWorktree> {
-  const info = await new WorktreeManager(repoRoot).create({ label });
+  // Versions of one prompt share a long label; a taken name gets the next free one instead of failing (RB-94).
+  const info = await new WorktreeManager(repoRoot).create({ label, unique: true });
   return { path: info.path, branch: info.branch };
 }
 
@@ -61,16 +63,50 @@ export async function collectChanges(repoRoot: string, wt: SessionWorktree, prom
 }
 
 /** Merge the session branch into the workspace's branch; on success the worktree and branch are removed. */
-export async function mergeWorktree(repoRoot: string, wt: SessionWorktree, prompt: string): Promise<{ ok: true } | { ok: false; message: string }> {
+export async function mergeWorktree(
+  repoRoot: string,
+  wt: SessionWorktree,
+  prompt: string
+): Promise<{ ok: true; leftFolder?: string } | { ok: false; message: string }> {
   await commitAllInWorktree(wt.path, `Forge Agent Manager: ${prompt.split('\n')[0]!.slice(0, 72)}`);
   const merged = await mergeBranch(repoRoot, wt.branch, `Merge Forge session: ${prompt.split('\n')[0]!.slice(0, 60)}`);
   if (!merged.ok) return { ok: false, message: merged.message };
-  await discardWorktree(repoRoot, wt);
-  return { ok: true };
+  // The merge has landed: a folder that cannot be deleted yet is reported, never turned into "could not merge" (RB-95).
+  const left = await discardWorktree(repoRoot, wt);
+  return left ? { ok: true, leftFolder: left } : { ok: true };
 }
 
-/** Remove the session's worktree and branch; the workspace is not touched. */
-export async function discardWorktree(repoRoot: string, wt: SessionWorktree): Promise<void> {
-  await new WorktreeManager(repoRoot).remove(wt.path, { force: true });
+/**
+ * Remove the session's worktree and branch; the workspace is not touched. Returns the folder when it could not be
+ * deleted (on Windows a shell or process still inside it holds it), after the listing and branch are gone (RB-95).
+ */
+export async function discardWorktree(repoRoot: string, wt: SessionWorktree): Promise<string | undefined> {
+  const manager = new WorktreeManager(repoRoot);
+  let removed = false;
+  for (let attempt = 0; attempt < 4 && !removed; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * attempt));
+    removed = await manager.remove(wt.path, { force: true }).then(
+      () => true,
+      () => false
+    );
+  }
+  if (!removed) await pruneWorktreeListings(repoRoot);
   await deleteBranch(repoRoot, wt.branch).catch(() => undefined);
+  return removed ? undefined : wt.path;
+}
+
+function pruneWorktreeListings(repoRoot: string): Promise<void> {
+  return new Promise((resolve) => execFile('git', ['-C', repoRoot, 'worktree', 'prune'], () => resolve()));
+}
+
+/** True when `cwd` is `folder` or below it, compared case-insensitively on Windows (RB-95). */
+export function isInsideFolder(cwd: string | undefined, folder: string): boolean {
+  if (!cwd) return false;
+  const norm = (p: string) => {
+    const r = path.resolve(p).replace(/[\/]+$/, '');
+    return process.platform === 'win32' ? r.toLowerCase() : r;
+  };
+  const c = norm(cwd);
+  const f = norm(folder);
+  return c === f || c.startsWith(f + path.sep);
 }

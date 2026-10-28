@@ -30,7 +30,7 @@ import {
   type WebSearchConfig,
   type WebSearchProvider,
 } from '@ikarmic/forge-core';
-import type { AgentConfig, ModelAliases, ModelConfig, ProviderName, ToolSandbox } from '@ikarmic/forge-core';
+import type { AgentConfig, ModelAliases, ModelConfig, ProviderEndpoint, ProviderName, ToolSandbox } from '@ikarmic/forge-core';
 
 type ReasoningEffort = NonNullable<ModelConfig['reasoningEffort']>;
 const REASONING_EFFORTS: readonly ReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
@@ -39,6 +39,8 @@ export interface CliOptions {
   task: string | null;
   provider: ProviderName | null;
   model: string | null;
+  /** Set when `--model id:model` names a preset or customProviders id: where that provider is reached. */
+  endpoint?: ProviderEndpoint;
   auto: boolean;
   allowDestructive: boolean;
   cwd: string | null;
@@ -56,6 +58,8 @@ export interface CliOptions {
   cheapModel: string | null;
   /** `--no-cache-prompts`: skip Anthropic prompt-cache breakpoints. */
   noCachePrompts: boolean;
+  /** `--no-mask-old-results`: keep every old tool result in the prompt (RB-90). */
+  noMaskOldResults?: boolean;
   /** `--architect`: main model plans read-only, `--editor-model` applies the plan. */
   architect: boolean;
   /** `--editor-model <id|alias>`: model that applies the architect plan. */
@@ -222,6 +226,7 @@ export function buildProgram(): Command {
     .option('--semantic-search', 'add the codebase_search tool (set FORGE_EMBED_PROVIDER=openai|ollama for meaning-based ranking)')
     .option('--cheap-model <id>', 'route read-only exploration steps to this cheaper model (id, alias, or provider:model)')
     .option('--no-cache-prompts', 'do not add prompt-cache breakpoints for Anthropic models')
+    .option('--no-mask-old-results', 'keep every old tool result in the prompt instead of hiding older ones as the run grows')
     .option('--architect', 'two-phase run: the main model plans read-only, then --editor-model applies the plan', false)
     .option('--editor-model <id>', 'model (id, alias, or provider:model) that applies the architect plan')
     .option('--editor-reasoning <level>', `reasoning effort for the editor model (${REASONING_EFFORTS.join(', ')}); requires --architect`)
@@ -504,6 +509,7 @@ export function parseOptions(argv: string[]): {
     sandboxAllowHosts: Array.isArray(opts.sandboxAllowHost) ? (opts.sandboxAllowHost as string[]) : [],
     cheapModel: (opts.cheapModel as string | undefined) ?? null,
     noCachePrompts: opts.cachePrompts === false,
+    noMaskOldResults: opts.maskOldResults === false,
     architect: opts.architect === true,
     editorModel: (opts.editorModel as string | undefined) ?? null,
     editorReasoning: (opts.editorReasoning as ReasoningEffort | undefined) ?? null,
@@ -620,15 +626,44 @@ function extractConfigCommand(program: Command): ParsedConfigCommand | null {
  * editor models are resolved later, against the main model's provider.
  */
 export function applyModelAliases(options: CliOptions, aliases: ModelAliases | undefined): void {
+  // `--provider deepseek --model x` means the same as `--model deepseek:x` for a preset or customProviders id (RB-85).
+  if (options.provider && !isBuiltinProvider(options.provider)) {
+    const id: string = options.provider;
+    const resolved = resolveModelAlias(`${id}:${options.model ?? ''}`, undefined, 'openai');
+    if (!resolved.endpoint || !options.model) {
+      throw new Error(
+        `Forge does not know the provider "${id}". Use a built-in provider, or one from "customProviders" in ~/.forge/config.json written as id:model (for example deepseek:deepseek-v4-pro).`
+      );
+    }
+    options.provider = resolved.provider;
+    options.model = resolved.model;
+    options.endpoint = resolved.endpoint;
+    return;
+  }
   if (!options.model) return;
-  const { provider, model } = splitModelRef(expandModelAlias(options.model, aliases));
+  const expanded = expandModelAlias(options.model, aliases);
+  const { provider, model } = splitModelRef(expanded);
+  if (!provider) {
+    // `id:model` for a preset or customProviders id resolves to that endpoint (RB-85).
+    const resolved = resolveModelAlias(expanded, undefined, options.provider ?? 'openai');
+    if (resolved.endpoint) {
+      options.provider = resolved.provider;
+      options.model = resolved.model;
+      options.endpoint = resolved.endpoint;
+      return;
+    }
+  }
   options.model = model;
   if (provider) options.provider = provider;
 }
 
+function isBuiltinProvider(name: string): boolean {
+  return splitModelRef(`${name}:x`).provider !== undefined;
+}
+
 function resolveModelNow(opts: CliOptions): ModelConfig {
   if (opts.provider && opts.model) {
-    return { provider: opts.provider, model: opts.model };
+    return { provider: opts.provider, model: opts.model, ...(opts.endpoint ? { endpoint: opts.endpoint } : {}) };
   }
   const provider = opts.provider ?? detectProvider();
   if (!provider) {
@@ -1203,6 +1238,8 @@ export async function toAgentConfig(
         }
       : {}),
     ...(options.noCachePrompts ? { cachePrompts: false } : {}),
+    // Old tool results become stubs once the prompt is large, as in VS Code (forge.context.maskOldResults, RB-90).
+    maskOldResults: options.noMaskOldResults ? false : { keepRecentTurns: 6 },
     systemPrompt: options.systemPrompt ?? undefined,
     extraTools,
     ...(mcpInstructions ? { mcpInstructions } : {}),

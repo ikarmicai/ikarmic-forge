@@ -149,7 +149,6 @@
   "Just deny": "Solo denegar",
   "Resume": "Reanudar",
   "CLI command": "Comando de CLI",
-  "Delete": "Eliminar",
   "Restore": "Restaurar",
   "you": "tú",
   "running": "en ejecución",
@@ -506,5 +505,6 @@
   "Forge could not write a command for that; try rephrasing.": "Forge no pudo escribir un comando para eso; prueba a reformularlo.",
   "Say what you want after /cmd, for example: /cmd list files larger than 10 MB": "Di lo que quieres después de /cmd, por ejemplo: /cmd lista los archivos de más de 10 MB",
   "Writing a command…": "Escribiendo un comando…",
-  "This command has several lines, so it was copied instead of typed. Paste it in the terminal and check it before you press Enter.": "Este comando tiene varias líneas, así que se copió en lugar de escribirse. Pégalo en el terminal y revísalo antes de pulsar Intro."
+  "This command has several lines, so it was copied instead of typed. Paste it in the terminal and check it before you press Enter.": "Este comando tiene varias líneas, así que se copió en lugar de escribirse. Pégalo en el terminal y revísalo antes de pulsar Intro.",
+  "The worktree folder is still in use and was not deleted: {0}. Close anything open in it, then use Check worktrees to delete it.": "La carpeta del worktree sigue en uso y no se ha eliminado: {0}. Cierra lo que tengas abierto en ella y usa Check worktrees para eliminarla."
 }

@@ -41,6 +41,14 @@ describe('the CLI honours the same user config keys as VS Code', () => {
     expect(names).toContain('deploy-check');
   });
 
+  // RB-90: the CLI never hid old tool results, so a 60-step run resent 394,000 tokens on every step.
+  it('hides old tool results like VS Code does, unless --no-mask-old-results', async () => {
+    const on = await toAgentConfig(parseOptions(argv('--cwd', cwd, 'task')).options, { provider: 'openai', model: 'gpt-4o' }, async () => false);
+    expect(on.maskOldResults).toEqual({ keepRecentTurns: 6 });
+    const off = await toAgentConfig(parseOptions(argv('--cwd', cwd, '--no-mask-old-results', 'task')).options, { provider: 'openai', model: 'gpt-4o' }, async () => false);
+    expect(off.maskOldResults).toBe(false);
+  });
+
   it('runs sub-agents on subagentModel', async () => {
     writeFileSync(path.join(home, '.forge', 'config.json'), JSON.stringify({ subagentModel: 'openai:gpt-4o-mini' }));
     const opts = parseOptions(argv('--cwd', cwd, 'task')).options;

@@ -24,6 +24,7 @@ import {
   loadForgeConfigFile,
   loadSchemaFile,
   loadSession,
+  registerCustomProviders,
   runReasonLabel,
   WorktreeManager,
 } from '@ikarmic/forge-core';
@@ -97,6 +98,8 @@ async function main(): Promise<void> {
   // command resolves it; resolveModel() reads the same mutated options object.
   const { config: startupConfig, warnings: configWarnings } = await loadForgeConfigFile();
   for (const w of configWarnings) process.stderr.write(`forge: ${w}\n`);
+  // Named providers (presets and "customProviders") must be known before --model is resolved (RB-85).
+  registerCustomProviders(startupConfig.customProviders);
   try {
     applyModelAliases(options, startupConfig.aliases);
   } catch (err) {
