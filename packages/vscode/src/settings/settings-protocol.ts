@@ -257,7 +257,20 @@ async function skillsListed(skills: SettingsSkillsDeps | undefined): Promise<Set
  * editable list (saving them would write them back as overrides). Built-ins are told apart by identity.
  */
 export function markBuiltin<T extends object>(list: readonly T[], builtins: readonly T[]): Array<T & { builtin?: boolean }> {
-  return list.map((s) => (builtins.includes(s) ? { ...s, builtin: true } : s));
+  return list.map((s) => (isBuiltinOrCopy(s, builtins) ? withoutPrompt(s) : s));
+}
+
+/** A built-in, or a saved word-for-word copy of one (same id and prompt): it is Forge's agent, not the person's. */
+function isBuiltinOrCopy(s: object, builtins: readonly object[]): boolean {
+  if (builtins.includes(s)) return true;
+  const { id, systemPrompt } = s as { id?: unknown; systemPrompt?: unknown };
+  return builtins.some((b) => (b as { id?: unknown }).id === id && (b as { systemPrompt?: unknown }).systemPrompt === systemPrompt);
+}
+
+/** The prompts of the built-in agents are Forge's own work (RB-54): the page gets the name and description only. */
+function withoutPrompt<T extends object>(s: T): T & { builtin: true } {
+  const { systemPrompt: _prompt, ...rest } = s as T & { systemPrompt?: unknown };
+  return { ...rest, builtin: true } as unknown as T & { builtin: true };
 }
 
 /** The page shows what the chat really uses: a value pinned in VS Code settings wins over the shared file. */

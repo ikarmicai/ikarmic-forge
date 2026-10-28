@@ -1,50 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import { chatHtml } from '../src/chat/html.js';
+import { CHAT_CSS, chatHtml } from '../src/chat/html.js';
+import { COMPONENTS_CSS } from '../src/design/index.js';
 import { getSettingsHtml } from '../src/settings/settings-html.js';
 import { SETTING_ROWS, groupRows, splitHint } from '../src/settings/settings-rows.js';
-import { BASE_CSS } from '../src/webview-base-css.js';
 
-const lum = (hex: string) => {
-  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
-};
-const ratio = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
-const block = (css: string, selector: RegExp) => css.match(selector)?.[1] ?? '';
 
 describe('M1: targets are at least 24px tall', () => {
   const chat = chatHtml();
-  it('link, primary and secondary buttons and tool-row summaries have a 24px floor', () => {
-    expect(BASE_CSS).toMatch(/button\.link \{[^}]*min-height: 24px/);
-    expect(chat).toMatch(/button\.primary \{[^}]*min-height: 24px/);
-    expect(chat).toMatch(/button\.secondary \{[^}]*min-height: 24px/);
+  it('tool-row summaries have a 24px floor (buttons get theirs from the design system)', () => {
     expect(chat).toMatch(/\.tool-row > summary \{[^}]*min-height: 24px/);
-    expect(getSettingsHtml()).toMatch(/input, select, textarea \{[^}]*min-height: 24px/);
-  });
-});
-
-describe('M2: the success colour is text-safe', () => {
-  it('dark and light --ok pass 4.5:1 on the editor', () => {
-    const dark = block(BASE_CSS, /body\.vscode-dark \{([^}]*)\}/).match(/--ok: (#[0-9a-f]{6})/i)?.[1];
-    const light = block(BASE_CSS, /body\.vscode-light \{([^}]*)\}/).match(/--ok: (#[0-9a-f]{6})/i)?.[1];
-    expect(dark).toBeDefined();
-    expect(light).toBeDefined();
-    expect(ratio(dark!, '#1f1f1f')).toBeGreaterThanOrEqual(4.5);
-    expect(ratio(light!, '#ffffff')).toBeGreaterThanOrEqual(4.5);
   });
 });
 
 describe('M3: forced colours keep structure and selection', () => {
   const forced = (html: string) => html.match(/@media \(forced-colors: active\) \{([\s\S]*?)\n  \}/)?.[1] ?? html.match(/@media \(forced-colors: active\) \{([^\n]*)\}/)?.[1] ?? '';
   it('chat outlines its cards, chips and composer', () => {
-    const f = forced(chatHtml());
+    const f = forced(CHAT_CSS);
     for (const s of ['.question', '.composer', '.steps', '.cchips', '.empty-state .ex']) expect(f, s).toContain(s);
   });
-  it('settings marks the pressed segment and the selected section with system colours', () => {
-    const f = forced(getSettingsHtml());
-    expect(f).toContain('.seg button[aria-pressed="true"]');
-    expect(f).toContain('nav button[aria-current="true"]');
-    expect(f).toContain('Highlight');
+  it('the design system marks the chosen segment and the current section with system colours', () => {
+    expect(COMPONENTS_CSS).toMatch(/forced-colors: active[\s\S]*\.ik-seg input:checked \+ span[\s\S]*\.ik-navitem\[aria-current="true"\][\s\S]*Highlight/);
   });
 });
 
@@ -88,14 +64,15 @@ describe('M5: a magic zero is a hint beside the control, not part of the title',
 describe('M6: narrow Settings uses a section picker, not a clipped strip', () => {
   const html = getSettingsHtml();
   it('has a labelled select with every section, hidden until the page is narrow', () => {
-    const sel = html.match(/<select id="section-picker"[^>]*>([\s\S]*?)<\/select>/);
+    const sel = html.match(/<select class="ik-select" id="section-picker"[^>]*>([\s\S]*?)<\/select>/);
     expect(sel).not.toBeNull();
-    expect(html).toMatch(/<select id="section-picker" aria-label="Settings section"/);
+    expect(html).toMatch(/<select class="ik-select" id="section-picker" aria-label="Settings section"/);
     for (const s of ['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'perm', 'context', 'safety', 'tools', 'git', 'advanced', 'display', 'backup']) {
       expect(sel![1], s).toContain(`value="${s}"`);
     }
     expect(html).toMatch(/#section-picker \{ display: none;/);
-    const narrow = html.slice(html.indexOf('@media (max-width: 560px)'), html.indexOf('@media (prefers-reduced-motion'));
+    const narrowAt = html.indexOf('@media (max-width: 560px)');
+    const narrow = html.slice(narrowAt, html.indexOf('</style>', narrowAt));
     expect(narrow).toMatch(/\.navlist \{ display: none; \}/);
     expect(narrow).toMatch(/#section-picker \{ display: block;/);
   });
@@ -107,7 +84,7 @@ describe('M6: narrow Settings uses a section picker, not a clipped strip', () =>
 
 describe('L1: the composer shows a real focus ring', () => {
   it('draws a 2px outline when the textarea has focus', () => {
-    expect(chatHtml()).toMatch(/\.composer:focus-within \{[^}]*outline: 2px solid var\(--vscode-focusBorder/);
+    expect(chatHtml()).toMatch(/\.composer:focus-within \{[^}]*outline: 2px solid var\(--focus-ring/);
   });
 });
 
@@ -118,7 +95,7 @@ describe('L2: a disabled Send says why', () => {
     expect(chat).toContain('Type a message to send');
     expect(chat).toContain('Forge is still working');
     // The button starts disabled, before any script runs, so the markup carries the reason too.
-    expect(chat).toContain('id="send" class="primary" type="button" disabled title="Type a message to send"');
+    expect(chat).toContain('id="send" class="ik-btn ik-btn--primary" type="button" disabled title="Type a message to send"');
   });
 });
 
@@ -163,7 +140,7 @@ describe('Context wave meter under the composer (C6)', () => {
   });
 
   it('announces only when the level changes, through a status region of its own', () => {
-    expect(chat).toMatch(/<span id="meter-live" class="sr-only" role="status"><\/span>/);
+    expect(chat).toMatch(/<span id="meter-live" class="ik-sr-only" role="status"><\/span>/);
     expect(chat).toContain('lastMeterLevel');
   });
 
@@ -188,9 +165,9 @@ describe('Context wave meter under the composer (C6)', () => {
   });
 
   it('styles: fill is the tone, the guide marks 80%, the popover is elevated, forced colours keep the shape', () => {
-    expect(chat).toMatch(/\.m-cap \{[^}]*border: 1px solid var\(--edge\)/);
-    expect(chat).toMatch(/\.meter\.warn \.m-cap \{[^}]*--wave: var\(--warn\)/);
-    expect(chat).toMatch(/\.meter\.crit \.m-cap \{[^}]*--wave: var\(--err\)/);
+    expect(chat).toMatch(/\.m-cap \{[^}]*border: 1px solid var\(--line-control\)/);
+    expect(chat).toMatch(/\.meter\.warn \.m-cap \{[^}]*--wave: var\(--warning\)/);
+    expect(chat).toMatch(/\.meter\.crit \.m-cap \{[^}]*--wave: var\(--danger\)/);
     expect(chat).toContain('@keyframes wv');
     expect(chat).toMatch(/\.m-guide \{[^}]*top: 5\.6px/);
     expect(chat).toMatch(/#meter-pop \{[^}]*box-shadow: var\(--elev-3\)/);

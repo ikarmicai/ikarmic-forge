@@ -27,6 +27,8 @@ import {
   SpecStore,
   splitSpecSections,
   slugifyTaskForSpecId,
+  runReasonLabel,
+  toolLabel,
   type Session,
 } from '@ikarmic/forge-core';
 
@@ -1147,6 +1149,8 @@ export function Repl({
       const localConfig: AgentConfig = {
         ...agentConfigRef.current,
         ...overrides,
+        // Audit entries name the chat, and OpenAI routes its calls to one cache by it (RB-61).
+        sessionId: currentSessionId,
         checkpoints: agentConfigRef.current.checkpoints ?? sessionCheckpointsConfig(sessionDir, currentSessionId, agentConfigRef.current.cwd ?? process.cwd()),
         abortSignal: controller.signal,
         approve: (req: ApprovalRequest) =>
@@ -1400,7 +1404,7 @@ export function Repl({
                   {
                     kind: 'status',
                     id: cryptoId(),
-                    text: `done (${event.reason})`,
+                    text: `Done: ${runReasonLabel(event.reason)}`,
                     inputTokens,
                     outputTokens,
                   },
@@ -1422,7 +1426,7 @@ export function Repl({
         if (abortControllerRef.current === controller) abortControllerRef.current = null;
       }
 
-      notify?.(agentRunResult ? `Forge finished (${agentRunResult.reason}) - waiting for you` : 'Forge stopped - waiting for you');
+      notify?.(agentRunResult ? `Forge finished: ${runReasonLabel(agentRunResult.reason)} - waiting for you` : 'Forge stopped - waiting for you');
 
       if (gitRun && agentRunResult?.reason === 'completed') {
         const commit = await gitRun.after(task).catch(() => null);
@@ -1686,7 +1690,7 @@ function MessageView({
       return (
         <Box marginLeft={2}>
           <Text color="blue" bold>
-            ◌ {message.toolName}
+            ◌ {toolLabel(message.toolName!)}
           </Text>
           <Text color="gray"> {summarizeArgs(message.toolArgs)}</Text>
         </Box>
@@ -1697,7 +1701,7 @@ function MessageView({
         <Box marginLeft={2} flexDirection="column">
           <Box>
             <Text color={message.isError ? 'red' : 'green'} bold>
-              {message.isError ? '✗' : '✓'} {message.toolName}
+              {message.isError ? '✗' : '✓'} {toolLabel(message.toolName!)}
             </Text>
           </Box>
           {diffText && (

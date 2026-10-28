@@ -193,10 +193,19 @@
         "icon": "$(link-external)"
       },
       {
+        "command": "forge.index.delete",
+        "title": "%command.forge.index.delete.title%"
+      },
+      {
         "command": "forge.openAgentManager",
         "title": "%command.forge.openAgentManager.title%",
         "category": "%category.forge%",
         "icon": "$(layout)"
+      },
+      {
+        "command": "forge.openAgentManagerInWindow",
+        "title": "%command.forge.openAgentManagerInWindow.title%",
+        "category": "%category.forge%"
       },
       {
         "command": "forge.importClaudeCode",
@@ -668,7 +677,7 @@
         },
         "forge.context.budgetTokens": {
           "type": "number",
-          "default": 60000,
+          "default": 0,
           "minimum": 0,
           "description": "%config.forge.context.budgetTokens.description%"
         },
@@ -834,6 +843,39 @@
           },
           "default": {},
           "description": "%config.forge.autoLint.commands.description%"
+        },
+        "forge.autoFormat.commands": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "scope": "machine",
+          "description": "%config.forge.autoFormat.commands.description%"
+        },
+        "forge.agentManager.setupScript": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "%config.forge.agentManager.setupScript.description%"
+        },
+        "forge.agentManager.copyFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "machine",
+          "description": "%config.forge.agentManager.copyFiles.description%"
+        },
+        "forge.commandSandbox.allowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "machine",
+          "description": "%config.forge.commandSandbox.allowedHosts.description%"
         },
         "forge.autoCommit.enabled": {
           "type": "boolean",

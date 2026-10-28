@@ -182,3 +182,45 @@ describe('ChatSession', () => {
     expect(saved.cwd).toBe("/projA");
   });
 });
+
+describe('ChatSession transcript (RB-58)', () => {
+  const msg = (role: 'user' | 'assistant', content: string) => ({ role, content }) as never;
+
+  it('keeps every turn for display even after the prompt history was compacted', async () => {
+    const save = vi.fn().mockResolvedValue('/saved.json');
+    const s = new ChatSession(deps({ saveSession: save }));
+    await s.recordTurn({ ...turn('one'), turnMessages: [msg('user', 'one'), msg('assistant', 'ok one')] } as never, model, '/ws');
+    await s.recordTurn({ ...turn('two'), turnMessages: [msg('user', 'two'), msg('assistant', 'ok two')] } as never, model, '/ws');
+    // Turn three: compaction left only a summary and the new turn in the prompt history.
+    await s.recordTurn(
+      { ...turn('x'), messages: [msg('user', 'summary'), msg('user', 'three'), msg('assistant', 'ok three')], turnMessages: [msg('user', 'three'), msg('assistant', 'ok three')] } as never,
+      model,
+      '/ws'
+    );
+    expect(s.transcript.map((m) => (m as { content: string }).content)).toEqual(['one', 'ok one', 'two', 'ok two', 'three', 'ok three']);
+    expect(save.mock.calls.at(-1)![0].transcript).toHaveLength(6);
+    expect(save.mock.calls.at(-1)![0].messages).toHaveLength(3);
+  });
+
+  it('leaves the transcript alone when a turn adds nothing to it (Condense)', async () => {
+    const s = new ChatSession(deps());
+    await s.recordTurn({ ...turn('one'), turnMessages: [msg('user', 'one'), msg('assistant', 'ok one')] } as never, model, '/ws');
+    await s.recordTurn({ ...turn('x'), messages: [msg('user', 'summary')] } as never, model, '/ws');
+    expect(s.transcript).toHaveLength(2);
+  });
+
+  it('rewinds the transcript with the history, for Retry and Edit', async () => {
+    const s = new ChatSession(deps());
+    await s.recordTurn({ ...turn('one'), turnMessages: [msg('user', 'one'), msg('assistant', 'ok one')] } as never, model, '/ws');
+    const history = s.history;
+    const transcript = s.transcript;
+    await s.recordTurn({ ...turn('two'), turnMessages: [msg('user', 'two'), msg('assistant', 'ok two')] } as never, model, '/ws');
+    s.rewindTo(history, transcript);
+    expect(s.transcript).toHaveLength(2);
+  });
+
+  it('reads an older session file that has no transcript', () => {
+    const old = { id: 'o', createdAt: '', updatedAt: '', cwd: '/ws', model, messages: [msg('user', 'old'), msg('assistant', 'reply')] } as never;
+    expect(ChatSession.fromSession(deps(), old).transcript).toHaveLength(2);
+  });
+});

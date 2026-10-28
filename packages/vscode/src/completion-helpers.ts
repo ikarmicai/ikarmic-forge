@@ -1,4 +1,6 @@
-import { stripThinkTags } from '@ikarmic/forge-core';
+import { generateText, type LanguageModel } from 'ai';
+
+import { stripThinkTags, withModelRetry } from '@ikarmic/forge-core';
 
 /**
  * Pure helpers for the inline completion provider. Kept separate so they
@@ -202,3 +204,43 @@ Rules:
 - Stop at a natural boundary: end of statement, end of line, closing brace, or blank line. Do not over-generate.
 - Never repeat the prefix. Never include the suffix.
 - If the surrounding code is unclear, output nothing.`;
+
+
+/** The cap for the second try, when a reply ran out of room inside its own thinking. */
+export const COMPLETION_RETRY_MAX_TOKENS = 2048;
+
+/**
+ * One inline-completion request (RB-63): no reasoning asked for, one retry on a provider hiccup (RB-46), and one more
+ * try with a larger cap when the reply was cut off inside its thinking, which a reasoning model such as MiniMax-M3
+ * does for about one prompt in ten at 512 tokens. A keystroke aborts it all through `abortSignal`.
+ * The live test calls this too, so it tests what the editor really sends.
+ */
+export async function requestCompletion(input: {
+  model: LanguageModel;
+  languageId: string;
+  prefix: string;
+  suffix: string;
+  maxTokens: number;
+  abortSignal?: AbortSignal;
+}): Promise<Awaited<ReturnType<typeof generateText>>> {
+  const ask = (maxOutputTokens: number) =>
+    withModelRetry(
+      () =>
+        generateText({
+          model: input.model,
+          system: COMPLETION_SYSTEM_PROMPT,
+          prompt: buildPrompt(input.languageId, input.prefix, input.suffix),
+          ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
+          maxOutputTokens,
+          temperature: 0.2,
+          // Completions must be fast; where a provider can switch reasoning off, this does (RB-63).
+          reasoning: 'none',
+          maxRetries: 0,
+        }),
+      { maxRetries: 1, ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}) }
+    );
+  const first = await ask(input.maxTokens);
+  const cutOffWhileThinking = first.finishReason === 'length' && sanitize(first.text) === '' && first.text.includes('<think>');
+  if (!cutOffWhileThinking || input.maxTokens >= COMPLETION_RETRY_MAX_TOKENS || input.abortSignal?.aborted) return first;
+  return ask(COMPLETION_RETRY_MAX_TOKENS);
+}

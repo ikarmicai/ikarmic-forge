@@ -54,7 +54,7 @@ describe('SpecController.generateDraft', () => {
   it('writes nothing when generation did not start, did not complete, or missed a section', async () => {
     for (const [gen, error] of [
       [async () => null, 'Spec generation did not start.'],
-      [async () => outcome({ reason: 'aborted' }), 'Spec generation ended (aborted); no draft was created.'],
+      [async () => outcome({ reason: 'aborted' }), 'Spec generation ended (Stopped); no draft was created.'],
       [async () => outcome({ reason: 'spec', finalText: 'no sections' }), 'missing sections'],
     ] as const) {
       const { controller, store } = setup({ generateInChat: vi.fn(gen) });
@@ -255,7 +255,7 @@ describe('SpecController.sync', () => {
     expect(same.review).not.toHaveBeenCalled();
 
     const failed = syncDeps({ runInChat: vi.fn(async () => ({ reason: 'aborted', sessionId: 's', finalText: '', files: [] })) });
-    expect(await make(failed).sync('auth')).toMatchObject({ status: 'error', error: expect.stringMatching(/aborted/) });
+    expect(await make(failed).sync('auth')).toMatchObject({ status: 'error', error: expect.stringMatching(/Stopped/) });
     expect(failed.write).not.toHaveBeenCalled();
 
     expect(await make(syncDeps()).sync('nope')).toMatchObject({ status: 'error', error: 'Spec nope not found.' });

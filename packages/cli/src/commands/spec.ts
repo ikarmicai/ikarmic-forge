@@ -17,6 +17,7 @@ import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 
 import {
+  runReasonLabel,
   changeSize,
   convertToCheckboxes,
   keepDoneTasks,
@@ -148,7 +149,7 @@ async function syncSpec(store: SpecStore, cwd: string, id: string, yes: boolean,
   );
   const result = await deps.runSpecAgent(syncSpecTask(spec, docs, drift));
   if (result.reason !== 'spec' && result.reason !== 'completed') {
-    process.stderr.write(`forge spec sync: the run ended (${result.reason}); nothing was changed.\n`);
+    process.stderr.write(`forge spec sync: the run ended (${runReasonLabel(result.reason)}); nothing was changed.\n`);
     return 1;
   }
   let next: SpecSections;

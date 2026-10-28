@@ -8,7 +8,7 @@ const IGNORED = new Set(['●', 'https://api.example.com/v1']);
 
 /** Every static text node and title / aria-label / placeholder of the page, before its script. */
 function staticStrings(html: string): Set<string> {
-  const start = html.indexOf('<body>');
+  const start = html.indexOf('<body');
   const body = html.slice(start, html.indexOf('<script>', start + 10));
   const out = new Set<string>();
   for (const tag of body.matchAll(/<[^>]+>/g)) for (const m of tag[0].matchAll(/\b(?:title|aria-label|placeholder)="([^"]+)"/g)) out.add(m[1]!);

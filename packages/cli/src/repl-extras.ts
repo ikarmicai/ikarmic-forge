@@ -8,7 +8,7 @@ import path from 'node:path';
 
 import type { ModelMessage } from 'ai';
 
-import type { ModelConfig } from '@ikarmic/forge-core';
+import { isCompactionSummary, toolLabel, type ModelConfig } from '@ikarmic/forge-core';
 
 /** Text of one message's content: a string, or the text parts of a structured message. */
 function textOf(content: unknown): string {
@@ -42,13 +42,14 @@ function toolCallNames(content: unknown): string[] {
 export function conversationMarkdown(history: readonly ModelMessage[]): string {
   const parts: string[] = [];
   for (const m of history) {
+    if (isCompactionSummary(m)) continue;
     if (m.role === 'user') {
       const text = textOf(m.content).trim();
       if (text) parts.push(`#### User\n\n${text}`);
     } else if (m.role === 'assistant') {
       const text = textOf(m.content).trim();
       const tools = toolCallNames(m.content);
-      const note = tools.length > 0 ? `*(used: ${[...new Set(tools)].join(', ')})*` : '';
+      const note = tools.length > 0 ? `*(used: ${[...new Set(tools)].map(toolLabel).join(', ')})*` : '';
       const body = [text, note].filter(Boolean).join('\n\n');
       if (body) parts.push(`#### Assistant\n\n${body}`);
     }

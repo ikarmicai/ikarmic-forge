@@ -57,9 +57,9 @@ describe('getSettingsHtml', () => {
     expect(html).toContain('URL.revokeObjectURL(a.href)');
   });
 
-  it('brings a new or duplicated agent into view and marks the Agents row as modified', () => {
+  it('brings a new agent into view and marks the Agents row as modified', () => {
     expect(html).toContain('function focusAgent(i)');
-    expect(html.match(/focusAgent\(draft\.agents\.length - 1\)/g)).toHaveLength(2);
+    expect(html.match(/focusAgent\(draft\.agents\.length - 1\)/g)).toHaveLength(1);
     expect(html).toContain("agents: 'row-agents'");
   });
 

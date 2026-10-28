@@ -8,6 +8,8 @@
 import { DEFAULT_SYSTEM_PROMPT, resolveModelAlias, type ModelAliases, type ModelConfig, type SpecialistConfig, type ToolSandbox } from '@ikarmic/forge-core';
 import type { ModelMessage } from 'ai';
 
+import { humanize } from '../human-text.js';
+
 export const DEFAULT_MODE_ID = 'agent';
 
 const NO_TOOLS_SENTINEL = '__forge_no_tools__';
@@ -97,7 +99,7 @@ export function listModes(specialists: readonly SpecialistConfig[]): ModeOption[
   ];
   for (const s of dedupeById(specialists)) {
     if (s.id === DEFAULT_MODE_ID || EXCLUDED_IDS.has(s.id)) continue;
-    out.push({ id: s.id, label: s.id.charAt(0).toUpperCase() + s.id.slice(1), description: s.description });
+    out.push({ id: s.id, label: humanize(s.id), description: s.description });
   }
   return out;
 }

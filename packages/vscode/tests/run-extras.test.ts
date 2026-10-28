@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, cleanLintCommands, webSearchFor, type RunExtrasSettings } from '../src/chat/run-extras.js';
+import { userList, aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, cleanLintCommands, webSearchFor, type RunExtrasSettings, runnerShellOf } from '../src/chat/run-extras.js';
 
 describe('autonomyFlags', () => {
   // The Autonomous toggle promises "Approvals are off: Forge runs tools without asking". Core still asks
@@ -226,6 +226,20 @@ describe('repo map and auto-lint settings', () => {
     expect(buildRunExtras({ ...base, autoLint: { enabled: true, commands: {} } }, model, { readOnly: false }).autoLint).toEqual({ commands: {} }); // syntax check only
     expect(buildRunExtras({ ...base, autoLint }, model, { readOnly: true }).autoLint).toBeUndefined();
   });
+
+  it('autoFormat passes its commands to the agent when there are some, and only for runs that can edit (G14)', () => {
+    const autoFormat = { commands: { ts: 'npx prettier --write' } };
+    expect(buildRunExtras({ ...base, autoFormat }, model, { readOnly: false }).autoFormat).toEqual(autoFormat);
+    expect(buildRunExtras({ ...base, autoFormat: { commands: {} } }, model, { readOnly: false }).autoFormat).toBeUndefined();
+    expect(buildRunExtras({ ...base }, model, { readOnly: false }).autoFormat).toBeUndefined();
+    expect(buildRunExtras({ ...base, autoFormat }, model, { readOnly: true }).autoFormat).toBeUndefined();
+  });
+
+  // RB-12: a command that runs on every edit must not come from a project's own settings file.
+  it('the setting is machine-scoped, so a workspace file cannot set it', async () => {
+    const pkg = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(pkg.contributes.configuration.properties['forge.autoFormat.commands'].scope).toBe('machine');
+  });
 });
 
 describe('cleanLintCommands', () => {
@@ -263,3 +277,36 @@ describe('webSearchFor', () => {
   });
 });
 
+
+describe('runnerShellOf (G11)', () => {
+  it.each([
+    ['C:\\Program Files\\PowerShell\\7\\pwsh.exe', 'win32', 'pwsh'],
+    ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', 'win32', 'powershell'],
+    ['C:\\Windows\\System32\\cmd.exe', 'win32', 'cmd'],
+    ['C:\\Program Files\\Git\\bin\\bash.exe', 'win32', 'bash'],
+    ['/bin/zsh', 'darwin', 'sh'],
+    ['/usr/bin/fish', 'linux', 'sh'],
+    ['/bin/bash', 'linux', 'sh'],
+    ['', 'win32', undefined],
+    [undefined, 'linux', undefined],
+    ['C:\tools\nushell\nu.exe', 'win32', undefined],
+  ] as const)('%s on %s is %s', (shell, platform, expected) => {
+    expect(runnerShellOf(shell, platform)).toBe(expected);
+  });
+});
+
+describe('the sandbox allowed hosts (F13, RB-12)', () => {
+  it('reach the agent only with the sandbox on, and are the user\'s own value', async () => {
+    expect(userList({ globalValue: ['docs.example.com', '', 7, '  *.github.com '] as never, defaultValue: [] })).toEqual(['docs.example.com', '*.github.com']);
+    expect(userList({ defaultValue: [] })).toEqual([]);
+    expect(userList(undefined)).toEqual([]);
+    const withHosts = { ...base, commandSandbox: 'on' as const, commandSandboxHosts: ['docs.example.com'] };
+    expect(buildRunExtras(withHosts, model, { readOnly: false }).commandSandbox).toEqual({ network: false, allowedHosts: ['docs.example.com'] });
+    expect(buildRunExtras({ ...withHosts, commandSandbox: 'off' as const }, model, { readOnly: false }).commandSandbox).toBeUndefined();
+  });
+
+  it('are machine-scoped, so a repository\'s own settings file cannot widen the sandbox', async () => {
+    const pkg = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(pkg.contributes.configuration.properties['forge.commandSandbox.allowedHosts'].scope).toBe('machine');
+  });
+});

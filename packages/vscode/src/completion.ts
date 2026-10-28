@@ -1,18 +1,10 @@
 import * as vscode from 'vscode';
 
-import { generateText } from 'ai';
-
-import { assertProviderAllowed, createLanguageModel, getOrgPolicy, withModelRetry } from '@ikarmic/forge-core';
+import { assertProviderAllowed, createLanguageModel, getOrgPolicy } from '@ikarmic/forge-core';
 import type { CredentialStore } from '@ikarmic/forge-core';
 
 import { CompletionState, completionGate } from './completion-controls.js';
-import {
-  COMPLETION_SYSTEM_PROMPT,
-  buildPrompt,
-  isInsideStringOrComment,
-  sanitize,
-  suppressAtCursor,
-} from './completion-helpers.js';
+import { isInsideStringOrComment, requestCompletion, sanitize, suppressAtCursor } from './completion-helpers.js';
 import { loadRuntimeConfig } from './runtime-config.js';
 import { readConfig, resolveCompletionModel } from './config.js';
 import {
@@ -135,21 +127,16 @@ export class ForgeInlineCompletionProvider implements vscode.InlineCompletionIte
     );
 
     try {
-      // think-tags: handled in sanitize() (completion-helpers.ts), which strips <think> blocks.
-      // One retry: a keystroke aborts the request, and with it any wait, so a retry never shows a stale suggestion.
-      const { text, usage } = await withModelRetry(
-        () =>
-          generateText({
-            model: lm,
-            system: COMPLETION_SYSTEM_PROMPT,
-            prompt: buildPrompt(languageId, prefix, suffix),
-            abortSignal: controller.signal,
-            maxOutputTokens: cfg.completionMaxTokens,
-            temperature: 0.2,
-            maxRetries: 0,
-          }),
-        { maxRetries: 1, abortSignal: controller.signal }
-      );
+      // The request, its retry and the longer second try live in requestCompletion() (completion-helpers.ts, RB-63);
+      // think tags are stripped by sanitize() there too. A keystroke aborts it all.
+      const { text, usage } = await requestCompletion({
+        model: lm,
+        languageId,
+        prefix,
+        suffix,
+        maxTokens: cfg.completionMaxTokens,
+        abortSignal: controller.signal,
+      });
       this.controls.usage.add({ inputTokens: usage?.inputTokens, outputTokens: usage?.outputTokens });
       this.onUsage();
       const ms = Date.now() - started;

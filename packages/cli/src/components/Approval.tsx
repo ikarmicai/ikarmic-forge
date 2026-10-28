@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 
-import type { ApprovalRequest } from '@ikarmic/forge-core';
+import { toolLabel, type ApprovalRequest } from '@ikarmic/forge-core';
 
 export interface ApprovalProps {
   request: ApprovalRequest;
@@ -35,7 +35,7 @@ export function Approval({ request, onResolve }: ApprovalProps): React.ReactElem
           ⚠ approval required
         </Text>
         <Text> · </Text>
-        <Text bold>{request.name}</Text>
+        <Text bold>{toolLabel(request.name)}</Text>
         {request.destructive && (
           <>
             <Text> · </Text>

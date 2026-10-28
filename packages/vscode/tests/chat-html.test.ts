@@ -43,7 +43,7 @@ describe('chatHtml agent-power controls', () => {
 
   it('renders meter, condense, mention list and review-hunks controls', () => {
     for (const id of ['meter', 'condense-btn', 'mention-list']) expect(html).toContain(`id="${id}"`);
-    expect(html).toContain('class="link hunks">Review changes');
+    expect(html).toContain('class="ik-btn ik-btn--link hunks">Review changes');
   });
 
   it('handles the new host messages and posts the new webview messages', () => {
@@ -101,7 +101,7 @@ describe('chatHtml accessibility', () => {
 
   it('keeps a visible focus indicator on the approval note and uses text-safe state colors', () => {
     expect(html).not.toMatch(/\.approval \.note \{[^}]*outline: none/);
-    expect(html).toContain('--vscode-charts-green');
+    expect(html).toContain('var(--success)');
     expect(html).not.toContain('--vscode-testing-iconPassed');
   });
 
@@ -198,7 +198,7 @@ describe('chatHtml brand mark', () => {
 
 describe('chatHtml select popups', () => {
   it('gives the transparent mode select a themed option background (else the popup is white with pale text)', () => {
-    expect(chatHtml()).toMatch(/\.cchips select option \{ background: var\(--vscode-dropdown-background/);
+    expect(chatHtml()).toMatch(/\.cchips select option \{ background: var\(--bg-raised/);
   });
 });
 
@@ -237,7 +237,7 @@ describe('chatHtml inline approvals', () => {
     expect(call).toContain('row.dataset.why = why');
     const note = html.slice(html.indexOf('function addWhyNote'), html.indexOf('function addWhyNote') + 600);
     expect(note).toContain('UI.WHY_ROW[why]');
-    expect(html).toMatch(/\.steps-head\.auto \{[^}]*color: var\(--err\)/);
+    expect(html).toMatch(/\.steps-head\.auto \{[^}]*color: var\(--danger\)/);
   });
 
   // The result rebuilds the row's innerHTML, which dropped the reason added when the call started (found by why-ran.spec).
@@ -412,8 +412,10 @@ describe('chat UX: retry, queue, diagrams', () => {
 describe('chatHtml layout guards', () => {
   const html = chatHtml();
 
-  it('styles every button marked "link" as a link, not a filled primary button', () => {
-    expect(html).toMatch(/button\.link \{[^}]*background: none/);
+  it('marks every link button with the design system\'s class instead of restyling it on the page', () => {
+    expect(html).toContain('ik-btn ik-btn--link');
+    expect(html).not.toMatch(/button\.link \{/);
+    expect(html).not.toMatch(/class="link[ "]/);
   });
 
   it('keeps the icon buttons in one group so a narrow header never orphans an icon', () => {

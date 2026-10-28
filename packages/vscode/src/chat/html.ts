@@ -1,6 +1,472 @@
 import { MANDALA_MASK } from './brand.js';
-import { BASE_CSS } from '../webview-base-css.js';
+import { DESIGN_CSS } from '../design/index.js';
 import { i18nScript } from './webview-i18n.js';
+
+/** Layout and chat-specific look for this page, in tokens. A colour or a size under 12px here fails the design-system test. */
+export const CHAT_CSS = `  :root {
+    /* The Forge mandala as an alpha mask (docs/brand), painted with --ion by the empty state. */
+    --mandala: url("${MANDALA_MASK}");
+    --tool: var(--bg-sunken);
+  }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font-sans); font-size: var(--size-body); color: var(--ink-body); background: var(--bg-canvas); }
+  body { display: flex; flex-direction: column; }
+  #toolbar { display: flex; align-items: center; gap: 4px; padding: 5px 8px 5px 10px; border-bottom: 1px solid var(--line-subtle); position: relative; flex-wrap: wrap; row-gap: 4px; min-width: 0; }
+  /* The meter and the three icon buttons wrap together, never one orphan icon on a second row. */
+  #toolbar .tb-end { display: flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
+  .cchips select { background: transparent; color: var(--ink-body); border: 1px solid var(--line-control); border-radius: var(--radius-xs); font-size: var(--size-caption); padding: 2px 4px; flex: none; min-height: 24px; cursor: pointer; field-sizing: content; }
+  .cchips select:hover { background: var(--bg-overlay); }
+  /* The select itself is transparent, so its popup needs an explicit themed background or it renders white with pale text. */
+  .cchips select option { background: var(--bg-raised); color: var(--ink-body); }
+  .cchips .model { background: none; border: 1px solid var(--line-control); border-radius: var(--radius-xs); padding: 2px 6px; min-height: 24px; color: var(--ink-body); font-size: var(--size-caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; cursor: pointer; text-align: left; }
+  .cchips .model::after { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 1px 2px 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+  .cchips .model:hover, .cchips .model[aria-expanded="true"] { background: var(--bg-overlay); color: var(--ink-body); }
+  #model-menu { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 2px); z-index: 7; display: flex; flex-direction: column; max-height: min(70vh, 420px); background: var(--bg-raised); color: var(--ink-body); border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); box-shadow: var(--elev-3); }
+  #model-menu[hidden] { display: none; }
+  #model-search { margin: 6px; width: auto; flex: none; background: var(--bg-raised); color: var(--ink-strong); border: 1px solid var(--line-control); border-radius: var(--radius-xs); padding: 4px 8px; font: inherit; }
+  #model-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 4px 4px; }
+  #model-list .mg { padding: 8px 8px 2px; font-size: var(--size-caption); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+  #model-list .mn { padding: 2px 8px 4px; font-size: var(--size-caption); color: var(--ink-muted); line-height: 1.4; }
+  #model-list button.mo { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 4px 8px; border-radius: var(--radius-xs); font-size: var(--size-body); min-height: 24px; }
+  #model-list button.mo:hover, #model-list button.mo:focus-visible { background: var(--ion-tint); color: var(--ion-text); }
+  #model-list button.mo .id { margin-left: auto; padding-left: 8px; color: var(--ink-muted); font-family: var(--font-mono); font-size: var(--size-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #model-list button.mo .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #model-list button.mo .ck { width: 12px; flex: none; color: var(--success); }
+  #model-list .mrow { display: flex; align-items: center; }
+  #model-list .mrow button.mo { flex: 1; min-width: 0; }
+  #model-list button.mo .hint { flex: none; padding-left: 8px; color: var(--ink-muted); font-size: var(--size-caption); white-space: nowrap; }
+  #model-list button.star { flex: none; background: none; border: 0; color: var(--ink-muted); min-width: 24px; min-height: 24px; padding: 0 4px; border-radius: var(--radius-xs); font-size: var(--size-body); cursor: pointer; }
+  #model-list button.star[aria-pressed="true"] { color: inherit; }
+  #model-list button.star:hover, #model-list button.star:focus-visible { background: var(--ion-tint); color: var(--ion-text); }
+  #model-list .empty { padding: 10px 8px; color: var(--ink-muted); }
+  #model-menu .foot { flex: none; display: flex; justify-content: space-between; padding: 2px 4px 4px; border-top: 1px solid var(--line-subtle); }
+  #model-menu .foot button { background: none; border: 0; color: var(--ion-text); padding: 3px 6px; min-height: 24px; cursor: pointer; font-size: var(--size-caption); }
+  #model-menu .foot button:hover { text-decoration: underline; }
+  .spacer { flex: 1; }
+  button.icon { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--ink-body); flex: none; }
+  button.icon[hidden] { display: none; }
+  button.icon:hover { background: var(--bg-overlay); }
+  button.icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .meter { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--size-caption); color: var(--ink-muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
+  .meter.empty { display: none; }
+  .meter.no-ctx .meter-btn { display: none; }
+  .meter-btn { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px 0 0; background: none; color: inherit; border: 0; border-radius: 14px; cursor: pointer; font: inherit; }
+  .meter-btn:hover #meter-text { text-decoration: underline; }
+  /* The wave is decoration; the numbers beside it carry the meaning. Fill height is context used, the dashed guide is the 80% warning level. */
+  .m-cap { --wave: var(--ion); position: relative; flex: 1 1 auto; min-width: 48px; height: 28px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line-control); background: var(--bg-sunken); }
+  .m-cap svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .wv { animation: wv 5s linear infinite; }
+  .wv.b { animation-duration: 7s; animation-direction: reverse; }
+  .meter.stream .wv { animation-duration: 1.6s; }
+  .meter.stream .wv.b { animation-duration: 2.4s; }
+  .wv.a path { fill: color-mix(in srgb, var(--wave) 90%, transparent); }
+  .wv.b path { fill: color-mix(in srgb, var(--wave) 45%, transparent); }
+  @keyframes wv { from { transform: translateX(0); } to { transform: translateX(-44px); } }
+  .meter.warn .m-cap { --wave: var(--warning); }
+  .meter.crit .m-cap { --wave: var(--danger); }
+  .m-guide { position: absolute; left: 0; right: 0; top: 5.6px; border-top: 1px dashed color-mix(in srgb, var(--ink-body) 35%, transparent); pointer-events: none; }
+  .m-chev { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.5; transition: transform .15s; }
+  .meter-btn[aria-expanded="true"] .m-chev { transform: rotate(180deg); }
+  .meter.warn, .meter.crit { color: var(--ink-body); }
+  #meter-pop { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 9; display: flex; flex-direction: column; gap: 12px; padding: 12px; white-space: normal; color: var(--ink-body); background: var(--bg-raised); border: 1px solid var(--line-control); border-radius: var(--radius-sm); box-shadow: var(--elev-3); }
+  #meter-pop[hidden] { display: none; }
+  .mp-head { display: flex; align-items: flex-start; gap: 8px; }
+  .mp-head .icon { margin-left: auto; }
+  .mp-title { font-weight: 600; }
+  .mp-sub { color: var(--ink-muted); font-size: var(--size-caption); }
+  .mp-big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .mp-big b { font-family: var(--font-mono); font-size: var(--size-page); font-weight: 500; }
+  .mp-big span { color: var(--ink-muted); font-size: var(--size-caption); }
+  .mp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line-subtle); }
+  .mp-stats div { display: flex; flex-direction: column; min-width: 0; }
+  .mp-stats dt { color: var(--ink-muted); font-size: var(--size-caption); }
+  .mp-stats dd { margin: 0; font-family: var(--font-mono); font-size: var(--size-body); }
+  .mp-foot { display: flex; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid var(--line-subtle); }
+  .mp-foot p { margin: 0; flex: 1; color: var(--ink-muted); font-size: var(--size-caption); }
+  #more-menu { position: absolute; right: 8px; top: calc(100% + 2px); z-index: 6; min-width: 220px; padding: 4px; background: var(--bg-raised); color: var(--ink-body); border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); box-shadow: var(--elev-3); }
+  #more-menu[hidden] { display: none; }
+  #more-menu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--radius-xs); font-size: var(--size-body); }
+  #more-menu button:hover, #more-menu button:focus-visible { background: var(--ion-tint); color: var(--ion-text); }
+  #more-menu .stat { border-top: 1px solid var(--line-subtle); margin-top: 4px; padding: 6px 8px 2px; font-size: var(--size-caption); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  #more-menu .stat:empty { display: none; }
+  #panel { display: none; position: absolute; inset: 36px 0 0 0; background: var(--bg-canvas); z-index: 5; overflow-y: auto; padding: 8px 12px; border-top: 1px solid var(--line-subtle); }
+  #panel.open { display: block; animation: rise .14s ease-out; }
+  @media (prefers-reduced-motion: reduce) { #panel.open { animation: none; } }
+  #panel .row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-subtle); }
+  #panel .row .text { flex: 1 1 100%; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  #panel .row .meta { color: var(--ink-muted); font-size: var(--size-caption); flex: 1 1 auto; display: flex; gap: 6px; align-items: center; }
+  #panel .row { position: relative; }
+  #panel .row .pill { padding: 0 6px; border-radius: 8px; font-size: var(--size-caption); line-height: 16px; background: none; border: 1px solid var(--line-subtle); color: var(--ink-muted); }
+  #panel .row.current .text { font-weight: 600; }
+  #panel .rowmenu { position: absolute; right: 0; top: 100%; z-index: 8; min-width: 150px; padding: 4px; background: var(--bg-raised); color: var(--ink-body); border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); box-shadow: var(--elev-3); }
+  #panel .rowmenu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--radius-xs); font-size: var(--size-body); }
+  #panel .rowmenu button:hover, #panel .rowmenu button:focus-visible { background: var(--ion-tint); }
+  #panel .rowmenu button.danger { color: var(--danger); }
+  #panel .wk-note { color: var(--ink-muted); line-height: 1.5; margin: 4px 0 10px; overflow-wrap: anywhere; }
+  #panel .wk-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 8px 0; }
+  #panel .wk-empty p { margin: 0; color: var(--ink-muted); line-height: 1.5; }
+  #panel .wk-label { font-size: var(--size-caption); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); margin: 12px 0 4px; }
+  #panel .wk-card { border-bottom: 1px solid var(--line-subtle); padding: 6px 0 8px; }
+  #panel .wk-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  #panel .wk-head .tt { font-weight: 600; flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+  #panel .wk-head .meta { color: var(--ink-muted); font-size: var(--size-caption); font-variant-numeric: tabular-nums; }
+  #panel .wk-bar { height: 3px; border-radius: 2px; background: var(--line-subtle); margin: 6px 0 4px; overflow: hidden; }
+  #panel .wk-bar span { display: block; height: 100%; background: var(--success); }
+  #panel .wk-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  #panel .trow { position: relative; display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; min-height: 26px; }
+  #panel .trow .st { width: 14px; flex: none; text-align: center; line-height: 1.5; color: var(--ink-muted); }
+  #panel .trow .st.done { color: var(--success); }
+  #panel .trow .st.failed { color: var(--danger); }
+  #panel .trow .st.running { color: var(--ion); }
+  #panel .trow .tt { flex: 1 1 120px; min-width: 0; text-align: left; background: none; border: 0; color: inherit; padding: 0; cursor: pointer; overflow-wrap: anywhere; line-height: 1.5; font-size: var(--size-body); }
+  #panel .trow .tt:hover { text-decoration: underline; }
+  #panel .trow .req { color: var(--ink-muted); font-size: var(--size-caption); line-height: 1.7; flex: 0 1 auto; max-width: 45%; overflow-wrap: anywhere; }
+  #panel .trow > button { flex: none; }
+  #panel .trow > button.tt { flex: 1 1 120px; }
+  #panel .trow .desc { display: block; color: var(--ink-muted); font-size: var(--size-caption); overflow-wrap: anywhere; }
+  #panel .trow input[type="checkbox"] { margin: 4px 0 0; flex: none; }
+  #panel .search { width: 100%; margin: 0 0 6px; background: var(--bg-raised); color: var(--ink-strong); border: 1px solid var(--line-control); border-radius: var(--radius-xs); padding: 4px 8px; font: inherit; }
+  #panel .title { font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .run-footer { font-size: var(--size-caption); color: var(--ink-muted); padding: 0 0 8px; margin-top: -2px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
+  .turn-actions .ik-btn--link, .run-footer .ik-btn--link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
+  .cmd-card { border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-sunken); }
+  .cmd-card pre { margin: 0; padding: 6px 8px; overflow-x: auto; background: var(--bg-canvas); border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: var(--size-caption); line-height: 1.5; white-space: pre; }
+  .cmd-card pre code { background: none; padding: 0; font: inherit; }
+  .cmd-card .cmd-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .cmd-card .cmd-risk { color: var(--danger); font-size: var(--size-caption); font-weight: 600; display: inline-flex; gap: 4px; }
+  .cmd-card .cmd-msg { color: var(--ink-muted); font-size: var(--size-caption); }
+  .warning.notice { border-left-color: var(--success); }
+  .warning { color: var(--ink-body); font-size: var(--size-caption); line-height: 1.5; overflow-wrap: anywhere; padding: 6px 10px; border-left: 2px solid var(--warning); border-radius: 0 4px 4px 0; background: var(--bg-sunken); }
+  body { position: relative; }
+  #messages {
+    flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 14px;
+    /* Lets the empty state compact itself to the room it really has (below the toolbar, above the composer). */
+    container: msgs / size;
+  }
+  /* Steps read as one group, like the mock's .steps: only 2px between consecutive step rows. */
+  /* Consecutive tool rows and approval outcomes live in one group, so their spacing never depends on the message gap. */
+  .steps { display: flex; flex-direction: column; gap: 2px; }
+  .steps-head { font-size: var(--size-caption); color: var(--ink-muted); padding: 0 4px 2px; font-variant-numeric: tabular-nums; }
+  .steps-head.auto { color: var(--danger); }
+  .tool-body .why { margin: 0 0 4px; font-size: var(--size-caption); color: var(--ink-muted); }
+  #input-area { position: relative; border-top: 1px solid var(--line-subtle); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .composer { border: 1px solid var(--line-control); border-radius: var(--radius-sm); background: var(--bg-raised); box-shadow: var(--elev-1); }
+  .composer:focus-within { border-color: var(--focus-ring); outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+  #input { display: block; width: 100%; resize: none; min-height: 32px; max-height: 200px; border: 0; outline: none; background: transparent; color: var(--ink-body); padding: 10px 12px 6px; font-family: var(--font-sans); font-size: var(--size-body); }
+  #input::placeholder { color: var(--ink-muted); }
+  /* In a very narrow sidebar the placeholder wraps; leave room for all of it instead of clipping it behind scroll arrows. */
+  @media (max-width: 260px) { #input { min-height: 56px; } }
+  #queue { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
+  #queue:empty { display: none; }
+  #queue .queued { display: flex; align-items: center; gap: 6px; font-size: var(--size-caption); color: var(--ink-muted); }
+  #queue .queued .q-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #findbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--line-subtle); }
+  #findbar[hidden] { display: none; }
+  #find-input { flex: 1; min-width: 0; border: 1px solid var(--line-control); border-radius: var(--radius-xs); background: var(--bg-raised); color: var(--ink-body); font: inherit; font-size: var(--size-caption); padding: 3px 8px; }
+  #find-input.nomatch { border-color: var(--danger); }
+  #edit-banner { display: flex; align-items: center; gap: 6px; padding: 4px 8px 0; font-size: var(--size-caption); color: var(--ink-muted); }
+  #edit-banner[hidden] { display: none; }
+  #chipbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
+  #bg-strip { margin: 0 6px 4px; border: 1px solid var(--line-subtle); border-radius: var(--radius-xs); font-size: var(--size-caption); }
+  #bg-strip[hidden] { display: none; }
+  #bg-strip .bghead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 8px; color: var(--ink-muted); }
+  #bg-strip ul { list-style: none; margin: 0; padding: 0; }
+  #bg-strip .bgrow { display: flex; align-items: center; gap: 8px; padding: 0 8px; min-height: 24px; }
+  #bg-strip .bgrow .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bg-strip .bgrow .dt { flex: none; color: var(--ink-muted); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bg-strip .bgrow .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ion); }
+  #bg-strip .bgrow.done .dot { background: var(--success); }
+  #bg-strip .bgrow.failed .dot { background: var(--danger); }
+  #bg-strip .bgrow.stopped .dot { background: var(--ink-muted); }
+  #goal-chip { flex: 1 1 220px; min-width: 0; }
+  #todo-chip { flex: 0 1 auto; }
+  #todo-chip:has(#todo-list:not([hidden])) { flex-basis: 100%; }
+  #goal-chip { padding: 2px 8px; font-size: var(--size-caption); color: var(--ink-muted); }
+  #goal-chip[hidden], #todo-chip[hidden] { display: none; }
+  #goal-chip { display: flex; align-items: center; gap: 8px; }
+  #goal-chip .gtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The plan is content, not a control: a card with a hairline edge, a status icon, one summary line and a segment per step. */
+  #todo-chip { border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); background: var(--bg-canvas); box-shadow: var(--elev-1); overflow: hidden; font-size: var(--size-body); color: var(--ink-body); }
+  #todo-toggle { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 12px 6px; background: none; border: 0; border-radius: 0; color: var(--ink-body); font: inherit; text-align: left; cursor: pointer; }
+  #todo-toggle:hover { background: var(--ion-tint); }
+  #todo-toggle:focus-visible { outline-offset: -2px; }
+  #todo-toggle .sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #todo-toggle .chev { flex: none; color: var(--ink-muted); transition: transform .14s; }
+  #todo-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  #todo-chip .st-ic { flex: none; display: none; }
+  #todo-chip.s-doing .st-doing, #todo-chip.s-done .st-done, #todo-chip.s-idle .st-idle { display: block; }
+  #todo-bar { display: flex; gap: 2px; padding: 0 12px 10px; }
+  #todo-bar span { flex: 1; height: 3px; border-radius: 2px; background: var(--line-subtle); }
+  #todo-bar span.done { background: var(--success); }
+  #todo-bar span.doing { background: var(--ion); }
+  #todo-list { margin: 0; padding: 2px 6px 8px; list-style: none; border-top: 1px solid var(--line-subtle); }
+  #todo-list[hidden] { display: none; }
+  #todo-list li { display: flex; align-items: flex-start; gap: 8px; padding: 4px 6px; min-height: 28px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+  #todo-list li .ic { flex: none; width: 16px; height: 20px; display: flex; align-items: center; justify-content: center; }
+  #todo-list li.done { color: var(--ink-muted); }
+  #todo-list li.done .tx { text-decoration: line-through; }
+  #todo-list li.doing { background: var(--ion-tint); font-weight: 600; }
+  .todo-spin { transform-origin: 50% 50%; animation: todo-spin 1.2s linear infinite; }
+  @keyframes todo-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .todo-spin { animation: none; } }
+  .question { border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); background: var(--bg-canvas); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .question .qk { font-size: var(--size-caption); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warning); }
+  .question .qt { overflow-wrap: anywhere; }
+  .question .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .question .opts button, .question .custom button { font-size: var(--size-caption); padding: 3px 9px; }
+  .question .custom { display: flex; gap: 6px; }
+  .question .custom input { flex: 1; min-width: 0; border: 1px solid var(--line-control); border-radius: var(--radius-xs); background: var(--bg-raised); color: var(--ink-body); font: inherit; font-size: var(--size-caption); padding: 3px 8px; }
+  .turn-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin: -4px 0 0; font-size: var(--size-caption); }
+  .diagram { margin: 6px 0; padding: 8px; overflow: auto; border-radius: var(--radius-sm); background: var(--bg-sunken); }
+  .diagram svg { max-width: 100%; height: auto; }
+  details.diagram-src > summary { cursor: pointer; font-size: var(--size-caption); color: var(--ink-muted); }
+  #attachments { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px 0; }
+  #attachments:empty { display: none; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 1px 2px 1px 6px; border-radius: var(--radius-xs); background: var(--bg-overlay); color: var(--ink-body); font-size: var(--size-caption); }
+  .chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip button { width: 16px; height: 16px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; line-height: 1; }
+  .msg.user .files { margin-top: 4px; font-size: var(--size-caption); opacity: .8; }
+  /* Mode and model are set once and rarely touched, so they head the composer on a sunken strip, out of the way of typing. */
+  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; min-width: 0; background: var(--bg-sunken); border-bottom: 1px solid var(--line-subtle); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .cchips #mode { font-weight: 600; }
+  .cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px 8px; }
+  /* The approval level is a select like the mode and model chips. It stays neutral while Ask first, reads as a mild step at Accept edits, and is the one red control in the composer at Autonomous. */
+  .cfoot .auto { font-size: var(--size-caption); color: var(--ink-muted); background: transparent; border: 1px solid var(--line-control); border-radius: var(--radius-xs); min-height: 24px; padding: 2px 4px; cursor: pointer; field-sizing: content; }
+  .cfoot .auto:hover { color: var(--ink-body); background: var(--bg-overlay); }
+  .cfoot .auto option { background: var(--bg-raised); color: var(--ink-body); font-weight: normal; }
+  .cfoot .auto.edits { color: var(--ink-body); border-color: var(--line-control); }
+  .cfoot .auto.on { color: var(--danger); font-weight: 600; border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+  #auto-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 6px; padding: 6px 8px; font-size: var(--size-caption); line-height: 1.4; color: var(--ink-body); background: color-mix(in srgb, var(--danger) 12%, transparent); border-left: 3px solid var(--danger); border-radius: var(--radius-xs); }
+  #auto-note svg { flex: none; margin-top: 1px; color: var(--danger); }
+  #auto-note.edits { background: var(--bg-sunken); border-left-color: var(--line-control); }
+  #auto-note.edits svg { color: var(--ink-muted); }
+  #auto-note[hidden] { display: none; }
+  #send, #cancel { flex: none; min-height: 24px; }
+  #send[hidden], #cancel[hidden] { display: none; }
+  /* A plain button is a reset. Look comes from a class: primary, secondary, link (base), icon, or the component's own rule. */
+  button { background: none; color: inherit; border: 0; padding: 0; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--size-caption); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .msg { padding: 0; line-height: 1.5; }
+  .msg.user { color: var(--ink-body); }
+  .msg.user .body { background: var(--bg-overlay); border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); padding: 7px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.assistant .body { overflow-wrap: anywhere; }
+  .msg.assistant .body:not(.md) { white-space: pre-wrap; }
+  .msg .label { display: none; }
+  .msg.assistant .label.has-speed { display: block; order: 2; margin-top: 2px; font-size: var(--size-caption); color: var(--ion); font-variant-numeric: tabular-nums; }
+  .msg.assistant .label.has-speed .who { display: none; }
+  .md > * { margin: 0; }
+  .md > * + * { margin-top: 8px; }
+  .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-size: var(--size-body); font-weight: 600; }
+  .md h1, .md h2 { font-size: var(--size-title-sm); }
+  .md ul, .md ol { padding-left: 20px; }
+  .md li + li { margin-top: 2px; }
+  .md a { color: var(--ion-text); }
+  .md blockquote { margin: 0; padding-left: 10px; border-left: 2px solid var(--line-subtle); color: var(--ink-muted); }
+  .md hr { border: 0; border-top: 1px solid var(--line-subtle); }
+  .md code { font-family: var(--font-mono); font-size: var(--size-caption); background: var(--bg-sunken); padding: 1px 4px; border-radius: var(--radius-xs); }
+  .md .code { border: 1px solid var(--line-subtle); border-radius: var(--radius-xs); background: var(--bg-canvas); overflow: hidden; }
+  .md .code-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 2px 8px; font-size: var(--size-caption); color: var(--ink-muted); border-bottom: 1px solid var(--line-subtle); }
+  .md .code-head .copy { background: none; color: var(--ink-muted); border: 0; padding: 1px 8px; min-height: 24px; font-size: var(--size-caption); }
+  .md .code-head .copy:hover { color: var(--ink-body); }
+  .md pre { margin: 0; padding: 8px 10px; overflow-x: auto; font-family: var(--font-mono); font-size: var(--size-caption); line-height: 1.5; }
+  .md pre code { background: none; padding: 0; }
+  .md .table { overflow-x: auto; }
+  .md table { border-collapse: collapse; font-size: var(--size-caption); display: block; max-width: 100%; overflow-x: auto; }
+  .md th, .md td { border: 1px solid var(--line-subtle); padding: 3px 6px; text-align: left; }
+  .md .task { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--ink-muted); border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .md .task.done { background: var(--success); border-color: var(--success); }
+  .tool-row { font-size: var(--size-body); color: var(--ink-muted); }
+  .tool-row[open], .tool-row > summary:hover { color: var(--ink-body); }
+  .tool-row .target { color: var(--ink-body); }
+  .tool-row > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 3px 4px; min-height: 24px; border-radius: var(--radius-xs); cursor: pointer; min-width: 0; }
+  .tool-row > summary::-webkit-details-marker { display: none; }
+  .tool-row > summary:hover { background: var(--bg-overlay); }
+  .tool-row .chev { width: 0; height: 0; border-left: 4px solid var(--ink-muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; flex: none; margin: 0 2px; }
+  .tool-row[open] > summary .chev { transform: rotate(90deg); }
+  .tool-row .st { width: 14px; text-align: center; flex: none; font-size: var(--size-caption); }
+  .tool-row .st.ok { color: var(--success); }
+  .tool-row .st.err { color: var(--danger); }
+  .tool-row .st.spin { width: 10px; height: 10px; margin: 0 2px; border: 1.5px solid var(--ion); border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tool-row .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-row .target { font-family: var(--font-mono); font-size: var(--size-caption); }
+  .tool-row .meta { margin-left: auto; padding-left: 8px; font-size: var(--size-caption); color: var(--ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tool-row .meta.err { color: var(--danger); }
+  .tool-row .tool-body { padding: 4px 0 6px 24px; }
+  .tool-row .result, .tool-row .args { margin: 0; padding: 4px 6px; background: var(--tool); border-radius: var(--radius-xs); white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; font-family: var(--font-mono); font-size: var(--size-caption); }
+  .tool-row .result.collapsed { max-height: 120px; }
+  .tool-row .show-more { font-size: var(--size-caption); margin-top: 2px; cursor: pointer; color: var(--ion-text); background: none; border: none; padding: 0; }
+  .tool-row .diff { border: 1px solid var(--line-subtle); border-radius: var(--radius-xs); overflow-x: auto; font-size: var(--size-caption); }
+  .cursor { display: inline-block; width: 6px; height: 13px; background: var(--ion); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .diff-line { white-space: pre; font-family: var(--font-mono); padding: 0 8px; line-height: 1.5; }
+  .diff-add { background: var(--success-tint); }
+  .diff-del { background: var(--danger-tint); }
+  .reasoning { border-left: 2px solid var(--line-subtle); padding: 0 0 0 10px; margin: 0; font-size: var(--size-caption); line-height: 1.5; color: var(--ink-muted); }
+  .reasoning > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; min-height: 24px; }
+  .reasoning > summary::-webkit-details-marker { display: none; }
+  .reasoning > summary::before { content: ''; flex: none; width: 0; height: 0; border-left: 4px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; }
+  .reasoning[open] > summary::before { transform: rotate(90deg); }
+  .reasoning > summary:hover { color: var(--ink-body); }
+  .reasoning .rbody { white-space: pre-wrap; padding: 0 0 4px;
+  }
+  .approval { border: 1px solid var(--warning); border-left-width: 3px; border-radius: var(--radius-sm); background: var(--bg-canvas); box-shadow: var(--elev-1); animation: rise .14s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .approval { animation: none; } }
+  .approval.destructive { border-color: var(--danger); }
+  .approval .kind { display: flex; align-items: center; gap: 6px; padding: 9px 12px 0; font-size: var(--size-caption); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warning); }
+  .approval.destructive .kind { color: var(--danger); }
+  .approval .kind .hint { margin-left: auto; color: var(--ink-muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .approval .line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px 2px; min-width: 0; }
+  .approval .q { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
+  .approval .file { font-family: var(--font-mono); font-size: var(--size-caption); }
+  /* The command or path being approved is the focus of the card: a code block that wraps (three lines, then "Show full command"), never a coloured sentence. */
+  .approval .target { display: inline-block; max-width: 100%; font-family: var(--font-mono); font-size: var(--size-caption); background: var(--bg-sunken); border-radius: var(--radius-xs); padding: 1px 6px; overflow-wrap: anywhere; vertical-align: top; }
+  .approval .cmd { flex: 1 1 100%; min-width: 0; display: flex; gap: 8px; background: var(--bg-sunken); border-radius: var(--radius-xs); padding: 8px 10px; font-family: var(--font-mono); font-size: var(--size-caption); line-height: 1.5; }
+  .approval .cmd .p { flex: none; color: var(--ink-muted); }
+  .approval .cmd code { min-width: 0; font: inherit; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .approval .cmd.open code { display: block; -webkit-line-clamp: unset; max-height: 200px; overflow: auto; }
+  .approval .meta { font-size: var(--size-caption); color: var(--ink-body); font-family: var(--font-mono); }
+  .approval button { flex: none; font-size: var(--size-caption); min-height: 28px; padding: 3px 12px; white-space: nowrap; }
+  .approval .ik-btn--link { padding: 0; min-height: 24px; }
+  .approval .ik-btn--link:hover { text-decoration: underline; }
+  .approval .fb { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
+  .approval .fb[hidden] { display: none; }
+  .approval .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .approval .chip { border: 1px solid var(--line-subtle); background: transparent; color: var(--ink-muted); border-radius: 10px; padding: 1px 8px; font-size: var(--size-caption); }
+  .approval .chip:hover { color: var(--ink-body); }
+  .approval .preview { margin: 6px 10px 10px; padding: 8px 10px; white-space: pre-wrap; font-family: var(--font-mono); font-size: var(--size-caption); max-height: 160px; overflow: auto; background: var(--bg-sunken); border-radius: var(--radius-xs); }
+  .approval .note { width: 100%; resize: vertical; min-height: 44px; border: 1px solid var(--line-control); border-radius: var(--radius-xs); background: var(--bg-raised); color: var(--ink-body); font: 12px var(--font-sans); padding: 6px 8px; }
+  .approval .note:focus { border-color: var(--focus-ring); }
+  .approval .fb-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .approval .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px 12px; }
+  .approval .bar .sp { flex: 1; }
+  .approval .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .approval .hold { position: relative; overflow: hidden; min-width: 116px; font-weight: 600; background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); user-select: none; touch-action: none; }
+  .approval .hold::before { content: ""; position: absolute; inset: 0; width: 0; background: var(--danger); opacity: .25; }
+  .approval .hold.holding::before { width: 100%; transition: width .9s linear; }
+  .approval .hold span { position: relative; }
+  .approval-log { display: flex; gap: 6px; font-size: var(--size-caption); color: var(--ink-muted); padding: 3px 4px 3px 18px; }
+  .approval-log .st { width: 14px; flex: none; text-align: center; }
+  .run { border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); background: var(--bg-canvas); overflow: hidden; }
+  .run .rh { display: flex; align-items: center; gap: 6px; padding: 8px 10px 6px; min-width: 0; }
+  .run .rh .task { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; flex: 1; }
+  .run .rh .sum { font-size: var(--size-caption); color: var(--ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .run .bar { height: 3px; margin: 0 10px 6px; border-radius: 2px; background: var(--line-subtle); overflow: hidden; }
+  .run .bar span { display: block; height: 100%; background: var(--ion); }
+  .run .step { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px; border-top: 1px solid var(--line-subtle); }
+  .run .l1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .run .who { font-family: var(--font-mono); font-size: var(--size-caption); color: var(--ink-muted); border: 1px solid var(--line-subtle); border-radius: var(--radius-xs); padding: 0 4px; flex: none; }
+  .run .stask { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .run .meta { font-size: var(--size-caption); color: var(--ink-muted); white-space: nowrap; }
+  .run .l2 { display: flex; align-items: center; gap: 8px; padding-left: 22px; flex-wrap: wrap; font-size: var(--size-caption); }
+  .run .l2 .ik-btn--link { font-size: var(--size-caption); }
+  .run .rerr { padding-left: 22px; overflow-wrap: anywhere; font-size: var(--size-caption); color: var(--danger); }
+  .run .rf { display: flex; justify-content: flex-end; padding: 6px 10px; border-top: 1px solid var(--line-subtle); }
+  .run .rf .ik-btn--link { font-size: var(--size-caption); }
+  .approval-log.err { color: var(--danger); }
+  .run .rh .ok, .run .l1 .ok { color: var(--success); }
+  .run .rh .err, .run .l1 .err { color: var(--danger); }
+  .status-bar {
+    font-size: var(--size-caption); color: var(--ink-muted); padding: 6px 0 0; border-top: 1px solid var(--line-subtle); margin-top: 2px; font-variant-numeric: tabular-nums;
+    display: flex; flex-wrap: wrap; gap: 2px 12px; justify-content: space-between;
+  }
+  .status-bar > span { min-width: 0; overflow-wrap: anywhere; }
+  .feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 0 2px; }
+  .feedback button.fb { min-height: 24px; padding: 2px 10px; background: transparent; color: var(--ink-body); border: 1px solid var(--line-control); border-radius: 12px; font-size: var(--size-caption); cursor: pointer; }
+  .feedback button.fb:hover { background: var(--bg-overlay); }
+  .feedback button.fb[aria-pressed="true"] { background: var(--ion-tint); }
+  .feedback input.fb-note { flex: 1 1 12em; min-width: 8em; min-height: 24px; background: var(--bg-raised); color: var(--ink-strong); border: 1px solid var(--line-control); border-radius: 4px; padding: 2px 6px; font: inherit; font-size: var(--size-caption); }
+  .error-banner { background: color-mix(in srgb, var(--danger) 12%, transparent); border-left: 2px solid var(--danger); border-radius: 0 4px 4px 0; padding: 8px 10px; line-height: 1.5; overflow-wrap: anywhere; }
+  .error-banner .ik-btn--link { padding: 0 0 0 6px; text-decoration: none; }
+  .error-banner .ik-btn--link:hover { text-decoration: underline; }
+  .md .code.collapsed pre { max-height: 18em; overflow: hidden; }
+  .md .code .code-more { display: block; width: 100%; background: none; color: var(--ion-text); border: 0; border-top: 1px solid var(--line-subtle); padding: 4px 8px; font-size: var(--size-caption); text-align: left; cursor: pointer; }
+  .empty-state { color: var(--ink-muted); padding: 28px 4px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .empty-state .mark { width: 64px; height: 64px; background: var(--ion); -webkit-mask: var(--mandala) center / contain no-repeat; mask: var(--mandala) center / contain no-repeat; }
+  .empty-state h2 { margin: 0; font-size: var(--size-title-sm); font-weight: 600; color: var(--ink-body); }
+  .empty-state p { margin: 0; line-height: 1.5; max-width: 34ch; }
+  .approval-default-card { width: 100%; text-align: left; border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--elev-1); }
+  .approval-default-card[hidden] { display: none; }
+  .approval-default-card h3 { margin: 0; font-size: var(--size-body); font-weight: 600; color: var(--ink-body); }
+  .approval-default-card .adc-opt { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: start; min-height: 24px; padding: 3px 0; cursor: pointer; color: var(--ink-body); }
+  .approval-default-card .adc-opt input { margin: 3px 0 0; }
+  .approval-default-card .adc-name { font-weight: 600; }
+  .approval-default-card .adc-desc { grid-column: 2; color: var(--ink-muted); font-size: var(--size-caption); line-height: 1.4; }
+  .approval-default-card .adc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .approval-default-card .adc-note { color: var(--ink-muted); font-size: var(--size-caption); }
+  .empty-state .examples { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
+  .empty-state .ex { text-align: left; background: transparent; color: var(--ink-body); border: 1px solid var(--line-control); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--size-caption); min-height: 28px; }
+  .empty-state .ex:hover { background: var(--bg-overlay); border-color: var(--focus-ring); }
+  .empty-state .hint { font-size: var(--size-caption); line-height: 1.4; margin-top: 6px; max-width: none; }
+  /* Short panes (small windows, the composer's Autonomous note): give up the decoration first, never the hint. */
+  @container msgs (max-height: 360px) {
+    .empty-state { padding: 6px 4px 2px; gap: 6px; }
+    .empty-state .mark { width: 44px; height: 44px; }
+    .empty-state .examples { gap: 4px; margin-top: 2px; }
+    .empty-state .ex { min-height: 24px; padding: 3px 10px; }
+    .empty-state .hint { margin-top: 2px; }
+  }
+  @container msgs (max-height: 300px) {
+    .empty-state .mark, .empty-state p:not(.hint) { display: none; }
+  }
+  @container msgs (max-height: 185px) {
+    .empty-state .ex:nth-child(n + 2) { display: none; }
+  }
+  @container msgs (max-height: 125px) {
+    .empty-state .examples { display: none; }
+  }
+  .empty-state kbd {
+    background: var(--tool); border: 1px solid var(--line-subtle); padding: 1px 5px; border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: var(--size-caption);
+  }
+  /* Voice input */
+  #mic.recording {
+    background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); border-color: var(--danger);
+    animation: mic-pulse 1.2s ease-in-out infinite;
+  }
+  #mic:disabled { opacity: 0.4; cursor: not-allowed; }
+  #mic .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; vertical-align: middle; margin-right: 4px;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 45%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--danger) 0%, transparent); }
+  }
+  #input.interim {
+    color: var(--ink-muted); font-style: italic;
+  }
+  #voice-status {
+    font-size: var(--size-caption); color: var(--ink-muted);
+  }
+  #voice-status:not(:empty) { padding: 4px 0; min-height: 14px; }
+  /* Empty, it must not add the flex gap above it as dead space under the meter. */
+  #voice-status:empty { margin-top: -6px; }
+  #voice-status.error { color: var(--danger); }
+  #mention-list {
+    display: none; border: 1px solid var(--line-subtle); border-radius: var(--radius-xs); margin-bottom: 4px;
+    background: var(--bg-raised); max-height: 140px; overflow: auto; font-size: var(--size-caption);
+  }
+  #mention-list.open { display: block; }
+  #mention-list .mg { padding: 6px 8px 2px; font-size: var(--size-caption); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); }
+  #mention-list .mi { padding: 3px 8px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  #mention-list .mi > span:first-child { font-family: var(--font-mono); font-size: var(--size-caption); flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mention-list .mi:hover, #mention-list .mi.sel { background: var(--bg-overlay); }
+  #mention-list .mi .hint { color: var(--ink-muted); font-size: var(--size-caption); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Keyboard focus must always be visible. */
+  button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible, .mi:focus-visible {
+    outline: 2px solid var(--focus-ring); outline-offset: 1px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  @media (forced-colors: active) {
+    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .cmd-card, .approval-default-card, .question, .composer, .steps, .cchips select, .cchips .model, .cfoot .auto, .empty-state .ex { border: 1px solid ButtonText; }
+    .m-cap { border: 1px solid ButtonText; }
+    .feedback button.fb[aria-pressed="true"] { background: Highlight; color: HighlightText; }
+    .feedback input.fb-note { border: 1px solid ButtonText; }
+    .wv path { forced-color-adjust: none; fill: Highlight; }
+  }
+`;
 
 /**
  * Generates the HTML for the Forge chat webview. The webview is fully
@@ -34,472 +500,10 @@ export function chatHtml(
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src ${scriptSrc};">
-<style>${BASE_CSS}
-  :root {
-    /* The Forge mandala as an alpha mask (docs/brand), painted with --ion by the empty state. */
-    --mandala: url("${MANDALA_MASK}");
-    --bg: var(--vscode-editor-background);
-    --accent: var(--vscode-textLink-foreground);
-    --tool: var(--vscode-textBlockQuote-background, #2a2a2a);
-  }
-  html, body { margin: 0; padding: 0; height: 100%; font-family: var(--vscode-font-family); font-size: var(--fs-m); color: var(--fg); background: var(--bg); }
-  body { display: flex; flex-direction: column; }
-  #toolbar { display: flex; align-items: center; gap: 4px; padding: 5px 8px 5px 10px; border-bottom: 1px solid var(--border); position: relative; flex-wrap: wrap; row-gap: 4px; min-width: 0; }
-  /* The meter and the three icon buttons wrap together, never one orphan icon on a second row. */
-  #toolbar .tb-end { display: flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
-  .cchips select { background: transparent; color: var(--fg); border: 1px solid var(--chip-edge); border-radius: var(--r-s); font-size: var(--fs-s); padding: 2px 4px; flex: none; min-height: 24px; cursor: pointer; field-sizing: content; }
-  .cchips select:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
-  /* The select itself is transparent, so its popup needs an explicit themed background or it renders white with pale text. */
-  .cchips select option { background: var(--vscode-dropdown-background, var(--bg)); color: var(--vscode-dropdown-foreground, var(--fg)); }
-  .cchips .model { background: none; border: 1px solid var(--chip-edge); border-radius: var(--r-s); padding: 2px 6px; min-height: 24px; color: var(--fg); font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; cursor: pointer; text-align: left; }
-  .cchips .model::after { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 1px 2px 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
-  .cchips .model:hover, .cchips .model[aria-expanded="true"] { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); color: var(--fg); }
-  #model-menu { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 2px); z-index: 7; display: flex; flex-direction: column; max-height: min(70vh, 420px); background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--border))); border-radius: var(--r-m); box-shadow: var(--elev-3); }
-  #model-menu[hidden] { display: none; }
-  #model-search { margin: 6px; width: auto; flex: none; background: var(--vscode-input-background); color: var(--vscode-input-foreground, var(--fg)); border: 1px solid var(--edge); border-radius: var(--r-s); padding: 4px 8px; font: inherit; }
-  #model-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 4px 4px; }
-  #model-list .mg { padding: 8px 8px 2px; font-size: var(--fs-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  #model-list .mn { padding: 2px 8px 4px; font-size: var(--fs-xs); color: var(--muted); line-height: 1.4; }
-  #model-list button.mo { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 4px 8px; border-radius: var(--r-s); font-size: var(--fs-m); min-height: 24px; }
-  #model-list button.mo:hover, #model-list button.mo:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
-  #model-list button.mo .id { margin-left: auto; padding-left: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  #model-list button.mo .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #model-list button.mo .ck { width: 12px; flex: none; color: var(--ok); }
-  #model-list .mrow { display: flex; align-items: center; }
-  #model-list .mrow button.mo { flex: 1; min-width: 0; }
-  #model-list button.mo .hint { flex: none; padding-left: 8px; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
-  #model-list button.star { flex: none; background: none; border: 0; color: var(--muted); min-width: 24px; min-height: 24px; padding: 0 4px; border-radius: var(--r-s); font-size: var(--fs-m); cursor: pointer; }
-  #model-list button.star[aria-pressed="true"] { color: inherit; }
-  #model-list button.star:hover, #model-list button.star:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
-  #model-list .empty { padding: 10px 8px; color: var(--muted); }
-  #model-menu .foot { flex: none; display: flex; justify-content: space-between; padding: 2px 4px 4px; border-top: 1px solid var(--border); }
-  #model-menu .foot button { background: none; border: 0; color: var(--accent); padding: 3px 6px; min-height: 24px; cursor: pointer; font-size: var(--fs-s); }
-  #model-menu .foot button:hover { text-decoration: underline; }
-  .spacer { flex: 1; }
-  button.icon { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--r-s); background: transparent; color: var(--fg); flex: none; }
-  button.icon[hidden] { display: none; }
-  button.icon:hover { background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, .31)); }
-  button.icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-  .meter { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
-  .meter.empty { display: none; }
-  .meter.no-ctx .meter-btn { display: none; }
-  .meter-btn { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px 0 0; background: none; color: inherit; border: 0; border-radius: 14px; cursor: pointer; font: inherit; }
-  .meter-btn:hover #meter-text { text-decoration: underline; }
-  /* The wave is decoration; the numbers beside it carry the meaning. Fill height is context used, the dashed guide is the 80% warning level. */
-  .m-cap { --wave: var(--ion); position: relative; flex: 1 1 auto; min-width: 48px; height: 28px; border-radius: 14px; overflow: hidden; border: 1px solid var(--edge); background: var(--sunken); }
-  .m-cap svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-  .wv { animation: wv 5s linear infinite; }
-  .wv.b { animation-duration: 7s; animation-direction: reverse; }
-  .meter.stream .wv { animation-duration: 1.6s; }
-  .meter.stream .wv.b { animation-duration: 2.4s; }
-  .wv.a path { fill: color-mix(in srgb, var(--wave) 90%, transparent); }
-  .wv.b path { fill: color-mix(in srgb, var(--wave) 45%, transparent); }
-  @keyframes wv { from { transform: translateX(0); } to { transform: translateX(-44px); } }
-  .meter.warn .m-cap { --wave: var(--warn); }
-  .meter.crit .m-cap { --wave: var(--err); }
-  .m-guide { position: absolute; left: 0; right: 0; top: 5.6px; border-top: 1px dashed color-mix(in srgb, var(--fg) 35%, transparent); pointer-events: none; }
-  .m-chev { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.5; transition: transform .15s; }
-  .meter-btn[aria-expanded="true"] .m-chev { transform: rotate(180deg); }
-  .meter.warn, .meter.crit { color: var(--fg); }
-  #meter-pop { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 9; display: flex; flex-direction: column; gap: 12px; padding: 12px; white-space: normal; color: var(--fg); background: var(--vscode-menu-background, var(--bg)); border: 1px solid var(--edge); border-radius: var(--r-m); box-shadow: var(--elev-3); }
-  #meter-pop[hidden] { display: none; }
-  .mp-head { display: flex; align-items: flex-start; gap: 8px; }
-  .mp-head .icon { margin-left: auto; }
-  .mp-title { font-weight: 600; }
-  .mp-sub { color: var(--muted); font-size: var(--fs-xs); }
-  .mp-big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .mp-big b { font-family: var(--vscode-editor-font-family); font-size: var(--fs-xl); font-weight: 500; }
-  .mp-big span { color: var(--muted); font-size: var(--fs-xs); }
-  .mp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 0; padding-top: 10px; border-top: 1px solid var(--hair); }
-  .mp-stats div { display: flex; flex-direction: column; min-width: 0; }
-  .mp-stats dt { color: var(--muted); font-size: var(--fs-xs); }
-  .mp-stats dd { margin: 0; font-family: var(--vscode-editor-font-family); font-size: var(--fs-m); }
-  .mp-foot { display: flex; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid var(--hair); }
-  .mp-foot p { margin: 0; flex: 1; color: var(--muted); font-size: var(--fs-xs); }
-  #more-menu { position: absolute; right: 8px; top: calc(100% + 2px); z-index: 6; min-width: 220px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--border)); border-radius: var(--r-m); box-shadow: var(--elev-3); }
-  #more-menu[hidden] { display: none; }
-  #more-menu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--r-s); font-size: var(--fs-m); }
-  #more-menu button:hover, #more-menu button:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
-  #more-menu .stat { border-top: 1px solid var(--border); margin-top: 4px; padding: 6px 8px 2px; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
-  #more-menu .stat:empty { display: none; }
-  #panel { display: none; position: absolute; inset: 36px 0 0 0; background: var(--bg); z-index: 5; overflow-y: auto; padding: 8px 12px; border-top: 1px solid var(--border); }
-  #panel.open { display: block; animation: rise .14s ease-out; }
-  @media (prefers-reduced-motion: reduce) { #panel.open { animation: none; } }
-  #panel .row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  #panel .row .text { flex: 1 1 100%; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-  #panel .row .meta { color: var(--muted); font-size: var(--fs-xs); flex: 1 1 auto; display: flex; gap: 6px; align-items: center; }
-  #panel .row { position: relative; }
-  #panel .row .pill { padding: 0 6px; border-radius: 8px; font-size: var(--fs-xs); line-height: 16px; background: none; border: 1px solid var(--border); color: var(--muted); }
-  #panel .row.current .text { font-weight: 600; }
-  #panel .rowmenu { position: absolute; right: 0; top: 100%; z-index: 8; min-width: 150px; padding: 4px; background: var(--vscode-menu-background, var(--bg)); color: var(--vscode-menu-foreground, var(--fg)); border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--border))); border-radius: var(--r-m); box-shadow: var(--elev-3); }
-  #panel .rowmenu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--r-s); font-size: var(--fs-m); }
-  #panel .rowmenu button:hover, #panel .rowmenu button:focus-visible { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); }
-  #panel .rowmenu button.danger { color: var(--err); }
-  #panel .wk-note { color: var(--muted); line-height: 1.5; margin: 4px 0 10px; overflow-wrap: anywhere; }
-  #panel .wk-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 8px 0; }
-  #panel .wk-empty p { margin: 0; color: var(--muted); line-height: 1.5; }
-  #panel .wk-label { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
-  #panel .wk-card { border-bottom: 1px solid var(--border); padding: 6px 0 8px; }
-  #panel .wk-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  #panel .wk-head .tt { font-weight: 600; flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
-  #panel .wk-head .meta { color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
-  #panel .wk-bar { height: 3px; border-radius: 2px; background: var(--vscode-widget-border, var(--border)); margin: 6px 0 4px; overflow: hidden; }
-  #panel .wk-bar span { display: block; height: 100%; background: var(--ok); }
-  #panel .wk-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
-  #panel .trow { position: relative; display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; min-height: 26px; }
-  #panel .trow .st { width: 14px; flex: none; text-align: center; line-height: 1.5; color: var(--muted); }
-  #panel .trow .st.done { color: var(--ok); }
-  #panel .trow .st.failed { color: var(--err); }
-  #panel .trow .st.running { color: var(--ion); }
-  #panel .trow .tt { flex: 1 1 120px; min-width: 0; text-align: left; background: none; border: 0; color: inherit; padding: 0; cursor: pointer; overflow-wrap: anywhere; line-height: 1.5; font-size: var(--fs-m); }
-  #panel .trow .tt:hover { text-decoration: underline; }
-  #panel .trow .req { color: var(--muted); font-size: var(--fs-xs); line-height: 1.7; flex: 0 1 auto; max-width: 45%; overflow-wrap: anywhere; }
-  #panel .trow > button { flex: none; }
-  #panel .trow > button.tt { flex: 1 1 120px; }
-  #panel .trow .desc { display: block; color: var(--muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
-  #panel .trow input[type="checkbox"] { margin: 4px 0 0; flex: none; }
-  #panel .search { width: 100%; margin: 0 0 6px; background: var(--vscode-input-background); color: var(--vscode-input-foreground, var(--fg)); border: 1px solid var(--edge); border-radius: var(--r-s); padding: 4px 8px; font: inherit; }
-  #panel .title { font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; }
-  .run-footer { font-size: var(--fs-xs); color: var(--muted); padding: 0 0 8px; margin-top: -2px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
-  .turn-actions .link, .run-footer .link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
-  .cmd-card { border: 1px solid var(--hair); border-radius: var(--r-m); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--vscode-textBlockQuote-background, transparent); }
-  .cmd-card pre { margin: 0; padding: 6px 8px; overflow-x: auto; background: var(--vscode-editor-background, var(--bg)); border-radius: var(--r-s); font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); line-height: 1.5; white-space: pre; }
-  .cmd-card pre code { background: none; padding: 0; font: inherit; }
-  .cmd-card .cmd-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
-  .cmd-card .cmd-risk { color: var(--err); font-size: var(--fs-s); font-weight: 600; display: inline-flex; gap: 4px; }
-  .cmd-card .cmd-msg { color: var(--muted); font-size: var(--fs-s); }
-  .warning.notice { border-left-color: var(--vscode-charts-green, var(--warn)); }
-  .warning { color: var(--fg); font-size: var(--fs-s); line-height: 1.5; overflow-wrap: anywhere; padding: 6px 10px; border-left: 2px solid var(--warn); border-radius: 0 4px 4px 0; background: var(--vscode-textBlockQuote-background, transparent); }
-  body { position: relative; }
-  #messages {
-    flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 14px;
-    /* Lets the empty state compact itself to the room it really has (below the toolbar, above the composer). */
-    container: msgs / size;
-  }
-  /* Steps read as one group, like the mock's .steps: only 2px between consecutive step rows. */
-  /* Consecutive tool rows and approval outcomes live in one group, so their spacing never depends on the message gap. */
-  .steps { display: flex; flex-direction: column; gap: 2px; }
-  .steps-head { font-size: var(--fs-xs); color: var(--muted); padding: 0 4px 2px; font-variant-numeric: tabular-nums; }
-  .steps-head.auto { color: var(--err); }
-  .tool-body .why { margin: 0 0 4px; font-size: var(--fs-s); color: var(--muted); }
-  #input-area { position: relative; border-top: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-  .composer { border: 1px solid var(--edge); border-radius: var(--r-m); background: var(--vscode-input-background, var(--bg)); box-shadow: var(--elev-1); }
-  .composer:focus-within { border-color: var(--vscode-focusBorder, var(--accent)); outline: 2px solid var(--vscode-focusBorder, var(--accent)); outline-offset: 1px; }
-  #input { display: block; width: 100%; resize: none; min-height: 32px; max-height: 200px; border: 0; outline: none; background: transparent; color: var(--fg); padding: 10px 12px 6px; font-family: var(--vscode-font-family); font-size: var(--fs-m); }
-  #input::placeholder { color: var(--muted); }
-  /* In a very narrow sidebar the placeholder wraps; leave room for all of it instead of clipping it behind scroll arrows. */
-  @media (max-width: 260px) { #input { min-height: 56px; } }
-  #queue { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
-  #queue:empty { display: none; }
-  #queue .queued { display: flex; align-items: center; gap: 6px; font-size: var(--fs-s); color: var(--muted); }
-  #queue .queued .q-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #findbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
-  #findbar[hidden] { display: none; }
-  #find-input { flex: 1; min-width: 0; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: inherit; font-size: var(--fs-s); padding: 3px 8px; }
-  #find-input.nomatch { border-color: var(--err); }
-  #edit-banner { display: flex; align-items: center; gap: 6px; padding: 4px 8px 0; font-size: var(--fs-s); color: var(--muted); }
-  #edit-banner[hidden] { display: none; }
-  #chipbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
-  #bg-strip { margin: 0 6px 4px; border: 1px solid var(--hair); border-radius: var(--r-s); font-size: var(--fs-s); }
-  #bg-strip[hidden] { display: none; }
-  #bg-strip .bghead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 8px; color: var(--muted); }
-  #bg-strip ul { list-style: none; margin: 0; padding: 0; }
-  #bg-strip .bgrow { display: flex; align-items: center; gap: 8px; padding: 0 8px; min-height: 24px; }
-  #bg-strip .bgrow .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #bg-strip .bgrow .dt { flex: none; color: var(--muted); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #bg-strip .bgrow .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ion); }
-  #bg-strip .bgrow.done .dot { background: var(--ok); }
-  #bg-strip .bgrow.failed .dot { background: var(--err); }
-  #bg-strip .bgrow.stopped .dot { background: var(--muted); }
-  #goal-chip { flex: 1 1 220px; min-width: 0; }
-  #todo-chip { flex: 0 1 auto; }
-  #todo-chip:has(#todo-list:not([hidden])) { flex-basis: 100%; }
-  #goal-chip { padding: 2px 8px; font-size: var(--fs-s); color: var(--muted); }
-  #goal-chip[hidden], #todo-chip[hidden] { display: none; }
-  #goal-chip { display: flex; align-items: center; gap: 8px; }
-  #goal-chip .gtext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* The plan is content, not a control: a card with a hairline edge, a status icon, one summary line and a segment per step. */
-  #todo-chip { border: 1px solid var(--hair); border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); box-shadow: var(--elev-1); overflow: hidden; font-size: var(--fs-m); color: var(--fg); }
-  #todo-toggle { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 12px 6px; background: none; border: 0; border-radius: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
-  #todo-toggle:hover { background: var(--sel); }
-  #todo-toggle:focus-visible { outline-offset: -2px; }
-  #todo-toggle .sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
-  #todo-toggle .chev { flex: none; color: var(--muted); transition: transform .14s; }
-  #todo-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
-  #todo-chip .st-ic { flex: none; display: none; }
-  #todo-chip.s-doing .st-doing, #todo-chip.s-done .st-done, #todo-chip.s-idle .st-idle { display: block; }
-  #todo-bar { display: flex; gap: 2px; padding: 0 12px 10px; }
-  #todo-bar span { flex: 1; height: 3px; border-radius: 2px; background: var(--hair); }
-  #todo-bar span.done { background: var(--ok); }
-  #todo-bar span.doing { background: var(--ion); }
-  #todo-list { margin: 0; padding: 2px 6px 8px; list-style: none; border-top: 1px solid var(--hair); }
-  #todo-list[hidden] { display: none; }
-  #todo-list li { display: flex; align-items: flex-start; gap: 8px; padding: 4px 6px; min-height: 28px; border-radius: var(--r-s); overflow-wrap: anywhere; }
-  #todo-list li .ic { flex: none; width: 16px; height: 20px; display: flex; align-items: center; justify-content: center; }
-  #todo-list li.done { color: var(--muted); }
-  #todo-list li.done .tx { text-decoration: line-through; }
-  #todo-list li.doing { background: var(--sel); font-weight: 600; }
-  .todo-spin { transform-origin: 50% 50%; animation: todo-spin 1.2s linear infinite; }
-  @keyframes todo-spin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { .todo-spin { animation: none; } }
-  .question { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-  .question .qk { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
-  .question .qt { overflow-wrap: anywhere; }
-  .question .opts { display: flex; flex-wrap: wrap; gap: 6px; }
-  .question .opts button, .question .custom button { font-size: var(--fs-s); padding: 3px 9px; }
-  .question .custom { display: flex; gap: 6px; }
-  .question .custom input { flex: 1; min-width: 0; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: inherit; font-size: var(--fs-s); padding: 3px 8px; }
-  .turn-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin: -4px 0 0; font-size: var(--fs-s); }
-  .diagram { margin: 6px 0; padding: 8px; overflow: auto; border-radius: var(--r-m); background: var(--vscode-textCodeBlock-background, transparent); }
-  .diagram svg { max-width: 100%; height: auto; }
-  details.diagram-src > summary { cursor: pointer; font-size: var(--fs-s); color: var(--muted); }
-  #attachments { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px 0; }
-  #attachments:empty { display: none; }
-  .chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 1px 2px 1px 6px; border-radius: var(--r-s); background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-size: var(--fs-xs); }
-  .chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chip button { width: 16px; height: 16px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; line-height: 1; }
-  .msg.user .files { margin-top: 4px; font-size: var(--fs-xs); opacity: .8; }
-  /* Mode and model are set once and rarely touched, so they head the composer on a sunken strip, out of the way of typing. */
-  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; min-width: 0; background: var(--sunken); border-bottom: 1px solid var(--hair); border-radius: var(--r-m) var(--r-m) 0 0; }
-  .cchips #mode { font-weight: 600; }
-  .cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px 8px; }
-  /* The approval level is a select like the mode and model chips. It stays neutral while Ask first, reads as a mild step at Accept edits, and is the one red control in the composer at Autonomous. */
-  .cfoot .auto { font-size: var(--fs-s); color: var(--muted); background: transparent; border: 1px solid var(--chip-edge); border-radius: var(--r-s); min-height: 24px; padding: 2px 4px; cursor: pointer; field-sizing: content; }
-  .cfoot .auto:hover { color: var(--fg); background: var(--vscode-toolbar-hoverBackground, var(--sel)); }
-  .cfoot .auto option { background: var(--vscode-dropdown-background, var(--bg)); color: var(--vscode-dropdown-foreground, var(--fg)); font-weight: normal; }
-  .cfoot .auto.edits { color: var(--fg); border-color: var(--edge); }
-  .cfoot .auto.on { color: var(--err); font-weight: 600; border-color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); }
-  #auto-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 6px; padding: 6px 8px; font-size: var(--fs-s); line-height: 1.4; color: var(--fg); background: color-mix(in srgb, var(--err) 12%, transparent); border-left: 3px solid var(--err); border-radius: var(--r-s); }
-  #auto-note svg { flex: none; margin-top: 1px; color: var(--err); }
-  #auto-note.edits { background: var(--sunken); border-left-color: var(--edge); }
-  #auto-note.edits svg { color: var(--muted); }
-  #auto-note[hidden] { display: none; }
-  #send, #cancel { flex: none; min-height: 24px; }
-  #send[hidden], #cancel[hidden] { display: none; }
-  /* A plain button is a reset. Look comes from a class: primary, secondary, link (base), icon, or the component's own rule. */
-  button { background: none; color: inherit; border: 0; padding: 0; border-radius: var(--r-s); cursor: pointer; font-size: var(--fs-s); }
-  button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); padding: 4px 10px; min-height: 24px; }
-  button.primary:hover { background: var(--vscode-button-hoverBackground); }
-  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--edge); padding: 4px 10px; min-height: 24px; }
-  button.secondary:hover { background: var(--vscode-toolbar-hoverBackground, transparent); }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .msg { padding: 0; line-height: 1.5; }
-  .msg.user { color: var(--fg); }
-  .msg.user .body { background: var(--bubble); border: 1px solid var(--hair); border-radius: var(--r-m); padding: 7px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .msg.assistant .body { overflow-wrap: anywhere; }
-  .msg.assistant .body:not(.md) { white-space: pre-wrap; }
-  .msg .label { display: none; }
-  .msg.assistant .label.has-speed { display: block; order: 2; margin-top: 2px; font-size: var(--fs-xs); color: var(--ion); font-variant-numeric: tabular-nums; }
-  .msg.assistant .label.has-speed .who { display: none; }
-  .md > * { margin: 0; }
-  .md > * + * { margin-top: 8px; }
-  .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-size: var(--fs-m); font-weight: 600; }
-  .md h1, .md h2 { font-size: var(--fs-l); }
-  .md ul, .md ol { padding-left: 20px; }
-  .md li + li { margin-top: 2px; }
-  .md a { color: var(--accent); }
-  .md blockquote { margin: 0; padding-left: 10px; border-left: 2px solid var(--border); color: var(--muted); }
-  .md hr { border: 0; border-top: 1px solid var(--border); }
-  .md code { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); background: var(--vscode-textCodeBlock-background, var(--tool)); padding: 1px 4px; border-radius: var(--r-s); }
-  .md .code { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-s); background: var(--vscode-editor-background, var(--bg)); overflow: hidden; }
-  .md .code-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 2px 8px; font-size: var(--fs-xs); color: var(--muted); border-bottom: 1px solid var(--vscode-widget-border, var(--border)); }
-  .md .code-head .copy { background: none; color: var(--muted); border: 0; padding: 1px 8px; min-height: 24px; font-size: var(--fs-xs); }
-  .md .code-head .copy:hover { color: var(--fg); }
-  .md pre { margin: 0; padding: 8px 10px; overflow-x: auto; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); line-height: 1.5; }
-  .md pre code { background: none; padding: 0; }
-  .md .table { overflow-x: auto; }
-  .md table { border-collapse: collapse; font-size: var(--fs-s); display: block; max-width: 100%; overflow-x: auto; }
-  .md th, .md td { border: 1px solid var(--border); padding: 3px 6px; text-align: left; }
-  .md .task { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--muted); border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-  .md .task.done { background: var(--ok); border-color: var(--ok); }
-  .tool-row { font-size: var(--fs-m); color: var(--muted); }
-  .tool-row[open], .tool-row > summary:hover { color: var(--fg); }
-  .tool-row .target { color: var(--fg); }
-  .tool-row > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 3px 4px; min-height: 24px; border-radius: var(--r-s); cursor: pointer; min-width: 0; }
-  .tool-row > summary::-webkit-details-marker { display: none; }
-  .tool-row > summary:hover { background: var(--vscode-list-hoverBackground); }
-  .tool-row .chev { width: 0; height: 0; border-left: 4px solid var(--muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; flex: none; margin: 0 2px; }
-  .tool-row[open] > summary .chev { transform: rotate(90deg); }
-  .tool-row .st { width: 14px; text-align: center; flex: none; font-size: var(--fs-s); }
-  .tool-row .st.ok { color: var(--ok); }
-  .tool-row .st.err { color: var(--err); }
-  .tool-row .st.spin { width: 10px; height: 10px; margin: 0 2px; border: 1.5px solid var(--ion); border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .tool-row .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tool-row .target { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
-  .tool-row .meta { margin-left: auto; padding-left: 8px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .tool-row .meta.err { color: var(--err); }
-  .tool-row .tool-body { padding: 4px 0 6px 24px; }
-  .tool-row .result, .tool-row .args { margin: 0; padding: 4px 6px; background: var(--tool); border-radius: var(--r-s); white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
-  .tool-row .result.collapsed { max-height: 120px; }
-  .tool-row .show-more { font-size: var(--fs-xs); margin-top: 2px; cursor: pointer; color: var(--accent); background: none; border: none; padding: 0; }
-  .tool-row .diff { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-s); overflow-x: auto; font-size: var(--fs-s); }
-  .cursor { display: inline-block; width: 6px; height: 13px; background: var(--ion); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .diff-line { white-space: pre; font-family: var(--vscode-editor-font-family); padding: 0 8px; line-height: 1.5; }
-  .diff-add { background: var(--vscode-diffEditor-insertedLineBackground, transparent); }
-  .diff-del { background: var(--vscode-diffEditor-removedLineBackground, transparent); }
-  .reasoning { border-left: 2px solid var(--vscode-widget-border, var(--border)); padding: 0 0 0 10px; margin: 0; font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
-  .reasoning > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; min-height: 24px; }
-  .reasoning > summary::-webkit-details-marker { display: none; }
-  .reasoning > summary::before { content: ''; flex: none; width: 0; height: 0; border-left: 4px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; }
-  .reasoning[open] > summary::before { transform: rotate(90deg); }
-  .reasoning > summary:hover { color: var(--fg); }
-  .reasoning .rbody { white-space: pre-wrap; padding: 0 0 4px;
-  }
-  .approval { border: 1px solid var(--warn); border-left-width: 3px; border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); box-shadow: var(--elev-1); animation: rise .14s ease-out; }
-  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .approval { animation: none; } }
-  .approval.destructive { border-color: var(--err); }
-  .approval .kind { display: flex; align-items: center; gap: 6px; padding: 9px 12px 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
-  .approval.destructive .kind { color: var(--err); }
-  .approval .kind .hint { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
-  .approval .line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px 2px; min-width: 0; }
-  .approval .q { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
-  .approval .file { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
-  /* The command or path being approved is the focus of the card: a code block that wraps (three lines, then "Show full command"), never a coloured sentence. */
-  .approval .target { display: inline-block; max-width: 100%; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); background: var(--sunken); border-radius: var(--r-s); padding: 1px 6px; overflow-wrap: anywhere; vertical-align: top; }
-  .approval .cmd { flex: 1 1 100%; min-width: 0; display: flex; gap: 8px; background: var(--sunken); border-radius: var(--r-s); padding: 8px 10px; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); line-height: 1.5; }
-  .approval .cmd .p { flex: none; color: var(--muted); }
-  .approval .cmd code { min-width: 0; font: inherit; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-  .approval .cmd.open code { display: block; -webkit-line-clamp: unset; max-height: 200px; overflow: auto; }
-  .approval .meta { font-size: var(--fs-xs); color: var(--fg); font-family: var(--vscode-editor-font-family); }
-  .approval button { flex: none; font-size: var(--fs-s); min-height: 28px; padding: 3px 12px; white-space: nowrap; }
-  .approval .link { padding: 0; min-height: 24px; }
-  .approval .link:hover { text-decoration: underline; }
-  .approval .fb { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
-  .approval .fb[hidden] { display: none; }
-  .approval .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-  .approval .chip { border: 1px solid var(--vscode-widget-border, var(--border)); background: transparent; color: var(--muted); border-radius: 10px; padding: 1px 8px; font-size: var(--fs-xs); }
-  .approval .chip:hover { color: var(--fg); }
-  .approval .preview { margin: 6px 10px 10px; padding: 8px 10px; white-space: pre-wrap; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); max-height: 160px; overflow: auto; background: var(--sunken); border-radius: var(--r-s); }
-  .approval .note { width: 100%; resize: vertical; min-height: 44px; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--vscode-input-background, var(--bg)); color: var(--fg); font: 12px var(--vscode-font-family); padding: 6px 8px; }
-  .approval .note:focus { border-color: var(--vscode-focusBorder, var(--accent)); }
-  .approval .fb-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-  .approval .bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px 12px; }
-  .approval .bar .sp { flex: 1; }
-  .approval .acts { display: flex; gap: 8px; flex: none; }
-  .approval .hold { position: relative; overflow: hidden; min-width: 116px; font-weight: 600; background: transparent; color: var(--err); box-shadow: inset 0 0 0 1px var(--err); user-select: none; touch-action: none; }
-  .approval .hold::before { content: ""; position: absolute; inset: 0; width: 0; background: var(--err); opacity: .25; }
-  .approval .hold.holding::before { width: 100%; transition: width .9s linear; }
-  .approval .hold span { position: relative; }
-  .approval-log { display: flex; gap: 6px; font-size: var(--fs-s); color: var(--muted); padding: 3px 4px 3px 18px; }
-  .approval-log .st { width: 14px; flex: none; text-align: center; }
-  .run { border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-m); background: var(--vscode-editor-background, var(--bg)); overflow: hidden; }
-  .run .rh { display: flex; align-items: center; gap: 6px; padding: 8px 10px 6px; min-width: 0; }
-  .run .rh .task { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; flex: 1; }
-  .run .rh .sum { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .run .bar { height: 3px; margin: 0 10px 6px; border-radius: 2px; background: var(--vscode-widget-border, var(--border)); overflow: hidden; }
-  .run .bar span { display: block; height: 100%; background: var(--vscode-button-background); }
-  .run .step { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px; border-top: 1px solid var(--vscode-widget-border, var(--border)); }
-  .run .l1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .run .who { font-family: var(--vscode-editor-font-family); font-size: var(--fs-xs); color: var(--muted); border: 1px solid var(--vscode-widget-border, var(--border)); border-radius: var(--r-s); padding: 0 4px; flex: none; }
-  .run .stask { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .run .meta { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
-  .run .l2 { display: flex; align-items: center; gap: 8px; padding-left: 22px; flex-wrap: wrap; font-size: var(--fs-s); }
-  .run .l2 .link { font-size: var(--fs-s); }
-  .run .rerr { padding-left: 22px; overflow-wrap: anywhere; font-size: var(--fs-s); color: var(--err); }
-  .run .rf { display: flex; justify-content: flex-end; padding: 6px 10px; border-top: 1px solid var(--vscode-widget-border, var(--border)); }
-  .run .rf .link { font-size: var(--fs-s); }
-  .approval-log.err { color: var(--err); }
-  .run .rh .ok, .run .l1 .ok { color: var(--ok); }
-  .run .rh .err, .run .l1 .err { color: var(--err); }
-  .status-bar {
-    font-size: var(--fs-xs); color: var(--muted); padding: 6px 0 0; border-top: 1px solid var(--vscode-widget-border, var(--border)); margin-top: 2px; font-variant-numeric: tabular-nums;
-    display: flex; flex-wrap: wrap; gap: 2px 12px; justify-content: space-between;
-  }
-  .status-bar > span { min-width: 0; overflow-wrap: anywhere; }
-  .error-banner { background: color-mix(in srgb, var(--err) 12%, transparent); border-left: 2px solid var(--err); border-radius: 0 4px 4px 0; padding: 8px 10px; line-height: 1.5; overflow-wrap: anywhere; }
-  .error-banner .link { padding: 0 0 0 6px; text-decoration: none; }
-  .error-banner .link:hover { text-decoration: underline; }
-  .md .code.collapsed pre { max-height: 18em; overflow: hidden; }
-  .md .code .code-more { display: block; width: 100%; background: none; color: var(--accent); border: 0; border-top: 1px solid var(--vscode-widget-border, var(--border)); padding: 4px 8px; font-size: var(--fs-xs); text-align: left; cursor: pointer; }
-  .empty-state { color: var(--muted); padding: 28px 4px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .empty-state .mark { width: 64px; height: 64px; background: var(--ion); -webkit-mask: var(--mandala) center / contain no-repeat; mask: var(--mandala) center / contain no-repeat; }
-  .empty-state h2 { margin: 0; font-size: var(--fs-l); font-weight: 600; color: var(--fg); }
-  .empty-state p { margin: 0; line-height: 1.5; max-width: 34ch; }
-  .approval-default-card { width: 100%; text-align: left; border: 1px solid var(--hair); border-radius: var(--r-m); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--elev-1); }
-  .approval-default-card[hidden] { display: none; }
-  .approval-default-card h3 { margin: 0; font-size: var(--fs-m); font-weight: 600; color: var(--fg); }
-  .approval-default-card .adc-opt { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: start; min-height: 24px; padding: 3px 0; cursor: pointer; color: var(--fg); }
-  .approval-default-card .adc-opt input { margin: 3px 0 0; }
-  .approval-default-card .adc-name { font-weight: 600; }
-  .approval-default-card .adc-desc { grid-column: 2; color: var(--muted); font-size: var(--fs-xs); line-height: 1.4; }
-  .approval-default-card .adc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .approval-default-card .adc-note { color: var(--muted); font-size: var(--fs-xs); }
-  .empty-state .examples { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
-  .empty-state .ex { text-align: left; background: transparent; color: var(--fg); border: 1px solid var(--edge); border-radius: var(--r-m); padding: 6px 10px; font-size: var(--fs-s); min-height: 28px; }
-  .empty-state .ex:hover { background: var(--vscode-list-hoverBackground); border-color: var(--vscode-focusBorder, var(--accent)); }
-  .empty-state .hint { font-size: var(--fs-xs); line-height: 1.4; margin-top: 6px; max-width: none; }
-  /* Short panes (small windows, the composer's Autonomous note): give up the decoration first, never the hint. */
-  @container msgs (max-height: 360px) {
-    .empty-state { padding: 6px 4px 2px; gap: 6px; }
-    .empty-state .mark { width: 44px; height: 44px; }
-    .empty-state .examples { gap: 4px; margin-top: 2px; }
-    .empty-state .ex { min-height: 24px; padding: 3px 10px; }
-    .empty-state .hint { margin-top: 2px; }
-  }
-  @container msgs (max-height: 300px) {
-    .empty-state .mark, .empty-state p:not(.hint) { display: none; }
-  }
-  @container msgs (max-height: 185px) {
-    .empty-state .ex:nth-child(n + 2) { display: none; }
-  }
-  @container msgs (max-height: 125px) {
-    .empty-state .examples { display: none; }
-  }
-  .empty-state kbd {
-    background: var(--tool); border: 1px solid var(--border); padding: 1px 5px; border-radius: var(--r-s); font-family: var(--vscode-editor-font-family); font-size: var(--fs-xs);
-  }
-  /* Voice input */
-  #mic.recording {
-    background: color-mix(in srgb, var(--err) 15%, transparent); color: var(--err); border-color: var(--err);
-    animation: mic-pulse 1.2s ease-in-out infinite;
-  }
-  #mic:disabled { opacity: 0.4; cursor: not-allowed; }
-  #mic .dot {
-    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-    background: currentColor; vertical-align: middle; margin-right: 4px;
-  }
-  @keyframes mic-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--err) 45%, transparent); }
-    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--err) 0%, transparent); }
-  }
-  #input.interim {
-    color: var(--muted); font-style: italic;
-  }
-  #voice-status {
-    font-size: var(--fs-xs); color: var(--muted);
-  }
-  #voice-status:not(:empty) { padding: 4px 0; min-height: 14px; }
-  /* Empty, it must not add the flex gap above it as dead space under the meter. */
-  #voice-status:empty { margin-top: -6px; }
-  #voice-status.error { color: var(--err); }
-  #mention-list {
-    display: none; border: 1px solid var(--border); border-radius: var(--r-s); margin-bottom: 4px;
-    background: var(--vscode-editorSuggestWidget-background, var(--bg)); max-height: 140px; overflow: auto; font-size: var(--fs-s);
-  }
-  #mention-list.open { display: block; }
-  #mention-list .mg { padding: 6px 8px 2px; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
-  #mention-list .mi { padding: 3px 8px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; min-width: 0; }
-  #mention-list .mi > span:first-child { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #mention-list .mi:hover, #mention-list .mi.sel { background: var(--vscode-list-hoverBackground); }
-  #mention-list .mi .hint { color: var(--muted); font-size: var(--fs-s); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* Keyboard focus must always be visible. */
-  button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible, .mi:focus-visible {
-    outline: 2px solid var(--vscode-focusBorder, var(--accent)); outline-offset: 1px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  }
-  @media (forced-colors: active) {
-    button, select, textarea, #mention-list, .approval, .error-banner, .warning, .cmd-card, .approval-default-card, .question, .composer, .steps, .cchips select, .cchips .model, .cfoot .auto, .empty-state .ex { border: 1px solid ButtonText; }
-    .m-cap { border: 1px solid ButtonText; }
-    .wv path { forced-color-adjust: none; fill: Highlight; }
-  }
-</style>
+<style>${DESIGN_CSS}</style>
+<style>${CHAT_CSS}</style>
 </head>
-<body>
+<body class="ik-root" data-density="compact">
 <script src="${voiceScriptUri}" onerror="window.__forgeVoiceLoadFailed=true"></script>
 <script src="${forgeUiScriptUri}" onerror="window.__forgeUiLoadFailed=true"></script>
 <div id="toolbar" role="toolbar" aria-label="Chat actions">
@@ -513,10 +517,11 @@ export function chatHtml(
     <button id="condense-btn" type="button" role="menuitem" title="Summarize older turns to free up context">Condense conversation</button>
     <button id="specs-btn" type="button" role="menuitem" title="Turn a task into requirements, a design and a checklist">Specs…</button>
     <button id="steering-btn" type="button" role="menuitem" title="Guidance Forge reads at the start of every chat">Steering…</button>
+    <button id="manager-window-btn" type="button" role="menuitem" title="Run several sessions at once, in a window of its own">Agent Manager in new window</button>
     <div class="stat" id="meter-stat"></div>
   </div>
 </div>
-<div id="findbar" role="search" hidden><input id="find-input" type="text" aria-label="Find in this chat" placeholder="Find in this chat" /><button id="find-prev" class="link" type="button" aria-label="Previous match">Prev</button><button id="find-next" class="link" type="button" aria-label="Next match">Next</button><button id="find-close" class="link" type="button" aria-label="Close find">Close</button></div>
+<div id="findbar" role="search" hidden><input id="find-input" type="text" aria-label="Find in this chat" placeholder="Find in this chat" /><button id="find-prev" class="ik-btn ik-btn--link" type="button" aria-label="Previous match">Prev</button><button id="find-next" class="ik-btn ik-btn--link" type="button" aria-label="Next match">Next</button><button id="find-close" class="ik-btn ik-btn--link" type="button" aria-label="Close find">Close</button></div>
 <div id="panel" role="dialog" aria-label="Panel"></div>
 <div id="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation">
   <div class="empty-state" id="empty">
@@ -528,7 +533,7 @@ export function chatHtml(
       <label class="adc-opt"><input type="radio" name="adc" value="ask" checked><span class="adc-name">Ask first</span><span class="adc-desc">Approve each file edit and command. Safest while you get to know Forge.</span></label>
       <label class="adc-opt"><input type="radio" name="adc" value="edits"><span class="adc-name">Accept edits</span><span class="adc-desc">File edits just happen. Commands still ask.</span></label>
       <label class="adc-opt"><input type="radio" name="adc" value="auto"><span class="adc-name">Autonomous</span><span class="adc-desc">No approval cards. For trusted projects.</span></label>
-      <div class="adc-foot"><span class="adc-note">You can change this any time in the composer.</span><button type="button" class="primary" id="adc-use">Use this</button></div>
+      <div class="adc-foot"><span class="adc-note">You can change this any time in the composer.</span><button type="button" class="ik-btn ik-btn--primary" id="adc-use">Use this</button></div>
     </div>
     <div class="examples">
       <button type="button" class="ex">Explain how this project is organized</button>
@@ -538,7 +543,7 @@ export function chatHtml(
     <p class="hint">Enter sends. Shift+Enter adds a line. @ attaches files.</p>
   </div>
 </div>
-<div id="approval-announcer" class="sr-only" aria-live="assertive"></div>
+<div id="approval-announcer" class="ik-sr-only" aria-live="assertive"></div>
 <div id="input-area" role="region" aria-label="Message input">
 <div id="model-menu" role="dialog" aria-label="Choose a model" hidden>
   <input type="search" id="model-search" placeholder="Search models" aria-label="Search models" autocomplete="off" />
@@ -548,10 +553,10 @@ export function chatHtml(
   <div id="mention-list" role="listbox" aria-label="Mention suggestions"></div>
   <div id="queue" role="list" aria-label="Queued messages"></div>
   <div id="bg-strip" role="region" aria-label="Background agents" hidden></div>
-  <div id="edit-banner" hidden><span>Editing your last message</span><button id="edit-cancel" class="link" type="button">Cancel</button></div>
+  <div id="edit-banner" hidden><span>Editing your last message</span><button id="edit-cancel" class="ik-btn ik-btn--link" type="button">Cancel</button></div>
   <div id="chipbar">
-  <div id="goal-chip" hidden><span class="gtext" id="goal-text"></span><button type="button" class="link" id="goal-toggle">Pause</button><button type="button" class="link" id="goal-clear">Clear</button></div>
-  <div id="todo-chip" class="s-idle" hidden><button type="button" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"><svg class="st-ic st-idle" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--edge)" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><svg class="st-ic st-doing todo-spin" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ion)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="var(--hair)"/><path d="M8 2a6 6 0 0 1 6 6"/></svg><svg class="st-ic st-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ok)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="m5.5 8.2 1.8 1.8 3.3-3.6"/></svg><span class="sum" id="todo-sum"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><div id="todo-bar" aria-hidden="true"></div><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
+  <div id="goal-chip" hidden><span class="gtext" id="goal-text"></span><button type="button" class="ik-btn ik-btn--link" id="goal-toggle">Pause</button><button type="button" class="ik-btn ik-btn--link" id="goal-clear">Clear</button></div>
+  <div id="todo-chip" class="s-idle" hidden><button type="button" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"><svg class="st-ic st-idle" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--line-control)" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><svg class="st-ic st-doing todo-spin" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ion)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="var(--line-subtle)"/><path d="M8 2a6 6 0 0 1 6 6"/></svg><svg class="st-ic st-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--success)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="m5.5 8.2 1.8 1.8 3.3-3.6"/></svg><span class="sum" id="todo-sum"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><div id="todo-bar" aria-hidden="true"></div><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
   </div>
   <div class="composer">
     <div class="cchips">
@@ -571,14 +576,14 @@ export function chatHtml(
       <button id="attach-file" class="icon" type="button" title="Attach files (or paste / drop them)" aria-label="Attach files"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.3 2.3 0 0 1 3.3 3.3L6.5 11.1a1.2 1.2 0 0 1-1.7-1.7L10 4.2"/></svg></button>
       <button id="enhance" class="icon" type="button" title="Enhance prompt" aria-label="Enhance prompt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.75 9.2 5.3 12.75 6.5 9.2 7.7 8 11.25 6.8 7.7 3.25 6.5 6.8 5.3zM12.5 10.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/></svg></button>
       <button id="mic" class="icon" type="button" title="Voice input (Ctrl+Shift+Space)" aria-label="Voice input"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.75" y="1.75" width="4.5" height="8" rx="2.25"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.25"/></svg></button>
-      <button id="send" class="primary" type="button" disabled title="Type a message to send" aria-label="Send message">Send</button>
-      <button id="cancel" class="secondary" type="button" disabled hidden aria-label="Stop the running task">Stop</button>
+      <button id="send" class="ik-btn ik-btn--primary" type="button" disabled title="Type a message to send" aria-label="Send message">Send</button>
+      <button id="cancel" class="ik-btn ik-btn--secondary" type="button" disabled hidden aria-label="Stop the running task">Stop</button>
     </div>
   </div>
   <div class="meter empty" id="meter">
     <button type="button" class="meter-btn" id="meter-btn" aria-label="Chat cost and context usage" title="Cost of this chat and how full the context window is" aria-haspopup="dialog" aria-expanded="false" aria-controls="meter-pop"><span class="m-cap" aria-hidden="true"><svg viewBox="0 0 132 28" preserveAspectRatio="none"><g class="wv a"><path id="meter-wave-a" d=""/></g><g class="wv b"><path id="meter-wave-b" d=""/></g></svg><i class="m-guide"></i></span><span class="m-label">Context</span><span id="meter-text"></span><svg class="m-chev" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 6l3-3 3 3"/></svg></button>
     <span id="meter-cost"></span>
-    <span id="meter-live" class="sr-only" role="status"></span>
+    <span id="meter-live" class="ik-sr-only" role="status"></span>
     <div id="meter-pop" role="dialog" aria-label="Context and cost details" hidden>
       <div class="mp-head"><div><div class="mp-title">Context window</div><div class="mp-sub" id="mp-model"></div></div><button type="button" class="icon" id="mp-close" aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
       <div class="mp-big"><b id="mp-used"></b><span id="mp-of"></span></div>
@@ -589,7 +594,7 @@ export function chatHtml(
         <div><dt>Run time</dt><dd id="mp-time"></dd></div>
         <div><dt>Step</dt><dd id="mp-step"></dd></div>
       </dl>
-      <div class="mp-foot"><p>Cost is an estimate from known pricing.</p><button type="button" class="secondary" id="mp-condense">Condense</button></div>
+      <div class="mp-foot"><p>Cost is an estimate from known pricing.</p><button type="button" class="ik-btn ik-btn--secondary" id="mp-condense">Condense</button></div>
     </div>
   </div>
   <div id="voice-status" aria-live="polite"></div>
@@ -694,7 +699,7 @@ export function chatHtml(
     const head = document.createElement('div'); head.className = 'bghead';
     const title = document.createElement('span'); title.textContent = 'Background agents'; head.appendChild(title);
     if (view.canStopAll) {
-      const all = document.createElement('button'); all.type = 'button'; all.className = 'secondary'; all.textContent = 'Stop all';
+      const all = document.createElement('button'); all.type = 'button'; all.className = 'ik-btn ik-btn--secondary'; all.textContent = 'Stop all';
       all.addEventListener('click', () => vscode.postMessage({ type: 'bg_stop_all' }));
       head.appendChild(all);
     }
@@ -705,7 +710,7 @@ export function chatHtml(
       const dot = document.createElement('span'); dot.className = 'dot'; dot.setAttribute('aria-hidden', 'true'); li.appendChild(dot);
       const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.label; nm.title = it.title; li.appendChild(nm);
       const dt = document.createElement('span'); dt.className = 'dt'; dt.textContent = it.detail; dt.title = it.detail; li.appendChild(dt);
-      const act = document.createElement('button'); act.type = 'button'; act.className = 'link';
+      const act = document.createElement('button'); act.type = 'button'; act.className = 'ik-btn ik-btn--link';
       if (it.canStop) { act.textContent = 'Stop'; act.setAttribute('aria-label', 'Stop ' + it.label); act.addEventListener('click', () => vscode.postMessage({ type: 'bg_stop', id: it.id })); }
       else { act.textContent = 'Dismiss'; act.setAttribute('aria-label', 'Dismiss ' + it.label); act.addEventListener('click', () => vscode.postMessage({ type: 'bg_dismiss', id: it.id })); }
       li.appendChild(act);
@@ -938,7 +943,7 @@ export function chatHtml(
       row.appendChild(meta);
       for (const a of r.actions) {
         const b = document.createElement('button');
-        b.className = a.secondary ? 'secondary' : 'primary';
+        b.className = a.secondary ? 'ik-btn ik-btn--secondary' : 'ik-btn ik-btn--primary';
         b.textContent = a.label;
         b.addEventListener('click', a.onClick);
         row.appendChild(b);
@@ -1065,7 +1070,7 @@ export function chatHtml(
     if (!view.drafts.length && !view.specs.length) {
       const box = wk('div', 'wk-empty');
       box.appendChild(wk('p', '', 'A spec turns a task into requirements, a design and a checklist that Forge works through.'));
-      box.appendChild(wkButton('Generate a spec', 'primary', () => workAct('specs', { action: 'generate' })));
+      box.appendChild(wkButton('Generate a spec', 'ik-btn ik-btn--primary', () => workAct('specs', { action: 'generate' })));
       box.appendChild(wk('p', '', 'You can also type /spec followed by the task in the chat.'));
       panelEl.appendChild(box);
       return;
@@ -1084,8 +1089,8 @@ export function chatHtml(
         const spacer = wk('span');
         spacer.style.flex = '1';
         acts.appendChild(spacer);
-        acts.appendChild(wkButton('Discard', 'secondary', () => workAct('specs', { action: 'discard', draftId: d.id })));
-        acts.appendChild(wkButton('Approve', 'primary', () => workAct('specs', { action: 'approve', draftId: d.id })));
+        acts.appendChild(wkButton('Discard', 'ik-btn ik-btn--secondary', () => workAct('specs', { action: 'discard', draftId: d.id })));
+        acts.appendChild(wkButton('Approve', 'ik-btn ik-btn--primary', () => workAct('specs', { action: 'approve', draftId: d.id })));
         card.appendChild(acts);
         panelEl.appendChild(card);
       });
@@ -1107,7 +1112,7 @@ export function chatHtml(
           card.appendChild(bar);
         }
         const syncRow = wk('div', 'wk-actions');
-        const syncBtn = wkButton('Sync with code', 'secondary', () => workAct('specs', { action: 'sync', specId: s.id }));
+        const syncBtn = wkButton('Sync with code', 'ik-btn ik-btn--secondary', () => workAct('specs', { action: 'sync', specId: s.id }));
         syncBtn.title = 'Update this spec to match the code: tick done tasks, fix paths, add missing work';
         syncRow.appendChild(syncBtn);
         card.appendChild(syncRow);
@@ -1115,7 +1120,7 @@ export function chatHtml(
           const row = wk('div', 'wk-actions');
           row.appendChild(wk('span', 'wk-note', 'No checkbox tasks yet.'));
           row.lastChild.style.margin = '0';
-          row.appendChild(wkButton('Convert…', 'secondary', () => workAct('specs', { action: 'convert', specId: s.id })));
+          row.appendChild(wkButton('Convert…', 'ik-btn ik-btn--secondary', () => workAct('specs', { action: 'convert', specId: s.id })));
           card.appendChild(row);
         }
         s.tasks.forEach((tk) => {
@@ -1126,7 +1131,7 @@ export function chatHtml(
           row.appendChild(name);
           if (tk.requirements) row.appendChild(wk('span', 'req', tk.requirements));
           if (tk.status === 'pending' || tk.status === 'failed') {
-            row.appendChild(wkButton(tk.status === 'failed' ? 'Retry' : 'Run', 'secondary', () => workAct('specs', { action: 'run', specId: s.id, taskId: tk.id, title: tk.title, current: false })));
+            row.appendChild(wkButton(tk.status === 'failed' ? 'Retry' : 'Run', 'ik-btn ik-btn--secondary', () => workAct('specs', { action: 'run', specId: s.id, taskId: tk.id, title: tk.title, current: false })));
             const more = wk('button', 'icon');
             more.type = 'button';
             more.setAttribute('aria-label', 'Run in this chat');
@@ -1149,7 +1154,7 @@ export function chatHtml(
     if (!view.rows.length) {
       const box = wk('div', 'wk-empty');
       box.appendChild(wk('p', '', 'No steering files yet. Steering files hold guidance Forge reads at the start of every chat, such as how this project is built and tested.'));
-      box.appendChild(wkButton('Create a steering file', 'primary', () => workAct('steering', { action: 'new' })));
+      box.appendChild(wkButton('Create a steering file', 'ik-btn ik-btn--primary', () => workAct('steering', { action: 'new' })));
       panelEl.appendChild(box);
       return;
     }
@@ -1185,6 +1190,7 @@ export function chatHtml(
   }
   document.getElementById('specs-btn').addEventListener('click', () => openWork('specs'));
   document.getElementById('steering-btn').addEventListener('click', () => openWork('steering'));
+  document.getElementById('manager-window-btn').addEventListener('click', () => { closeMore(); vscode.postMessage({ type: 'open_agent_manager_window' }); });
 
   function appendWarning(text) {
     hideEmpty();
@@ -1233,14 +1239,38 @@ export function chatHtml(
     const choices = afterPlan ? [['Draft a spec', 'spec', false], ['Just do it', 'go', true]] : [['Draft a spec', 'spec', false], ['Plan first', 'plan', true], ['Just do it', 'go', true]];
     for (const [label, choice, secondary] of choices) {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
-      b.className = secondary ? 'secondary' : 'primary';
+      b.className = secondary ? 'ik-btn ik-btn--secondary' : 'ik-btn ik-btn--primary';
       b.addEventListener('click', () => { card.remove(); vscode.postMessage({ type: 'suggest_choice', choice }); });
       line.appendChild(b);
     }
-    const never = document.createElement('button'); never.type = 'button'; never.className = 'link';
+    const never = document.createElement('button'); never.type = 'button'; never.className = 'ik-btn ik-btn--link';
     never.textContent = "Don't ask again";
     never.addEventListener('click', () => { card.remove(); vscode.postMessage({ type: 'suggest_choice', choice: 'never' }); });
     line.appendChild(never);
+    card.appendChild(kind); card.appendChild(line);
+    messagesEl.appendChild(card);
+    autoscroll();
+  }
+
+  // The Plan agent finished and the host saved the plan in the project. offer: ask whether to carry it out.
+  function showPlanSaved(path, offer) {
+    removeSuggestCard();
+    const card = document.createElement('div');
+    card.className = 'approval suggest';
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'Plan saved');
+    const kind = document.createElement('div'); kind.className = 'kind'; kind.textContent = 'Plan saved';
+    const line = document.createElement('div'); line.className = 'line';
+    const q = document.createElement('span'); q.className = 'q';
+    q.textContent = 'Saved in ' + path + '. You can edit it before you go on.';
+    line.appendChild(q);
+    if (offer) {
+      const go = document.createElement('button'); go.type = 'button'; go.className = 'ik-btn ik-btn--primary'; go.textContent = 'Implement this plan';
+      go.addEventListener('click', () => { card.remove(); vscode.postMessage({ type: 'plan_implement' }); });
+      const no = document.createElement('button'); no.type = 'button'; no.className = 'ik-btn ik-btn--secondary'; no.textContent = 'Not now';
+      no.addEventListener('click', () => card.remove());
+      line.appendChild(go); line.appendChild(no);
+    }
     card.appendChild(kind); card.appendChild(line);
     messagesEl.appendChild(card);
     autoscroll();
@@ -1256,7 +1286,7 @@ export function chatHtml(
     const text = document.createElement('span');
     text.textContent = 'Changed ' + filesText(count) + ' · ';
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'link'; btn.textContent = 'Revert this run';
+    btn.type = 'button'; btn.className = 'ik-btn ik-btn--link'; btn.textContent = 'Revert this run';
     btn.addEventListener('click', () => vscode.postMessage({ type: 'revert_run' }));
     div.appendChild(text); div.appendChild(btn);
     messagesEl.appendChild(div);
@@ -1271,8 +1301,8 @@ export function chatHtml(
   function appendStatusLine(text) {
     hideEmpty();
     const div = document.createElement('div');
-    div.style.color = 'var(--muted)';
-    div.style.fontSize = 'var(--fs-xs)';
+    div.style.color = 'var(--ink-muted)';
+    div.style.fontSize = 'var(--size-caption)';
     div.style.overflowWrap = 'anywhere';
     div.textContent = text;
     messagesEl.appendChild(div);
@@ -1308,12 +1338,12 @@ export function chatHtml(
       actions.className = 'cmd-actions';
       const ins = document.createElement('button');
       ins.type = 'button';
-      ins.className = 'link';
+      ins.className = 'ik-btn ik-btn--link';
       ins.textContent = 'Insert in terminal';
       ins.addEventListener('click', () => vscode.postMessage({ type: 'cmd_insert', command: it.command }));
       const cp = document.createElement('button');
       cp.type = 'button';
-      cp.className = 'link';
+      cp.className = 'ik-btn ik-btn--link';
       cp.textContent = 'Copy';
       cp.addEventListener('click', () => vscode.postMessage({ type: 'cmd_copy', command: it.command }));
       actions.appendChild(ins);
@@ -1350,11 +1380,63 @@ export function chatHtml(
       emptyEl = document.getElementById('empty');
       syncApprovalCard();
     }
-    for (const it of items) {
-      if (it.role === 'user') appendUserMessage(it.text);
+    // Turn n is the n-th user message; the thumbs go under the last reply of each turn.
+    let turn = 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.role === 'user') { turn++; appendUserMessage(it.text); }
       else if (it.role === 'cmd') { appendUserMessage(it.request); appendCmdCard(it); }
-      else finalizeAssistant(it.text);
+      else {
+        finalizeAssistant(it.text);
+        const next = items[i + 1];
+        if (!next || next.role === 'user') addFeedbackBar(turn, null);
+      }
     }
+  }
+
+  // Thumbs under a turn's reply (F3). Kept in the session file only; nothing leaves the machine.
+  let feedbackByTurn = {};
+  function postFeedback(turn, rating, note) {
+    if (rating) feedbackByTurn[turn] = { rating: rating, note: note || '' };
+    else delete feedbackByTurn[turn];
+    vscode.postMessage({ type: 'message_feedback', turn: turn, rating: rating, note: note });
+  }
+  function addFeedbackBar(turn, after) {
+    if (!turn || messagesEl.querySelector('.feedback[data-turn="' + turn + '"]')) return;
+    const saved = feedbackByTurn[turn];
+    const bar = document.createElement('div');
+    bar.className = 'feedback';
+    bar.dataset.turn = String(turn);
+    bar.setAttribute('role', 'group');
+    bar.setAttribute('aria-label', 'Rate this reply');
+    const up = document.createElement('button'); up.type = 'button'; up.className = 'fb'; up.textContent = 'Helpful';
+    const down = document.createElement('button'); down.type = 'button'; down.className = 'fb'; down.textContent = 'Not helpful';
+    const note = document.createElement('input'); note.type = 'text'; note.className = 'fb-note'; note.maxLength = 1000;
+    note.setAttribute('aria-label', 'What went wrong? (optional)'); note.placeholder = 'What went wrong? (optional)';
+    const send = document.createElement('button'); send.type = 'button'; send.className = 'ik-btn ik-btn--link'; send.textContent = 'Send note';
+    function show() {
+      const r = feedbackByTurn[turn] ? feedbackByTurn[turn].rating : '';
+      up.setAttribute('aria-pressed', r === 'up' ? 'true' : 'false');
+      down.setAttribute('aria-pressed', r === 'down' ? 'true' : 'false');
+      note.hidden = send.hidden = r !== 'down';
+      if (r === 'down' && feedbackByTurn[turn].note && !note.value) note.value = feedbackByTurn[turn].note;
+    }
+    function choose(rating) {
+      const now = feedbackByTurn[turn] ? feedbackByTurn[turn].rating : '';
+      postFeedback(turn, now === rating ? null : rating, '');
+      if (now === rating) note.value = '';
+      show();
+      if (rating === 'down' && now !== 'down') note.focus();
+    }
+    up.addEventListener('click', () => choose('up'));
+    down.addEventListener('click', () => choose('down'));
+    function sendNote() { postFeedback(turn, 'down', note.value.trim()); }
+    send.addEventListener('click', sendNote);
+    note.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendNote(); } });
+    bar.appendChild(up); bar.appendChild(down); bar.appendChild(note); bar.appendChild(send);
+    show();
+    if (after) after.insertAdjacentElement('afterend', bar); else messagesEl.appendChild(bar);
+    autoscroll();
   }
 
   let currentSessionId = '';
@@ -2112,13 +2194,13 @@ export function chatHtml(
     v.steps.forEach((s) => {
       html += '<div class="step"><div class="l1">' + icon(s.state) + '<span class="who">' + escapeHtml(s.specialist) + '</span><span class="stask" title="' + escapeHtml(s.task) + '">' + escapeHtml(s.task) + '</span><span class="meta">' + escapeHtml(s.meta) + '</span></div>';
       if (s.actions.length) {
-        html += '<div class="l2"><span class="muted">' + escapeHtml(s.branch || '') + '</span>' +
-          s.actions.map((a) => '<button type="button" class="' + (a === 'merge' ? 'primary' : 'link') + '" data-action="' + a + '" data-index="' + s.index + '">' + (a === 'review' ? 'Review' : a === 'merge' ? 'Merge' : 'Discard') + '</button>').join('') + '</div>';
+        html += '<div class="l2"><span class="ik-muted">' + escapeHtml(s.branch || '') + '</span>' +
+          s.actions.map((a) => '<button type="button" class="' + (a === 'merge' ? 'ik-btn ik-btn--primary' : 'ik-btn ik-btn--link') + '" data-action="' + a + '" data-index="' + s.index + '">' + (a === 'review' ? 'Review' : a === 'merge' ? 'Merge' : 'Discard') + '</button>').join('') + '</div>';
       }
       if (s.error) html += '<div class="rerr">' + escapeHtml(s.error) + '</div>';
     });
     if (v.error) html += '<div class="rerr">' + escapeHtml(v.error) + '</div>';
-    if (v.canClear) html += '<div class="rf"><button type="button" class="link" data-action="clear" data-index="-1">Clear finished</button></div>';
+    if (v.canClear) html += '<div class="rf"><button type="button" class="ik-btn ik-btn--link" data-action="clear" data-index="-1">Clear finished</button></div>';
     // The card is rebuilt on every update: keep keyboard focus on the same button.
     const focused = document.activeElement;
     const keep = focused && card.contains(focused) && focused.dataset ? { action: focused.dataset.action, index: focused.dataset.index } : null;
@@ -2147,7 +2229,7 @@ export function chatHtml(
     }
     if (!text) text = outcome.kind + ': ' + copy.question + ' ' + copy.target;
     const div = document.createElement('div');
-    div.className = 'approval-log ' + (outcome.kind === 'approved' || outcome.kind === 'partial' ? 'ok' : outcome.kind === 'denied' ? 'err' : 'muted');
+    div.className = 'approval-log ' + (outcome.kind === 'approved' || outcome.kind === 'partial' ? 'ok' : outcome.kind === 'denied' ? 'err' : 'ik-muted');
     // The leading ✓ / ✗ sits in the same column as the tool rows' status icons.
     const mark = text.charAt(0) === '✓' || text.charAt(0) === '✗' ? text.charAt(0) : '';
     const st = document.createElement('span');
@@ -2206,29 +2288,29 @@ export function chatHtml(
       '<div class="line">' +
         '<span class="q" title="' + escapeHtml(copy.title) + '">' + escapeHtml(copy.question) + ' ' +
           (previewable
-            ? '<button type="button" class="link file" title="Open diff">' + escapeHtml(copy.target) + '</button>'
+            ? '<button type="button" class="ik-btn ik-btn--link file" title="Open diff">' + escapeHtml(copy.target) + '</button>'
             : (asCommand ? '' : '<span class="target">' + escapeHtml(copy.target) + '</span>')) +
           (copy.meta ? ' <span class="meta">' + escapeHtml(copy.meta) + '</span>' : '') +
         '</span>' +
         (asCommand ? '<div class="cmd"><span class="p" aria-hidden="true">$</span><code>' + escapeHtml(copy.target) + '</code></div>' : '') +
       '</div>' +
       '<div class="bar">' +
-        (asCommand ? '<button type="button" class="link showcmd" aria-expanded="false">Show full command</button>' : '') +
-        (previewable && reviewable !== false ? '<button type="button" class="link hunks">Review changes</button>' : '') +
-        (allowable ? '<button type="button" class="link allow">Always allow this command</button>' : '') +
+        (asCommand ? '<button type="button" class="ik-btn ik-btn--link showcmd" aria-expanded="false">Show full command</button>' : '') +
+        (previewable && reviewable !== false ? '<button type="button" class="ik-btn ik-btn--link hunks">Review changes</button>' : '') +
+        (allowable ? '<button type="button" class="ik-btn ik-btn--link allow">Always allow this command</button>' : '') +
         '<span class="sp"></span>' +
         '<span class="acts">' +
-          '<button type="button" class="secondary deny-open" aria-expanded="false">Deny</button>' +
+          '<button type="button" class="ik-btn ik-btn--secondary deny-open" aria-expanded="false">Deny</button>' +
           (destructive
-            ? '<button type="button" class="primary hold" title="Press and hold to run"><span>Hold to run</span></button>'
-            : '<button type="button" class="primary approve">' + escapeHtml(copy.primary) + '</button>') +
+            ? '<button type="button" class="ik-btn ik-btn--primary hold" title="Press and hold to run"><span>Hold to run</span></button>'
+            : '<button type="button" class="ik-btn ik-btn--primary approve">' + escapeHtml(copy.primary) + '</button>') +
         '</span>' +
       '</div>' +
       (preview ? '<pre class="preview">' + escapeHtml(preview) + '</pre>' : '') +
       '<div class="fb" hidden>' +
         '<div class="chips">' + chips.map((c) => '<button type="button" class="chip">' + escapeHtml(c) + '</button>').join('') + '</div>' +
         '<textarea class="note" rows="2" maxlength="2000" aria-label="What should Forge do instead?" placeholder="What should Forge do instead?"></textarea>' +
-        '<div class="fb-actions"><button type="button" class="secondary deny-note">Deny and tell Forge</button><button type="button" class="link deny">Just deny</button></div>' +
+        '<div class="fb-actions"><button type="button" class="ik-btn ik-btn--secondary deny-note">Deny and tell Forge</button><button type="button" class="ik-btn ik-btn--link deny">Just deny</button></div>' +
       '</div>';
     const isFirst = approvals.size === 0;
     const settled = new Promise((resolve) => { approvals.set(id, { el: div, copy, resolve }); });
@@ -2242,7 +2324,7 @@ export function chatHtml(
     const fb = div.querySelector('.fb');
     const note = div.querySelector('.note');
     const denyOpen = div.querySelector('.deny-open');
-    const primary = div.querySelector('.primary');
+    const primary = div.querySelector('.ik-btn--primary');
     denyOpen.addEventListener('click', () => {
       fb.hidden = !fb.hidden;
       denyOpen.setAttribute('aria-expanded', String(!fb.hidden));
@@ -2280,7 +2362,7 @@ export function chatHtml(
     const hadFocus = a.el.contains(document.activeElement);
     a.el.remove();
     if (hadFocus) {
-      const next = messagesEl.querySelector('.approval .primary');
+      const next = messagesEl.querySelector('.approval .ik-btn--primary');
       (next || inputEl).focus();
     }
     appendApprovalLog(a.copy, outcome);
@@ -2306,7 +2388,7 @@ export function chatHtml(
     });
   }
 
-  function appendStatus(iteration, maxIter, inputTokens, outputTokens, durationMs, reason) {
+  function appendStatus(iteration, maxIter, inputTokens, outputTokens, durationMs, reason, turn) {
     let bar = document.getElementById('status-bar');
     if (!bar) {
       bar = document.createElement('div');
@@ -2320,7 +2402,10 @@ export function chatHtml(
     const nearLimit = maxIter > 0 && iteration >= Math.ceil(maxIter * 0.8);
     bar.innerHTML =
       '<span title="Time and tokens used by this step">' + seconds + 's · ' + fmt(inputTokens) + ' in · ' + fmt(outputTokens) + ' out' + (nearLimit ? ' · step ' + iteration + '/' + maxIter : '') + '</span>' +
-      (reason ? '<span>' + escapeHtml(reason) + '</span>' : '');
+      (reason ? '<span>' + escapeHtml(UI ? UI.runReasonLabel(reason) : reason) + '</span>' : '');
+    // The thumbs are a sibling of the bar, not inside it: the bar rewrites its own HTML on every update (RB-50).
+    // Only the last status of a turn has a reason, and each turn gets its own thumbs (RB-9).
+    if (reason && turn) addFeedbackBar(turn, bar);
     autoscroll();
   }
 
@@ -2346,18 +2431,18 @@ export function chatHtml(
       ring.setAttribute('cx', '8'); ring.setAttribute('cy', '8'); ring.setAttribute('r', '6');
       svg.appendChild(ring);
       if (status === 'completed') {
-        svg.setAttribute('stroke', 'var(--ok)'); svg.setAttribute('stroke-width', '1.75');
+        svg.setAttribute('stroke', 'var(--success)'); svg.setAttribute('stroke-width', '1.75');
         const tick = document.createElementNS(svgNs, 'path');
         tick.setAttribute('d', 'm5.5 8.2 1.8 1.8 3.3-3.6');
         svg.appendChild(tick);
       } else if (status === 'in_progress') {
         svg.setAttribute('class', 'todo-spin'); svg.setAttribute('stroke', 'var(--ion)'); svg.setAttribute('stroke-width', '2');
-        ring.setAttribute('stroke', 'var(--hair)');
+        ring.setAttribute('stroke', 'var(--line-subtle)');
         const arc = document.createElementNS(svgNs, 'path');
         arc.setAttribute('d', 'M8 2a6 6 0 0 1 6 6');
         svg.appendChild(arc);
       } else {
-        svg.setAttribute('stroke', 'var(--edge)'); svg.setAttribute('stroke-width', '1.5');
+        svg.setAttribute('stroke', 'var(--line-control)'); svg.setAttribute('stroke-width', '1.5');
       }
       return svg;
     }
@@ -2423,13 +2508,13 @@ export function chatHtml(
     };
     if (msg.options && msg.options.length) {
       const opts = document.createElement('div'); opts.className = 'opts';
-      msg.options.forEach((o) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'secondary'; b.textContent = o; b.addEventListener('click', () => answer(o)); opts.appendChild(b); });
+      msg.options.forEach((o) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--secondary'; b.textContent = o; b.addEventListener('click', () => answer(o)); opts.appendChild(b); });
       card.appendChild(opts);
     }
     if (msg.allowCustom) {
       const custom = document.createElement('div'); custom.className = 'custom';
       const input = document.createElement('input'); input.type = 'text'; input.placeholder = 'Type your own answer'; input.setAttribute('aria-label', 'Your answer');
-      const send = document.createElement('button'); send.type = 'button'; send.className = 'primary'; send.textContent = 'Answer';
+      const send = document.createElement('button'); send.type = 'button'; send.className = 'ik-btn ik-btn--primary'; send.textContent = 'Answer';
       send.addEventListener('click', () => { if (input.value.trim()) answer(input.value.trim()); });
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.value.trim()) answer(input.value.trim()); });
       custom.appendChild(input); custom.appendChild(send); card.appendChild(custom);
@@ -2446,7 +2531,7 @@ export function chatHtml(
     if (action === 'openSettings') {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'link';
+      btn.className = 'ik-btn ik-btn--link';
       btn.textContent = 'Open Settings';
       btn.addEventListener('click', () => vscode.postMessage({ type: 'open_settings' }));
       div.appendChild(btn);
@@ -2664,7 +2749,7 @@ export function chatHtml(
       body.title = text;
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.className = 'link';
+      remove.className = 'ik-btn ik-btn--link';
       remove.textContent = '×';
       remove.setAttribute('aria-label', 'Remove from queue');
       remove.addEventListener('click', () => { queued.splice(i, 1); renderQueue(); });
@@ -2703,7 +2788,7 @@ export function chatHtml(
     const row = document.createElement('div');
     row.className = 'turn-actions';
     const retry = document.createElement('button');
-    retry.type = 'button'; retry.className = 'link'; retry.textContent = 'Retry';
+    retry.type = 'button'; retry.className = 'ik-btn ik-btn--link'; retry.textContent = 'Retry';
     retry.title = 'Run your last message again';
     retry.addEventListener('click', () => {
       if (taskRunning) return;
@@ -2711,7 +2796,7 @@ export function chatHtml(
       vscode.postMessage({ type: 'retry_last', level: approvalSelect.value });
     });
     const edit = document.createElement('button');
-    edit.type = 'button'; edit.className = 'link'; edit.textContent = 'Edit';
+    edit.type = 'button'; edit.className = 'ik-btn ik-btn--link'; edit.textContent = 'Edit';
     edit.title = 'Edit your last message and send it again';
     edit.addEventListener('click', () => {
       inputEl.value = lastUserText;
@@ -2723,7 +2808,7 @@ export function chatHtml(
     const CONTINUABLE = ['aborted', 'max_iterations', 'max_duration', 'error'];
     if (CONTINUABLE.includes(lastRunReason)) {
       const cont = document.createElement('button');
-      cont.type = 'button'; cont.className = 'link'; cont.textContent = 'Continue';
+      cont.type = 'button'; cont.className = 'ik-btn ik-btn--link'; cont.textContent = 'Continue';
       cont.title = lastRunReason === 'aborted' ? 'Tell the agent to carry on from where you stopped it' : 'Tell the agent to carry on from where the run ended';
       cont.addEventListener('click', () => {
         if (taskRunning) return;
@@ -2922,7 +3007,7 @@ export function chatHtml(
         break;
       case 'status':
         lastRunReason = msg.reason || null;
-        appendStatus(msg.iteration, msg.maxIter, msg.inputTokens, msg.outputTokens, msg.durationMs, msg.reason);
+        appendStatus(msg.iteration, msg.maxIter, msg.inputTokens, msg.outputTokens, msg.durationMs, msg.reason, msg.turn);
         if (msg.contextWindow) meterCtx = { tokens: msg.contextTokens || 0, window: msg.contextWindow };
         meterRun = { input: msg.inputTokens || 0, output: msg.outputTokens || 0, ms: msg.durationMs || 0, iter: msg.iteration || 0, max: msg.maxIter || 0 };
         renderMeter();
@@ -3020,6 +3105,7 @@ export function chatHtml(
         closePanel();
         // New chat / resume: the host already denied the old run's approvals, so drop their rows first.
         cancelPendingApprovals();
+        feedbackByTurn = msg.feedback || {}; // the ratings saved with this chat, by turn number
         // Messages queued behind the old chat's run belong to that chat: they must not start in this one.
         queued.length = 0;
         renderQueue();
@@ -3106,6 +3192,9 @@ export function chatHtml(
         inputEl.value = draft.startsWith('/cmd ') ? draft : '/cmd ' + draft;
         inputEl.dispatchEvent(new Event('input'));
         inputEl.focus();
+        break;
+      case 'plan_saved':
+        showPlanSaved(msg.path, msg.offer !== false);
         break;
       case 'suggest_spec':
         showSuggestSpec(msg.afterPlan);

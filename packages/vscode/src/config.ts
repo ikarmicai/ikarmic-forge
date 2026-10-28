@@ -6,7 +6,7 @@ import type { ModelConfig, ProviderName } from '@ikarmic/forge-core';
 import { namedProviderModel } from './model-ref.js';
 import { emptyApiKeys, type ProviderEnvSettings, type ResolvedApiKeys } from './api-keys.js';
 import { storedApprovalOf, type StoredApproval } from './chat/approval-level.js';
-import { cleanLintCommands } from './chat/run-extras.js';
+import { cleanLintCommands, userList } from './chat/run-extras.js';
 import type { VoiceConfig } from './chat/voice-types.js';
 import { clampSetting } from './setting-range.js';
 
@@ -62,6 +62,8 @@ export interface ExtensionConfig {
   maxSteps: number;
   /** Run commands under the OS sandbox (Linux and macOS). */
   commandSandbox: 'off' | 'on' | 'on-network';
+  /** Hosts Forge's own network tools may reach while the sandbox has the network off; the user's own value only (RB-12). */
+  commandSandboxHosts: string[];
   /** The most turns one /goal runs before it pauses. */
   goalMaxTurns: number;
   /** Notify when a run finishes while the window is not focused. */
@@ -80,6 +82,7 @@ export interface ExtensionConfig {
   repoMapTokens: number;
   /** Check each file the agent writes (syntax, plus linter commands by extension) and feed problems back. */
   autoLint: { enabled: boolean; commands: Record<string, string> };
+  autoFormat: { commands: Record<string, string> };
   /** Commit the agent's changes after each completed run (git repositories only). */
   autoCommit: { enabled: boolean; dirtyCommits: boolean; attribute: boolean; runHooks: boolean; instruction?: string; language?: string };
   /** Architect mode: main model plans read-only, `editorModel` applies the plan. */
@@ -158,7 +161,7 @@ export function readConfig(): ExtensionConfig {
       extensions: cfg.get<string>('semantic.extensions') ?? '',
     },
     context: {
-      budgetTokens: Math.max(0, cfg.get<number>('context.budgetTokens') ?? 60000),
+      budgetTokens: Math.max(0, cfg.get<number>('context.budgetTokens') ?? 0),
       maskOldResults: cfg.get<boolean>('context.maskOldResults') ?? true,
       keepRecentTurns: Math.max(2, cfg.get<number>('context.keepRecentTurns') ?? 6),
     },
@@ -173,6 +176,7 @@ export function readConfig(): ExtensionConfig {
     loopGuardThreshold: Math.max(0, Math.floor(cfg.get<number>('loopGuardThreshold') ?? 0)),
     maxSteps: Math.max(0, Math.floor(cfg.get<number>('maxSteps') ?? 50)),
     commandSandbox: (['on', 'on-network'] as const).find((v) => v === cfg.get<string>('commandSandbox')) ?? 'off',
+    commandSandboxHosts: userList(cfg.inspect<string[]>('commandSandbox.allowedHosts')),
     goalMaxTurns: Math.max(1, Math.floor(cfg.get<number>('goalMaxTurns') ?? 25)),
     notifications: {
       enabled: cfg.get<boolean>('notifications.enabled') ?? false,
@@ -190,6 +194,7 @@ export function readConfig(): ExtensionConfig {
       enabled: cfg.get<boolean>('autoLint.enabled') ?? false,
       commands: cleanLintCommands(cfg.get<Record<string, unknown>>('autoLint.commands')),
     },
+    autoFormat: { commands: cleanLintCommands(cfg.get<Record<string, unknown>>('autoFormat.commands')) },
     autoCommit: {
       enabled: cfg.get<boolean>('autoCommit.enabled') ?? false,
       dirtyCommits: cfg.get<boolean>('autoCommit.dirtyCommits') ?? true,

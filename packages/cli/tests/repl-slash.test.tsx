@@ -97,7 +97,7 @@ describe('REPL slash commands (D)', () => {
     const frame = await waitFor((f) => f.includes('model → openai:gpt-4o-mini'));
     expect(frame).toContain('gpt-4o-mini');
     await send('hello there');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o-mini');
   }, 20_000);
 
@@ -116,12 +116,12 @@ describe('REPL slash commands (D)', () => {
     await send('/ls');
     await waitFor((f) => f.includes('  notes.md'));
     await send('summarize it');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('ATTACHED-CONTENT-1');
     expect(prompts()[0]).toContain('<chat-files>');
     writeFileSync(path.join(cwd, 'notes.md'), 'ATTACHED-CONTENT-2');
     await send('and now?');
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 2);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 2);
     expect(prompts()[1]).toContain('ATTACHED-CONTENT-2');
     // Turn 2's prompt carries turn 1's user message, without the file dump.
     expect(prompts()[1]).not.toContain('ATTACHED-CONTENT-1');
@@ -149,7 +149,7 @@ describe('REPL slash commands (D)', () => {
     await send(`/run node -e "console.log('RUN-OUTPUT-XYZ')"`);
     await waitFor((f) => f.includes('RUN-OUTPUT-XYZ') && f.includes('[exit 0]'));
     await send('what happened?');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('I ran');
     expect(prompts()[0]).toContain('RUN-OUTPUT-XYZ');
   }, 20_000);
@@ -166,7 +166,7 @@ describe('REPL slash commands (D)', () => {
     await waitFor((f) => f.includes('[exit 0]'));
     expect(prompts()).toHaveLength(0);
     await send(`/test node -e "console.error('TEST-BROKE');process.exit(2)"`);
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('The test command');
     expect(prompts()[0]).toContain('TEST-BROKE');
   }, 25_000);
@@ -175,7 +175,7 @@ describe('REPL slash commands (D)', () => {
     writeFileSync(path.join(cwd, 'bad.ts'), 'const x = ;\n');
     const { send, waitFor, prompts } = await setup();
     await send('/lint bad.ts');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('Linting found problems');
     expect(prompts()[0]).toContain('bad.ts:1:');
   }, 20_000);
@@ -185,14 +185,14 @@ describe('REPL slash commands (D)', () => {
     writeFileSync(path.join(cwd, 'lint.js'), "console.log('STYLE-PROBLEM in '+process.argv[2]);process.exit(1)");
     const { send, waitFor, prompts } = await setup({ autoLint: { syntax: false, commands: { '*': 'node lint.js' } } });
     await send('/lint a.ts');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('STYLE-PROBLEM in a.ts');
   }, 20_000);
 
   it('/test with no argument runs every --test-cmd, stopping at the first failure and sending it to the model', async () => {
     const { send, waitFor, prompts } = await setup({}, { testCmds: [`node -e "console.log('FIRST-PASSES')"`, `node -e "console.error('SECOND-BROKE');process.exit(1)"`, `node -e "console.log('NEVER-RUNS')"`] });
     await send('/test');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('The test command');
     expect(prompts()[0]).toContain('SECOND-BROKE');
     const frame = await waitFor((f) => f.includes('FIRST-PASSES'));
@@ -209,7 +209,7 @@ describe('REPL slash commands (D)', () => {
   it('/lint with no argument runs the --lint-cmd checks; a failure goes to the model', async () => {
     const { send, waitFor, prompts } = await setup({}, { lintCmds: [`node -e "console.error('LINT-BROKE');process.exit(1)"`] });
     await send('/lint');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('The lint command');
     expect(prompts()[0]).toContain('LINT-BROKE');
   }, 25_000);
@@ -218,7 +218,7 @@ describe('REPL slash commands (D)', () => {
     writeFileSync(path.join(cwd, 'bad.ts'), 'const x = ;\n');
     const { send, waitFor, prompts } = await setup({}, { lintCmds: [`node -e "process.exit(0)"`] });
     await send('/lint bad.ts');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('bad.ts:1:');
   }, 20_000);
 
@@ -238,7 +238,7 @@ describe('REPL slash commands (D)', () => {
     await send('/settings');
     await waitFor((f) => f.includes('attached files: 1') && f.includes('model: openai:gpt-4o'));
     await send('/ok');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('go ahead');
     await send('/tokens');
     await waitFor((f) => /context: ~[\d,]+ of [\d,]+ tokens/.test(f) && f.includes('1 attached file'));
@@ -267,7 +267,7 @@ describe('REPL I/O commands', () => {
     await send('/copy-context');
     await waitFor((f) => f.includes('nothing to copy yet: the conversation is empty'));
     await send('hello model');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     await send('/copy');
     await waitFor((f) => f.includes('copied 2 characters to the clipboard (fake-clip)'));
     expect(copied).toEqual(['ok']);
@@ -280,7 +280,7 @@ describe('REPL I/O commands', () => {
   it('/copy reports a clipboard that is not available', async () => {
     const { send, waitFor } = await setup({}, { services: services({ copy: async () => ({ ok: false as const, error: 'no clipboard tool found' }) }) });
     await send('hi');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     await send('/copy');
     await waitFor((f) => f.includes('copy failed: no clipboard tool found'));
   }, 20_000);
@@ -291,7 +291,7 @@ describe('REPL I/O commands', () => {
     await send('/paste');
     await waitFor((f) => f.includes('(sent with your next message)'));
     await send('what is wrong here?');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('Pasted from the clipboard');
     expect(prompts()[0]).toContain('see this');
     expect(prompts()[0]).not.toContain(key);
@@ -321,7 +321,7 @@ describe('REPL I/O commands', () => {
     await send('/web https://docs.example');
     await waitFor((f) => f.includes('HTTP 200') && f.includes('truncated'));
     await send('summarize it');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(seen).toEqual(['https://bad.example', 'https://docs.example']);
     expect(prompts()[0]).toContain('Web page https://docs.example/final');
     expect(prompts()[0]).toContain('Docs');
@@ -335,7 +335,7 @@ describe('REPL I/O commands', () => {
     const edit = async (initial: string) => (initials.push(initial), next);
     const { send, waitFor, prompts } = await setup({}, { services: services({ edit }) });
     await send('/editor');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('WRITTEN-IN-EDITOR');
     expect(prompts()[0]).toContain('line two');
     next = { ok: false, error: 'the file was empty, so nothing was sent' };
@@ -357,14 +357,14 @@ describe('REPL I/O commands', () => {
   it('/help <question> asks the model with the command reference, using only the six read-only tools', async () => {
     const { send, waitFor, prompts, mock } = await setup();
     await send('/help how do I attach a file?');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('Question: how do I attach a file?');
     expect(prompts()[0]).toContain('<forge-reference>');
     expect(prompts()[0]).toContain('/add <files> and /read-only <files> attach files');
     expect(prompts()[0]).toContain('Command-line options:');
     // The mock records how many tools were offered: the read-only set for /help, the full set for a normal turn.
     await send('now edit something');
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 2);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 2);
     const [helpTools, normalTools] = [mock.calls[0]!.tools as number, mock.calls[1]!.tools as number];
     expect(helpTools).toBe(6);
     expect(normalTools).toBeGreaterThan(helpTools);
@@ -388,12 +388,12 @@ describe('REPL session and model commands', () => {
     await send('/reasoning-effort high');
     await waitFor((f) => f.includes('reasoning effort → high'));
     await send('think hard');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(efforts.at(-1)).toBe('high');
     await send('/reasoning-effort default');
     await waitFor((f) => f.includes('reasoning effort → default'));
     await send('and now?');
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 2);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 2);
     expect(efforts.at(-1)).toBeUndefined();
   }, 40_000);
 
@@ -403,7 +403,7 @@ describe('REPL session and model commands', () => {
     const frame = await waitFor((f) => f.includes('reasoning effort "medium"'));
     expect(frame.replace(/\s+/g, ' ')).toContain('not an exact token count');
     await send('hello');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(efforts.at(-1)).toBe('medium');
     await send('/think-tokens lots');
     await waitFor((f) => f.includes('give a token count'));
@@ -430,7 +430,7 @@ describe('REPL session and model commands', () => {
     await send('/model mini');
     await waitFor((f) => f.includes('model → openai:gpt-4o-mini'));
     await send('hello');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(efforts.at(-1)).toBe('low');
   }, 30_000);
 
@@ -449,25 +449,25 @@ describe('REPL session and model commands', () => {
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o'); // the plan was made by the main model
     await send('a');
     await waitFor((f) => f.includes('openai:gpt-4o-mini is applying it'));
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 1); // the planning run reports "done (plan)"
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 1); // the planning run reports "Done: Plan ready"
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o-mini'); // the editor model applied it
     expect(prompts().at(-1)).toContain('approved-plan');
     // Back to the main model afterwards.
     await send('one more thing');
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 2);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 2);
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o');
   }, 60_000);
 
   it('an approved plan reaches the model even when it was edited first (/plan, then e, then a)', async () => {
     const { send, waitFor, prompts } = await setup();
     await send('/plan add a login page');
-    await waitFor((f) => f.includes('done (plan)'));
+    await waitFor((f) => f.includes('Done: Plan ready'));
     await send('e');
     await waitFor((f) => f.includes('enter the edited plan'));
     await send('EDITED-PLAN-STEP-ONE then step two');
     await waitFor((f) => f.includes('edited plan saved'));
     await send('a');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     const last = prompts().at(-1)!;
     expect(last).toContain('EDITED-PLAN-STEP-ONE');
     expect(last).toContain('approved-plan');
@@ -478,14 +478,14 @@ describe('REPL session and model commands', () => {
     await send('/editor-model mini');
     await waitFor((f) => f.includes('editor model → openai:gpt-4o-mini'));
     await send('/architect do it');
-    await waitFor((f) => f.includes('done (planned)') || f.includes('plan'));
+    await waitFor((f) => f.includes('Done: Plan ready') || f.includes('plan'));
     await send('c');
     await waitFor((f) => f.includes('plan cancelled'));
     await send('/plan do it plainly');
     await waitFor((f) => f.includes('plan'));
     await send('a');
     await waitFor((f) => f.includes('plan approved: executing'));
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 1);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 1);
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o');
   }, 60_000);
 
@@ -505,7 +505,7 @@ describe('REPL session and model commands', () => {
     await waitFor((f) => f.includes('usage: /save-script <file>'));
     expect((await readdirSafe(sessionDir)).length).toBe(0); // no session was saved under a label like "-script"
     await send('/planet of the apes');
-    await waitFor((f) => f.includes('done (completed)')); // an ordinary message, not a plan
+    await waitFor((f) => f.includes('Done: Completed')); // an ordinary message, not a plan
     expect(prompts()[0]).toContain('/planet of the apes');
   }, 30_000);
 
@@ -513,7 +513,7 @@ describe('REPL session and model commands', () => {
     writeFileSync(path.join(cwd, 'script.txt'), '# set up\n/model mini\n\nhello from the script\n');
     const { send, waitFor, modelsUsed, prompts } = await setup();
     await send('/load script.txt');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o-mini');
     expect(prompts()[0]).toContain('hello from the script');
   }, 30_000);
@@ -570,15 +570,15 @@ describe('REPL session and model commands', () => {
     await send('/retry');
     await waitFor((f) => f.includes('nothing to retry yet'));
     await send('FIRST-MESSAGE');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     await send('/retry EDITED-MESSAGE');
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 2);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 2);
     const second = prompts()[1]!;
     expect(second).toContain('EDITED-MESSAGE');
     // The dropped turn is gone from the conversation the model sees.
     expect(second).not.toContain('FIRST-MESSAGE');
     await send('/retry');
-    await waitFor((f) => (f.match(/done \(completed\)/g) ?? []).length >= 3);
+    await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 3);
     expect(prompts()[2]).toContain('EDITED-MESSAGE');
     expect((prompts()[2]!.match(/EDITED-MESSAGE/g) ?? []).length).toBe(1);
   }, 30_000);
@@ -589,7 +589,7 @@ describe('REPL session and model commands', () => {
     await send('QUEUED-MESSAGE');
     await waitFor((f) => f.includes('queued (1 waiting): QUEUED-MESSAGE'));
     expect(prompts()).toHaveLength(0);
-    await waitFor((f) => f.includes('done (completed)'), 15_000);
+    await waitFor((f) => f.includes('Done: Completed'), 15_000);
     expect(prompts()[0]).toContain('QUEUED-MESSAGE');
   }, 30_000);
 
@@ -600,7 +600,7 @@ describe('REPL session and model commands', () => {
     await send('/help');
     await waitFor((f) => f.includes('/review — Review a file (project)'));
     await send('/review src/app.ts');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     expect(prompts()[0]).toContain('REVIEW-TEMPLATE for src/app.ts');
   }, 20_000);
 
@@ -609,7 +609,7 @@ describe('REPL session and model commands', () => {
     await send('/sessions');
     await waitFor((f) => f.includes('no saved sessions yet'));
     await send('remember the PINEAPPLE plan');
-    await waitFor((f) => f.includes('done (completed)'));
+    await waitFor((f) => f.includes('Done: Completed'));
     await send('/sessions pineapple');
     await waitFor((f) => f.includes('sessions mentioning "pineapple"') && f.includes('s1'));
     await send('/sessions mango');

@@ -22,3 +22,7 @@ site/
 /kilocode/
 /kilocode-main.zip
 /Kilo docs/
+
+# Local Claude Code and Kilo state (settings, worktrees)
+/.claude/
+/.kilo/

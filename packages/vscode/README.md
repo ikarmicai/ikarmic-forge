@@ -148,7 +148,9 @@ Every command is available from the Command Palette (`Ctrl+Shift+P`).
 - `Forge: Open Settings`
 - `Forge: Configure Provider`
 - `Forge: Open Chat in Editor Tab`
+- `Forge: Delete Code Index and Forget Consent` (remove the index behind search by meaning and forget which embedding providers you allowed to receive your code)
 - `Forge: Open Agent Manager` (run one prompt as up to four parallel sessions, each in its own git worktree, then merge the one you want)
+- `Forge: Open Agent Manager in New Window` (the same page, in a window of its own, for a second screen)
 - `Forge: Open Project Memory`
 - `Forge: Manage Memory`
 - `Forge: Generate Commit Message`

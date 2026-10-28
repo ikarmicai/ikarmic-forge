@@ -10,6 +10,7 @@ import { PROPOSED_SCHEME, ProposedContentProvider } from './chat/proposed-conten
 import { registerAgents } from './agents/agents-commands.js';
 import { registerMcp } from './mcp/mcp-commands.js';
 import { AgentManagerPanel } from './agent-manager/manager-panel.js';
+import { DELETE_INDEX_COMMAND, SemanticUi } from './semantic-ui.js';
 import { openChatInTab } from './chat/chat-tab.js';
 import { registerImportClaude } from './import-claude.js';
 import { registerOnboarding } from './onboarding.js';
@@ -119,6 +120,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Output > Forge: why a completion request or a /cmd ended (completion logs at debug level: set the channel to Debug to see them).
   const forgeLog = vscode.window.createOutputChannel('Forge', { log: true });
   context.subscriptions.push(forgeLog);
+  // The code index: the question before code goes to a remote embedder, its status item, and the command that deletes it (F12).
+  const semanticUi = new SemanticUi(context, forgeLog);
+  context.subscriptions.push(semanticUi, vscode.commands.registerCommand(DELETE_INDEX_COMMAND, () => semanticUi.deleteIndex()));
   const chatProvider = new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog);
   const makeChatProvider = (): ForgeChatViewProvider => new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog);
   const openTab = (): void => {
@@ -187,6 +191,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('forge.openChatInTab', openTab),
     vscode.commands.registerCommand('forge.openAgentManager', () => AgentManagerPanel.show(context, makeChatProvider)),
+    vscode.commands.registerCommand('forge.openAgentManagerInWindow', () => AgentManagerPanel.showInNewWindow(context, makeChatProvider)),
     vscode.commands.registerCommand('forge.completion.menu', () => completionStatus.menu()),
     vscode.commands.registerCommand('forge.completion.trigger', () => vscode.commands.executeCommand('editor.action.inlineSuggest.trigger')),
     vscode.commands.registerCommand('forge.completionTelemetry.reset', () => {

@@ -77,7 +77,7 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   n('forge.semantic.resultLimit', 'tools', 'Code search results (0 = default)', { min: 0, max: 20, integer: true }),
   n('forge.semantic.minScore', 'tools', 'Least similar code search hit (0 = no cut)', { min: 0, max: 1 }),
   s('forge.semantic.extensions', 'tools', 'File types to index (comma list)'),
-  n('forge.tools.maxOutputChars', 'tools', 'Longest command output (characters)', { min: 5000, integer: true }),
+  n('forge.tools.maxOutputChars', 'tools', 'Longest tool result (characters)', { min: 5000, integer: true }),
   b('forge.browser.enabled', 'tools', 'Browser tools'),
   b('forge.browser.headless', 'tools', 'Run the browser without a window'),
   e('forge.webSearch.provider', 'tools', 'Web search', ['off', 'auto', 'brave', 'tavily', 'searxng']),
@@ -93,6 +93,7 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.autoCommit.attribute', 'git', 'Credit Forge in commits'),
   b('forge.autoCommit.runHooks', 'git', 'Run git hooks when committing'),
   b('forge.autoLint.enabled', 'git', 'Check files after writing'),
+  s('forge.agentManager.setupScript', 'git', 'Command to run in each new Agent Manager worktree'),
   b('forge.architect.enabled', 'git', 'Plan with one model, edit with another'),
   s('forge.architect.editorModel', 'git', 'Editor model'),
   e('forge.verify.auto', 'git', 'Run project checks after edits', ['ask', 'on', 'off']),
@@ -134,6 +135,9 @@ export const EXCLUDED_KEYS: readonly string[] = [
   'forge.apiKeys.google',
   'forge.docs', // a name → URL map
   'forge.autoLint.commands', // an extension → command map
+  'forge.autoFormat.commands', // an extension → command map
+  'forge.agentManager.copyFiles', // a list of file patterns
+  'forge.commandSandbox.allowedHosts', // a list of host names
   'forge.verify.commands', // a list of commands
   'forge.caCertificates', // a list of file paths (or caCertificates in ~/.forge/config.json)
 ];
@@ -166,6 +170,7 @@ export function rowId(key: string): string {
 
 /** A shorter help line for a row whose package.json description is longer than two sentences (the native Settings editor keeps the long one). */
 export const SHORT_HELP: Record<string, string> = {
+  "forge.agentManager.setupScript": "A command run in each new Agent Manager worktree before the agent starts, such as npm ci; if it fails, the session stops. Only your own settings are read.",
   "forge.context.budgetTokens": "Largest prompt Forge sends on each step; older turns are summarized past it. 0 uses only the model's own window.",
   "forge.memory.sessionDigest": "When a new chat starts, save a short summary of the last one into project memory. Off by default; turning it on is your consent.",
   "forge.memory.injectionBudgetBytes": "How many bytes of memory go into each run's prompt. Larger memory is cut to an index plus the entries most relevant to your request.",

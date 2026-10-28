@@ -1,6 +1,8 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
+import { runReasonLabel } from '@ikarmic/forge-core';
+
 export interface FooterProps {
   inputTokens: number;
   outputTokens: number;
@@ -80,7 +82,7 @@ export function Footer(props: FooterProps): React.ReactElement {
       {reason && (
         <Box>
           <Text color="gray">finished: </Text>
-          <Text color={reason === 'completed' ? 'green' : 'yellow'}>{reason}</Text>
+          <Text color={reason === 'completed' ? 'green' : 'yellow'}>{runReasonLabel(reason)}</Text>
         </Box>
       )}
     </Box>

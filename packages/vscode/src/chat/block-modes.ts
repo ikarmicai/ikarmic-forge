@@ -17,7 +17,7 @@ export interface DisplayLike {
 const EDIT_TOOLS = new Set(['write_file', 'edit_file', 'apply_patch', 'edit_notebook']);
 
 export function toolBlockKind(toolName: string): BlockKind {
-  if (toolName === 'run_command') return 'terminal';
+  if (toolName === 'run_command' || toolName === 'bg_start') return 'terminal';
   if (EDIT_TOOLS.has(toolName)) return 'edit';
   if (toolName.startsWith('mcp__')) return 'mcp';
   return 'other';

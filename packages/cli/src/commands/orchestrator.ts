@@ -13,6 +13,7 @@ import process from 'node:process';
 
 import {
   BUILTIN_SPECIALISTS,
+  runReasonLabel,
   listSpecialists,
   loadForgeConfigFile,
   loadToolSandboxConfig,
@@ -151,7 +152,7 @@ async function runOrchestratorCli(
         ? ` worktree=${s.worktreeBranch}`
         : '';
       process.stdout.write(
-        `  ${i + 1}. [${s.step.specialist}] ${s.reason} (${s.durationMs}ms)${wtInfo}${s.error ? ` ERROR: ${s.error}` : ''}\n`
+        `  ${i + 1}. [${s.step.specialist}] ${runReasonLabel(s.reason)} (${s.durationMs}ms)${wtInfo}${s.error ? ` ERROR: ${s.error}` : ''}\n`
       );
       if (s.finalText) {
         const preview = s.finalText.length > 200 ? s.finalText.slice(0, 200) + '…' : s.finalText;

@@ -276,7 +276,7 @@ export function stopReasonFor(reason: string): string {
 export function toolKind(name: string): string {
   if (name === 'read_file' || name === 'read_image' || name === 'list_files' || name === 'memory_read') return 'read';
   if (name === 'write_file' || name === 'edit_file' || name === 'edit_notebook' || name === 'apply_patch' || name === 'memory_write' || name === 'memory_forget') return 'edit';
-  if (name === 'run_command') return 'execute';
+  if (name === 'run_command' || name === 'bg_start') return 'execute';
   if (name === 'fetch_url' || name === 'github_pr_read' || name === 'web_search' || name.startsWith('browser')) return 'fetch';
   if (name === 'search_files' || name === 'find_symbol' || name === 'list_symbols' || name === 'find_references' || name === 'codebase_search') return 'search';
   return 'other';

@@ -42,7 +42,7 @@ describe('conversationMarkdown', () => {
   it('lists user and assistant turns with the tools used, and leaves out the system prompt and tool results', () => {
     const md = conversationMarkdown(history);
     expect(md).toBe(
-      ['#### User\n\nfix the bug', '#### Assistant\n\nLooking.\n\n*(used: read_file)*', '#### Assistant\n\n*(used: write_file)*', '#### Assistant\n\nDone: fixed it.'].join('\n\n')
+      ['#### User\n\nfix the bug', '#### Assistant\n\nLooking.\n\n*(used: Read file)*', '#### Assistant\n\n*(used: Write file)*', '#### Assistant\n\nDone: fixed it.'].join('\n\n')
     );
     expect(md).not.toContain('SYSTEM PROMPT');
     expect(md).not.toContain('SECRET FILE BODY');

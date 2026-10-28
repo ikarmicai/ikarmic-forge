@@ -45,6 +45,7 @@ import {
   loadForgeConfigFile,
   loadMergedForgeConfig,
   saveForgeConfigFile,
+  displayMessages,
   loadSession,
   BackgroundAgents,
   backgroundResultsBlock,
@@ -63,6 +64,8 @@ import {
   generateShellCommand,
   shellKindOf,
   commandRisk,
+  getModelWindowTokens,
+  windowIsGuess,
   runArchitect,
   saveSession,
   SPEC_READONLY_TOOLS,
@@ -125,7 +128,7 @@ import { buildReviewPrompt, parseReviewScope, reviewDiffArgs, reviewScopeLabel }
 import { runSlash } from './slash-run.js';
 import { cmdEntriesMarkdown, cmdKey, insertPlan, mergeCmdEntries, type CmdEntry } from './cmd-entries.js';
 import { effortLabel, nextEffort } from './variant.js';
-import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, permissionExtras } from './run-extras.js';
+import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, permissionExtras, runnerShellOf } from './run-extras.js';
 import { notifyChannels, notifyKind } from './notify.js';
 import { KeepAwake } from './keep-awake.js';
 import { runOs, soundCommand, toastCommand } from './notify-os.js';
@@ -137,6 +140,8 @@ import { createVsCodeCommandRunner } from './terminal-runner.js';
 import { parseSpecCommand } from '../specs/spec-command.js';
 import type { RunMode, RunOutcome } from '../specs/spec-controller.js';
 import { changedFilesFromToolResult } from '../specs/spec-paths.js';
+import { ChatWakeups } from './chat-wakeups.js';
+import { SemanticUi } from '../semantic-ui.js';
 
 import {
   DEFAULT_MODE_ID,
@@ -153,13 +158,14 @@ import {
 import { replySpeed } from './reply-speed.js';
 import { pushPrompt, userPrompts } from './prompt-history.js';
 import { approvalLevelOf, autoApproveFor, startingLevel, storedApprovalOf, whyRan, type ApprovalLevel } from './approval-level.js';
+import { followUpAfterSuggestion, requestOfFollowUp, savePlan } from './plan-file.js';
 import { modeForChoice, offerSpecAfterPlan } from './plan-size.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
 
 /** `modeId` runs this one turn in another mode without changing the chat's selected mode. */
 export type RunOptions =
-  | { kind: 'chat'; modeId?: string; attachments?: Attachment[]; extraTools?: ToolDefinition[]; disableAskUser?: boolean }
+  | { kind: 'chat'; modeId?: string; attachments?: Attachment[]; extraTools?: ToolDefinition[]; disableAskUser?: boolean; planDeclined?: boolean }
   | { kind: 'spec-generate' };
 
 const MODE_STATE_KEY = 'forge.chat.mode';
@@ -196,6 +202,19 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   /** name/args of outstanding approvals, for "Open diff". Reset each task. */
   private pendingApprovalArgs = new Map<string, { name: string; args: unknown }>();
   private readonly sessionDeps: ChatSessionDeps = { sessionDir: defaultSessionDir(), saveSession, generateSessionId };
+  /** The level of the person's last message; a wakeup runs at the same level, since nobody is there to choose. */
+  private lastLevel: ApprovalLevel = 'ask';
+  /** Folders outside the project the person allowed read tools to use in this chat (G16); forgotten with the chat. */
+  private readonly readGrants = new Set<string>();
+  /** The model whose unknown context window the person was last told about (F16c), so it is said once. */
+  private guessedWindowFor = '';
+  /** Scheduled wakeups of the open chat (F6); a due one becomes an automatic message once the chat is idle. */
+  private readonly wakeups = new ChatWakeups({
+    sessionDir: this.sessionDeps.sessionDir,
+    busy: () => Boolean(this.controller || this.starting || !this.view),
+    deliver: (text) => void this.runTask(text, this.lastLevel).catch(() => undefined),
+    notice: (reason) => this.post({ type: 'notice', message: t('Scheduled wakeup: {0}', reason) }),
+  });
   private session = new ChatSession(this.sessionDeps);
   private modeId: string = DEFAULT_MODE_ID;
   /** Reloads the open session when the CLI (or another window) continues it. */
@@ -206,9 +225,13 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private webviewReady = false;
   private specHandler: ((task: string) => void) | undefined;
   /** The message held back while the "this looks big" card is on screen; the webview only sends a choice. */
-  private pendingLarge: { text: string; level: ApprovalLevel; attachments: Attachment[]; afterPlan?: boolean } | undefined;
+  private pendingLarge: { text: string; level: ApprovalLevel; attachments: Attachment[]; afterPlan?: boolean; suggested?: boolean } | undefined;
+  /** The reason the model gave when it called suggest_plan in the run that is going or just ended; the card is shown after the run. */
+  private suggestedPlan: string | undefined;
+  /** The last plan the Plan agent wrote and the host saved, for "Implement this plan". */
+  private lastPlanFile: string | undefined;
   /** The last chat message as typed (with its files), and the history before it: what Retry and Edit replace. */
-  private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined } | undefined;
+  private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined; transcriptBefore: ChatHistory } | undefined;
   /** Files pasted, dropped or picked for the next message. */
   private readonly attachments = new PendingAttachments();
   /** The newest run that changed files; the only one "Revert this run" can undo. */
@@ -265,6 +288,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     this.terminal.dispose();
     this.keepAwake.dispose();
     this.background.clear();
+    this.wakeups.release();
     if (this.bgTicker) clearInterval(this.bgTicker);
   }
 
@@ -736,7 +760,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const session = this.session; // pinned: the person may switch chats while the model answers
     this.post({ type: 'user_message', text: request });
     this.post({ type: 'cmd_pending' });
-    const entry: CmdEntry = { at: transcriptFromMessages(session.history ?? []).length, request };
+    const entry: CmdEntry = { at: transcriptFromMessages(session.transcript).length, request };
     let model: Awaited<ReturnType<typeof resolveCheapModel>> | undefined;
     const shell = shellKindOf(vscode.env.shell, process.platform);
     let result: Awaited<ReturnType<typeof generateShellCommand>> = { error: 'empty' };
@@ -852,10 +876,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private digestEndingChat(): void {
     const cfg = vscode.workspace.getConfiguration('forge');
     if (cfg.get<boolean>('memory.sessionDigest') !== true || cfg.get<boolean>('memory.enabled') === false) return;
-    const history = this.session.history;
-    if (!history || history.length === 0) return;
+    const transcript = this.session.transcript;
+    if (transcript.length === 0) return;
     const cwd = this.workspaceRoot();
-    const items = transcriptFromMessages(history, (x) => stripContextBlocks(stripSteering(x)));
+    const items = transcriptFromMessages(transcript, (x) => stripContextBlocks(stripSteering(x)));
     void (async () => {
       const model = await resolveCheapModel(this.credentialStore);
       const out = await saveSessionDigest({ cwd, items, now: new Date(), generate: (it) => generateSessionDigest(it, model) });
@@ -871,6 +895,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     // record its final turn there, not into the new conversation.
     this.session = new ChatSession(this.sessionDeps);
     this.background.clear();
+    this.readGrants.clear();
+    this.guessedWindowFor = '';
+    this.wakeups.release();
     this.lastTurn = undefined;
     this.proposed?.clear();
     this.post({ type: 'session', id: this.session.id });
@@ -895,7 +922,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         void this.context.globalState.update(PROMPT_HISTORY_KEY, items);
       }
     } else {
-      items = userPrompts(transcriptFromMessages(this.session.history ?? [], (x) => stripContextBlocks(stripSteering(x))));
+      items = userPrompts(transcriptFromMessages(this.session.transcript, (x) => stripContextBlocks(stripSteering(x))));
       if (sent !== undefined) items = pushPrompt(items, sent);
     }
     this.post({ type: 'prompt_history', items });
@@ -928,12 +955,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     if (res.type === 'sessionResumed') {
       this.session = ChatSession.fromSession(this.sessionDeps, res.session);
       this.background.clear();
+      this.readGrants.clear();
+      this.wakeups.release();
+      this.wakeups.forChat(this.session.id); // brings back what this chat had scheduled
       this.lastTurn = undefined;
       this.post({ type: 'session', id: this.session.id });
       this.todos = [];
       this.post({ type: 'todo_updated', todos: [] });
       this.restoreGoal();
-      this.post({ type: 'transcript', items: mergeCmdEntries(res.transcript, this.context.workspaceState.get<CmdEntry[]>(cmdKey(this.session.id)) ?? []) });
+      this.post({ type: 'transcript', items: mergeCmdEntries(res.transcript, this.context.workspaceState.get<CmdEntry[]>(cmdKey(this.session.id)) ?? []), feedback: { ...this.session.feedback } });
       this.postPromptHistory();
       this.repostRuns();
       this.post({ type: 'meter_reset', costUsd: this.session.totalCostUsd });
@@ -1236,8 +1266,11 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         const edited = msg.text?.trim() ? await this.planMessage(msg.text) : undefined;
         const text = edited ? edited.text : last.text;
         // Drop the last turn: the conversation goes back to before it, on screen too.
-        this.session.rewindTo(last.historyBefore);
-        this.post({ type: 'transcript', items: transcriptFromMessages(last.historyBefore ?? [], (x) => stripContextBlocks(stripSteering(x))) });
+        this.session.rewindTo(last.historyBefore, last.transcriptBefore);
+        const kept = transcriptFromMessages(last.transcriptBefore, (x) => stripContextBlocks(stripSteering(x)));
+        // The ratings of the turns thrown away go with them: the retried reply must not inherit a thumb.
+        this.session.pruneFeedback(kept.filter((i) => i.role === 'user').length);
+        this.post({ type: 'transcript', items: kept, feedback: { ...this.session.feedback } });
         this.post({ type: 'user_message', text: msg.text?.trim() || last.text, retry: true });
         this.post({ type: 'notice', message: t('Retrying. Files the earlier attempt changed stay changed; use Revert this run or a checkpoint to undo them.') });
         // The files that went with the message go again.
@@ -1250,10 +1283,32 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       case 'allow_command':
         await this.rememberCommand(msg.id);
         return;
+      case 'message_feedback': {
+        const out = await this.session.setFeedback(msg.turn, msg.rating, msg.note);
+        if (!out.ok) this.post({ type: 'warning', message: t('Could not save your rating: {0}', out.error) });
+        return;
+      }
+      case 'plan_implement': {
+        const file = this.lastPlanFile;
+        if (!file) return;
+        const rel = path.relative(this.workspaceRoot(), file).split(path.sep).join('/');
+        await this.runChat(t('Implement the plan above (saved in {0}).', rel), this.lastLevel, [], 'agent', undefined, true);
+        return;
+      }
       case 'suggest_choice': {
         const held = this.pendingLarge;
         this.pendingLarge = undefined;
         if (!held) return;
+        if (held.suggested) {
+          // The model asked for a plan first; the answer decides how the same request runs.
+          if (msg.choice === 'never') await vscode.workspace.getConfiguration('forge').update('suggestSpec', false, vscode.ConfigurationTarget.Global);
+          if (msg.choice === 'spec' && this.specHandler) this.specHandler(held.text);
+          else {
+            const next = followUpAfterSuggestion(msg.choice === 'spec' ? 'go' : msg.choice, held.text);
+            await this.runChat(next.text, held.level, [], next.modeId, undefined, true);
+          }
+          return;
+        }
         if (msg.choice === 'never') {
           await vscode.workspace.getConfiguration('forge').update('suggestSpec', false, vscode.ConfigurationTarget.Global);
         }
@@ -1274,6 +1329,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       case 'cancel':
         this.goal?.stop();
+        void this.wakeups.cancelAll();
         this.controller?.abort();
         return;
       case 'goal_command':
@@ -1319,6 +1375,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       case 'open_settings':
         await vscode.commands.executeCommand('forge.openSettings');
+        return;
+      case 'open_agent_manager_window':
+        await vscode.commands.executeCommand('forge.openAgentManagerInWindow');
         return;
       case 'list_models':
         await this.sendModelMenu(msg.refresh === true);
@@ -1564,14 +1623,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const entry = findChatEntry(await listSessions(dir), ref, this.session.id);
     if (!entry) return null;
     const session = await loadSession(entry.id, dir);
-    const items = transcriptFromMessages(session.messages, (x) => stripContextBlocks(stripSteering(x)));
+    const items = transcriptFromMessages(displayMessages(session), (x) => stripContextBlocks(stripSteering(x)));
     if (items.length === 0) return null;
     return redact(chatTranscriptText(items, 18_000)).text;
   }
 
   /** A chat message: resolve its @mentions, then run it with its attachments; remembered for Retry and Edit. */
-  private async runChat(text: string, level: ApprovalLevel, attachments: Attachment[], modeId?: string, historyBefore = this.session.history): Promise<void> {
-    this.lastTurn = { text, attachments, historyBefore };
+  private async runChat(text: string, level: ApprovalLevel, attachments: Attachment[], modeId?: string, historyBefore = this.session.history, planDeclined = false): Promise<void> {
+    this.lastTurn = { text, attachments, historyBefore, transcriptBefore: this.session.transcript };
+    this.lastLevel = level;
     // @mentions: attach the referenced files / diagnostics / git diff as context for this turn.
     const resolved = await resolveMentions(text, createMentionResolvers(this.workspaceRoot(), () => this.terminalLog, readConfig().docs, (ref) => this.readChatMention(ref)));
     if (resolved.attached.length > 0 || resolved.unresolved.length > 0) {
@@ -1579,11 +1639,18 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     // Background agents that finished since the last message: the model has not seen their answers yet.
     const finished = backgroundResultsBlock(this.background.takeUndelivered());
-    const outcome = await this.runTask(finished ? `${finished}\n\n${resolved.prompt}` : resolved.prompt, level, { kind: 'chat', ...(modeId ? { modeId } : {}), attachments });
+    const outcome = await this.runTask(finished ? `${finished}\n\n${resolved.prompt}` : resolved.prompt, level, { kind: 'chat', ...(modeId ? { modeId } : {}), attachments, ...(planDeclined ? { planDeclined: true } : {}) });
     if (outcome === null && attachments.length > 0) {
       // Nothing ran (no model, a run already going): don't lose what the user attached.
       this.attachments.restore(attachments);
       this.postAttachments();
+    }
+    // The model suggested planning first (F2): hold the request and ask, once the run has ended.
+    if (outcome && this.suggestedPlan !== undefined) {
+      this.suggestedPlan = undefined;
+      this.pendingLarge = { text, level, attachments: [], suggested: true };
+      this.post({ type: 'suggest_spec' });
+      return;
     }
     // A large plan offers to become a spec; the spec is drafted from the request and the plan together.
     const offer = outcome
@@ -1599,6 +1666,35 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     if (outcome && offer) {
       this.pendingLarge = { text: `${text}\n\nPlan from the Plan agent:\n${outcome.finalText}`, level, attachments: [], afterPlan: true };
       this.post({ type: 'suggest_spec', afterPlan: true });
+    }
+    // A finished plan is kept in the project, and the person is asked whether to carry it out.
+    if (outcome && outcome.reason === 'completed' && (modeId ?? this.modeId) === 'plan' && outcome.finalText.trim()) {
+      await this.keepPlan(requestOfFollowUp(text), outcome.finalText, !offer);
+    }
+  }
+
+  /** A read tool wants a folder outside the project (G16): ask, naming the real folder, and remember a yes for this chat. */
+  private async askReadOutside(dir: string): Promise<boolean> {
+    const allow = t('Allow');
+    const pick = await vscode.window.showWarningMessage(
+      t('Forge wants to read files in a folder outside your project. Allow it for this chat? It can read everything inside that folder, and cannot change anything.'),
+      { modal: true, detail: dir },
+      allow
+    );
+    if (pick !== allow) return false;
+    this.readGrants.add(dir);
+    return true;
+  }
+
+  /** Save a plan under .forge/plans and, unless a spec card is already up, offer to implement it. */
+  private async keepPlan(request: string, plan: string, offerImplement: boolean): Promise<void> {
+    try {
+      const file = await savePlan(this.workspaceRoot(), request, plan);
+      this.lastPlanFile = file;
+      const rel = path.relative(this.workspaceRoot(), file).split(path.sep).join('/');
+      this.post({ type: 'plan_saved', path: rel, offer: offerImplement });
+    } catch (err) {
+      this.log?.warn(`Could not save the plan: ${(err as Error).message}`);
     }
   }
 
@@ -1619,6 +1715,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       return null;
     }
     this.starting = true;
+    this.suggestedPlan = undefined;
     let cfg: ReturnType<typeof readConfig>;
     try {
       cfg = await this.resolveConfigWithKeys();
@@ -1646,6 +1743,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     // A model from a named provider already carries its endpoint; its API id must not be read as an alias again.
     if (!model.endpoint) model = applyResolved(model, resolveModelAlias(model.model, sharedConfig.aliases, model.provider));
+    // A model nothing lists gets a guessed window; say so once, so a long chat on it is not condensed for no visible reason.
+    const windowKey = `${model.provider}:${model.model}`;
+    if (windowIsGuess(model) && this.guessedWindowFor !== windowKey) {
+      this.guessedWindowFor = windowKey;
+      this.post({ type: 'notice', message: t('Forge does not know the context window of {0} and assumes {1} tokens. If that is wrong, set it under modelOverrides in ~/.forge/config.json.', model.model, getModelWindowTokens(model).toLocaleString('en-US')) });
+    }
     if (this.modelRefOverride) {
       try {
         model = applyResolved(model, resolveModelAlias(this.modelRefOverride, sharedConfig.aliases, model.provider));
@@ -1737,6 +1840,11 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       if (github) extras.github = github;
       else this.post({ type: 'warning', message: t('GitHub tools are on, but you are not signed in to GitHub: sign in from the Accounts menu or set GITHUB_TOKEN.') });
     }
+    // Search by meaning (F12): ask before code goes to a remote embedder, and show the index in the status bar.
+    const semanticUi = SemanticUi.current;
+    if (extras.semanticSearch && semanticUi) extras.semanticSearch = { ...extras.semanticSearch, consent: semanticUi.consent.check, onStatus: semanticUi.onStatus };
+    // Windows has no sandbox tool. The person is told (below, once per chat) and the run goes on; without the flag core refuses (F13).
+    if (extras.commandSandbox && process.platform === 'win32') extras.commandSandbox = { ...extras.commandSandbox, allowUnconfined: true };
     if (extras.commandSandbox && process.platform === 'win32' && !this.sandboxWarned) {
       this.sandboxWarned = true;
       this.post({ type: 'warning', message: t('The command sandbox (forge.commandSandbox) is not available on Windows: commands run unconfined and still ask for approval.') });
@@ -1771,6 +1879,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const agentConfig: AgentConfig = {
       model: runModel,
       cwd: workspaceRoot,
+      // Audit entries name the chat, and OpenAI routes its calls to one cache by it (RB-61).
+      sessionId: session.id,
       ...autonomyFlags(auto),
       ...chatRunLimits(),
       abortSignal: controller.signal,
@@ -1785,7 +1895,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         : {}),
       ...(options.kind === 'chat' && options.disableAskUser ? { disableAskUser: true } : {}),
       ...(skillsRegistry ? { skills: { registry: skillsRegistry } } : {}),
-      ...(!generating && cfg.terminal.integrated ? { commandRunner: this.commandRunner } : {}),
+      ...(!generating && cfg.terminal.integrated ? { commandRunner: this.commandRunner, ...(runnerShellOf(vscode.env.shell, process.platform) ? { runnerShell: runnerShellOf(vscode.env.shell, process.platform)! } : {}) } : {}),
       ...(sharedConfig.compactionModel
         ? { compactionModel: { provider: runModel.provider, model: sharedConfig.compactionModel } }
         : {}),
@@ -1797,7 +1907,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
               // snapshot stalls big repos and is never pruned.
               captureInitial: false,
               captureBeforeTools: cfg.checkpoints.captureCommands
-                ? ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command']
+                ? ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command', 'bg_start']
                 : ['write_file', 'edit_file', 'edit_notebook', 'apply_patch'],
             },
           }
@@ -1807,7 +1917,11 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       ...(sharedConfig.instructions?.length ? { extraInstructions: sharedConfig.instructions } : {}),
       ...(sharedConfig.subagentModel ? { subAgentModel: applyResolved(runModel, resolveModelAlias(sharedConfig.subagentModel, sharedConfig.aliases, runModel.provider)) } : {}),
       ...(this.todos.length > 0 && !generating ? { initialTodos: this.todos } : {}),
-      ...(!generating ? { backgroundAgents: this.background } : {}),
+      ...(!generating ? { backgroundAgents: this.background, wakeups: this.wakeups.forChat(this.session.id) } : {}),
+      // The chat can ask "plan first?" after a run that called suggest_plan; "Just do it" runs again with it off (F2).
+      ...(options.kind === 'chat' ? { suggestPlan: true, ...(options.planDeclined ? { planDeclined: true } : {}) } : {}),
+      // Folders outside the project: asked about one at a time, remembered for this chat, never in a restricted workspace (G16).
+      ...(!generating ? { readRoots: [...this.readGrants], ...(vscode.workspace.isTrusted ? { askReadOutside: (dir: string) => this.askReadOutside(dir) } : {}) } : {}),
       ...(!generating
         ? {
             askUser: (q: { question: string; options?: string[]; allowCustom?: boolean }, signal?: AbortSignal) =>
@@ -1847,6 +1961,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: 'model', provider: runModel.provider, model: runModel.model });
 
     const startedAt = Date.now();
+    // Which turn this run is (1 = the chat's first message), so the page can attach the thumbs to the right reply (F3).
+    const feedbackTurn =
+      options.kind === 'chat' ? transcriptFromMessages(this.session.transcript, (x) => stripContextBlocks(stripSteering(x))).filter((i) => i.role === 'user').length + 1 : undefined;
     let inputTokens = 0;
     let outputTokens = 0;
     let contextTokens: number | undefined;
@@ -1946,6 +2063,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             return;
           case 'tool_result': {
             const call = toolCalls.get(event.id);
+            if (event.name === 'suggest_plan' && !event.isError && (event.result as { suggested?: unknown } | null)?.suggested === true) {
+              this.suggestedPlan = String((event.result as { reason?: unknown }).reason ?? '');
+            }
             for (const file of call ? changedFilesFromToolResult(workspaceRoot, event.name, call.args, event.isError) : []) changedFiles.add(file);
             if (typeof event.result === 'string' && event.result.startsWith('Denied by user')) denied = true;
             this.post({ type: 'tool_result', id: event.id, name: event.name, result: event.result, isError: event.isError });
@@ -2036,6 +2156,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
               outputTokens,
               durationMs: Date.now() - startedAt,
               reason: event.reason,
+              ...(feedbackTurn ? { turn: feedbackTurn } : {}),
               ...(contextWindow ? { contextTokens, contextWindow } : {}),
             });
             return;
@@ -2252,6 +2373,8 @@ type ChatMessage =
   | { type: 'approval_response'; id: string; approved: boolean; note?: string }
   | { type: 'cancel' }
   | { type: 'suggest_choice'; choice: 'spec' | 'plan' | 'go' | 'never' }
+  | { type: 'plan_implement' }
+  | { type: 'message_feedback'; turn: number; rating: 'up' | 'down' | null; note?: string }
   | { type: 'revert_run' }
   | { type: 'allow_command'; id: string }
   | { type: 'work_load'; panel: string }
@@ -2272,6 +2395,7 @@ type ChatMessage =
   | { type: 'condense' }
   | { type: 'copy_resume'; id: string }
   | { type: 'open_settings' }
+  | { type: 'open_agent_manager_window' }
   | { type: 'mention_query'; q: string }
   | { type: 'retry_last'; text?: string; level?: ApprovalLevel; auto?: boolean }
   | { type: 'attach_file'; name: string; dataUrl: string }
@@ -2292,8 +2416,8 @@ type ChatMessage =
   | { type: 'cmd_copy'; command: string };
 
 const CHAT_TYPES = new Set([
-  'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
-  'review_hunks', 'condense', 'mention_query', 'retry_last', 'attach_file', 'attach_uris', 'pick_attachments', 'enhance_prompt', 'remove_attachment', 'copy_resume', 'open_settings', 'list_models', 'select_model', 'toggle_favourite_model', 'bg_stop', 'bg_stop_all', 'bg_dismiss', 'work_load', 'work_act',
+  'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'plan_implement', 'message_feedback', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
+  'review_hunks', 'condense', 'mention_query', 'retry_last', 'attach_file', 'attach_uris', 'pick_attachments', 'enhance_prompt', 'remove_attachment', 'copy_resume', 'open_settings', 'open_agent_manager_window', 'list_models', 'select_model', 'toggle_favourite_model', 'bg_stop', 'bg_stop_all', 'bg_dismiss', 'work_load', 'work_act',
   'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'run_action', 'goal_command', 'question_answer', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
 ]);
 
@@ -2303,6 +2427,7 @@ function isChatMessage(msg: unknown): msg is ChatMessage {
   if (!CHAT_TYPES.has(m.type as string)) return false;
   if ((m.type === 'set_mode' || m.type === 'open_diff' || m.type === 'review_hunks' || m.type === 'copy_resume' || m.type === 'allow_command') && typeof m.id !== 'string') return false;
   if (m.type === 'suggest_choice' && !['spec', 'plan', 'go', 'never'].includes(m.choice as string)) return false;
+  if (m.type === 'message_feedback' && !(Number.isInteger(m.turn) && (m.turn as number) >= 1 && (m.rating === null || m.rating === 'up' || m.rating === 'down') && (m.note === undefined || typeof m.note === 'string'))) return false;
   if (m.type === 'mention_query' && typeof m.q !== 'string') return false;
   if (m.type === 'retry_last' && m.text !== undefined && typeof m.text !== 'string') return false;
   if ((m.type === 'user_input' || m.type === 'enhance_prompt') && typeof m.text !== 'string') return false;

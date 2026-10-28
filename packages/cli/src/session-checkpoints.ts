@@ -8,7 +8,7 @@ import path from 'node:path';
 import { CheckpointStore, type AgentConfig } from '@ikarmic/forge-core';
 
 /** Tools whose pre-call state is snapshotted (file-scoped, or capped full walk for shell). */
-const CAPTURE_BEFORE_TOOLS = ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command'];
+const CAPTURE_BEFORE_TOOLS = ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command', 'bg_start'];
 
 export function sessionCheckpointDir(sessionsDir: string, sessionId: string): string {
   return path.join(sessionsDir, sessionId);

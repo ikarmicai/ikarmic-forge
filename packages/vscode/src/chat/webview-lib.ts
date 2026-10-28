@@ -12,3 +12,4 @@ export { filterSlash, parseSlash, slashMenuQuery } from './slash-commands.js';
 export { WAVE_W, WAVE_H, WAVE_LEN, formatTokens, meterLevel, wavePath } from './meter-wave.js';
 export { WHY_ROW, stepsHeadParts } from './why-ran.js';
 export { historyStep } from './prompt-history.js';
+export { runReasonLabel } from '../human-text.js';

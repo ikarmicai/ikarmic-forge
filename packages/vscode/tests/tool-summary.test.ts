@@ -96,9 +96,9 @@ describe('summarizeTool: done', () => {
 });
 
 describe('summarizeTool: unknown and malformed', () => {
-  it('falls back to the tool name and the first string arg for MCP tools', () => {
+  it('names an MCP tool in words and shows the first string arg', () => {
     const s = summarizeTool('github__create_issue', { owner: 7, title: 'Login test fails' });
-    expect(s).toMatchObject({ verb: 'github__create_issue', target: 'Login test fails', title: 'Login test fails' });
+    expect(s).toMatchObject({ verb: 'Github create issue', target: 'Login test fails', title: 'Login test fails' });
   });
 
   it.each([null, undefined, 'a string', ['array'], 42])('never throws on args = %j', (args) => {
@@ -131,8 +131,8 @@ describe('approvalCopy / approvalLogText', () => {
     expect(approvalCopy('run_command', { command: 'rm -rf dist' }, true)).toMatchObject({ question: 'Run', target: 'rm -rf dist', primary: 'Hold to run' });
   });
 
-  it('falls back to the tool name for unknown tools', () => {
-    expect(approvalCopy('mcp__deploy', { env: 'prod' }, false)).toMatchObject({ question: 'mcp__deploy', target: 'prod' });
+  it('names an unknown tool in words', () => {
+    expect(approvalCopy('mcp__deploy', { env: 'prod' }, false)).toMatchObject({ question: 'MCP deploy', target: 'prod' });
   });
 
   it('writes log lines for every outcome', () => {

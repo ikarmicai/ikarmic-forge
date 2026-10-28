@@ -8,6 +8,8 @@
  *
  */
 
+import { toolLabel } from '../human-text.js';
+
 export interface ToolSummary {
   /** "Read", "Edited", "Searching": present tense while running. */
   verb: string;
@@ -42,6 +44,15 @@ const VERBS: Record<string, [done: string, running: string]> = {
   find_references: ['Found references to', 'Finding references to'],
   git_diff: ['Read the diff', 'Reading the diff'],
   dependency_audit: ['Audited dependencies', 'Auditing dependencies'],
+  get_diagnostics: ['Checked for problems', 'Checking for problems'],
+  skill: ['Loaded skill', 'Loading skill'],
+  suggest_plan: ['Suggested planning first', 'Suggesting planning first'],
+  repo_clone: ['Fetched repository', 'Fetching repository'],
+  schedule_wakeup: ['Scheduled a wakeup', 'Scheduling a wakeup'],
+  cancel_wakeup: ['Cancelled a wakeup', 'Cancelling a wakeup'],
+  bg_start: ['Started in the background', 'Starting in the background'],
+  bg_read: ['Read background output', 'Reading background output'],
+  bg_stop: ['Stopped background process', 'Stopping background process'],
   list_symbols: ['Listed symbols in', 'Listing symbols in'],
   fetch_url: ['Fetched', 'Fetching'],
   github_pr_read: ['Read pull request', 'Reading pull request'],
@@ -216,7 +227,7 @@ function resultMeta(name: string, a: Rec, r: Rec): Pick<ToolSummary, 'meta' | 'm
 export function summarizeTool(name: string, args: unknown, outcome?: ToolOutcome): ToolSummary {
   const a = rec(args);
   const verbs = VERBS[name];
-  const verb = verbs ? (outcome ? verbs[0] : verbs[1]) : name;
+  const verb = verbs ? (outcome ? verbs[0] : verbs[1]) : toolLabel(name);
   const t = target(name, a);
   if (!outcome) return { verb, ...t, ...argsMeta(name, a) };
   const { result, isError } = outcome;
@@ -261,7 +272,7 @@ const QUESTION: Record<string, string> = {
 export function approvalCopy(name: string, args: unknown, destructive: boolean): ApprovalCopy {
   const s = summarizeTool(name, args);
   return {
-    question: QUESTION[name] ?? name,
+    question: QUESTION[name] ?? toolLabel(name),
     target: s.target,
     title: s.title,
     ...(s.meta ? { meta: s.meta } : {}),

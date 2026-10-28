@@ -24,6 +24,7 @@ import {
   loadForgeConfigFile,
   loadSchemaFile,
   loadSession,
+  runReasonLabel,
   WorktreeManager,
 } from '@ikarmic/forge-core';
 
@@ -453,16 +454,16 @@ async function handleSessionTail(idArg: string, dir: string): Promise<void> {
     for (const m of messages) for (const line of core.summarizeMessage(m)) process.stdout.write(`${line}\n`);
   };
   process.stderr.write(`following ${id} (Ctrl-C to stop)\n`);
-  print(session.messages);
+  print(core.displayMessages(session));
   await new Promise<void>((resolve) => {
     const stop = core.watchSession(
       id,
       dir,
       ({ session: next, appended }) => {
         if (appended === null) process.stdout.write('--- history rewritten (compaction or another branch) ---\n');
-        print(appended ?? next.messages);
+        print(appended ?? core.displayMessages(next));
       },
-      { known: session.messages, onError: () => undefined }
+      { known: core.displayMessages(session), onError: () => undefined }
     );
     process.once('SIGINT', () => {
       stop();
@@ -711,7 +712,7 @@ async function runInkMode(options: CliOptions, model: ModelConfig, session: Sess
       display: sharedConfig.display,
       onResult: (result): void => {
         app.unmount();
-        if (options.notifications) createNotifier({ command: options.notificationsCommand })(`Forge finished (${result.reason})`);
+        if (options.notifications) createNotifier({ command: options.notificationsCommand })(`Forge finished: ${runReasonLabel(result.reason)}`);
         setImmediate(async () => {
           await session.cleanup();
           if (workflow && result.reason === 'completed') {
@@ -814,7 +815,7 @@ async function runArchitectInkMode(
     process.stdout.write(`architect: ${model.provider}/${model.model}\n`);
     const architect = await renderPhase(options.task!, architectPhaseConfig(baseConfig), model);
     if (!isUsableArchitectPlan(architect)) {
-      return await finish(1, architect.reason === 'spec' ? 'architect produced no usable plan' : `architect phase ended: ${architect.reason}`);
+      return await finish(1, architect.reason === 'spec' ? 'architect produced no usable plan' : `architect phase ended: ${runReasonLabel(architect.reason)}`);
     }
     process.stdout.write(`\n# Architect plan\n\n${architect.finalText}\n\n`);
     if (!options.auto && !(await confirmPlan(`${editorModel.provider}/${editorModel.model}`))) {

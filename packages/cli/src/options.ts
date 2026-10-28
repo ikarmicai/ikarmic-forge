@@ -50,6 +50,8 @@ export interface CliOptions {
   loopGuardThreshold: number | null;
   /** `--sandbox [network]`: run commands in the OS sandbox. */
   commandSandbox: 'off' | 'on' | 'on-network';
+  /** `--sandbox-allow-host <host>` (repeatable): hosts Forge's own network tools may reach while the sandbox has the network off. */
+  sandboxAllowHosts?: string[];
   /** `--cheap-model <id>`: same-provider model for read-only exploration steps. */
   cheapModel: string | null;
   /** `--no-cache-prompts`: skip Anthropic prompt-cache breakpoints. */
@@ -76,6 +78,10 @@ export interface CliOptions {
   autoLint: boolean;
   /** `--auto-lint-cmd [ext:] <cmd>` (repeatable), parsed by extension (`*` = any file); implies auto-lint. */
   autoLintCommands: Record<string, string>;
+  /** `--auto-format-cmd [ext:] <cmd>` (repeatable): formatter run on each file the agent writes, before the check. */
+  autoFormatCommands: Record<string, string>;
+  /** `--shell <name>`: Windows shell for run_command (auto, pwsh, powershell, bash, cmd). */
+  shell?: 'auto' | 'pwsh' | 'powershell' | 'bash' | 'cmd';
   /** `--lint-cmd <cmd>` (repeatable): lint checks run after edits, like `--verify`; also used by `/lint`. */
   lintCmds: string[];
   /** `--test-cmd <cmd>` (repeatable): test checks run after edits, like `--verify`; also used by `/test`. */
@@ -195,6 +201,7 @@ export function buildProgram(): Command {
     .option('--max-duration <ms>', 'max wall-clock ms', (v) => parseInt(v, 10), 10 * 60 * 1000)
     .option('--max-cost <usd>', 'stop the run once its cost reaches this many USD', (v) => parseFloat(v))
     .option('--loop-guard <n>', 'stop the run after this many identical tool calls in a row (off by default)', (v) => parseInt(v, 10))
+    .option('--sandbox-allow-host <host>', 'with --sandbox: a host fetch_url, repo_clone, the browser and GitHub may still reach (repeatable; *.example.com or *)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--sandbox [network]', 'run commands in an OS sandbox (bubblewrap / sandbox-exec; not Windows); "network" keeps internet access')
     .option('--verify <cmd>', 'run this check after edits and self-fix on failure (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--force', 'with `plugin install`: replace an installed plugin of the same name', false)
@@ -224,6 +231,8 @@ export function buildProgram(): Command {
     .option('--git-commit-verify', 'with --auto-commit: run pre-commit hooks on Forge commits (skipped by default)', false)
     .option('--map-tokens <n>', 'put a ranked map of the codebase (about <n> tokens) in the system prompt; 0 turns it off')
     .option('--auto-lint', 'syntax-check each file the agent writes and feed problems back to it', false)
+    .option('--shell <name>', 'shell for run_command on Windows: auto (default: pwsh, then Windows PowerShell, Git Bash, cmd), pwsh, powershell, bash or cmd')
+    .option('--auto-format-cmd <cmd>', 'formatter run on each file the agent writes, e.g. "prettier --write" or "go: gofmt -w" (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--auto-lint-cmd <cmd>', 'linter run on each file the agent writes, e.g. "eslint --fix" or "python: flake8" (repeatable; implies --auto-lint)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--lint-cmd <cmd>', 'run this lint check after edits and self-fix on failure; also used by /lint (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--test-cmd <cmd>', 'run this test command after edits and self-fix on failure; also used by /test (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
@@ -377,6 +386,32 @@ const LINT_LANGUAGE_EXTENSIONS: Record<string, string[]> = {
  * apply to those files only; a value with no `name:` prefix applies to every file (`*`).
  * A colon not followed by a space (a Windows path) is part of the command.
  */
+let warnedUnconfined = false;
+
+/**
+ * The command sandbox for a run. On a system with no sandbox tool (Windows) commands cannot be confined: the person is told
+ * once, on stderr, and the run goes on (F13). Without that notice core refuses such a command instead of running it unconfined.
+ */
+export function sandboxConfigFor(options: Pick<CliOptions, 'commandSandbox' | 'sandboxAllowHosts'>, platform: NodeJS.Platform = process.platform): NonNullable<AgentConfig['commandSandbox']> {
+  const windows = platform === 'win32';
+  if (windows && !warnedUnconfined) {
+    warnedUnconfined = true;
+    process.stderr.write('forge: --sandbox cannot confine commands on Windows (there is no sandbox tool): commands run unconfined and still ask for approval. Forge\'s own network tools still follow the allowed hosts.\n');
+  }
+  return {
+    network: options.commandSandbox === 'on-network',
+    ...((options.sandboxAllowHosts ?? []).length > 0 ? { allowedHosts: options.sandboxAllowHosts } : {}),
+    ...(windows ? { allowUnconfined: true } : {}),
+  };
+}
+
+/** `--shell` value, or an error naming the choices. */
+export function parseShell(value: string): NonNullable<CliOptions['shell']> {
+  const v = value.trim().toLowerCase();
+  if (v === 'auto' || v === 'pwsh' || v === 'powershell' || v === 'bash' || v === 'cmd') return v;
+  throw new Error(`--shell must be one of: auto, pwsh, powershell, bash, cmd (got "${value}")`);
+}
+
 export function parseLintCommands(values: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const value of values) {
@@ -466,6 +501,7 @@ export function parseOptions(argv: string[]): {
     maxCostUsd: typeof opts.maxCost === 'number' && Number.isFinite(opts.maxCost) && opts.maxCost > 0 ? opts.maxCost : null,
     loopGuardThreshold: typeof opts.loopGuard === 'number' && Number.isInteger(opts.loopGuard) && opts.loopGuard > 0 ? opts.loopGuard : null,
     commandSandbox: opts.sandbox === 'network' ? 'on-network' : opts.sandbox ? 'on' : 'off',
+    sandboxAllowHosts: Array.isArray(opts.sandboxAllowHost) ? (opts.sandboxAllowHost as string[]) : [],
     cheapModel: (opts.cheapModel as string | undefined) ?? null,
     noCachePrompts: opts.cachePrompts === false,
     architect: opts.architect === true,
@@ -477,6 +513,8 @@ export function parseOptions(argv: string[]): {
     gitCommitVerify: opts.gitCommitVerify === true,
     mapTokens: parseMapTokens(opts.mapTokens),
     webSearch: parseWebSearch(opts.webSearch),
+    ...(typeof opts.shell === 'string' ? { shell: parseShell(opts.shell) } : {}),
+    autoFormatCommands: parseLintCommands(Array.isArray(opts.autoFormatCmd) ? (opts.autoFormatCmd as string[]) : []),
     autoLintCommands: parseLintCommands(Array.isArray(opts.autoLintCmd) ? (opts.autoLintCmd as string[]) : []),
     autoLint: opts.autoLint === true || (Array.isArray(opts.autoLintCmd) && opts.autoLintCmd.length > 0),
     lintCmds: Array.isArray(opts.lintCmd) ? (opts.lintCmd as string[]) : [],
@@ -1142,7 +1180,7 @@ export async function toAgentConfig(
     maxDurationMs: options.maxDurationMs ?? undefined,
     ...(options.maxCostUsd !== null ? { maxCostUsd: options.maxCostUsd } : {}),
     ...(options.loopGuardThreshold !== null ? { loopGuardThreshold: options.loopGuardThreshold } : {}),
-    ...(options.commandSandbox !== 'off' ? { commandSandbox: { network: options.commandSandbox === 'on-network' } } : {}),
+    ...(options.commandSandbox !== 'off' ? { commandSandbox: sandboxConfigFor(options) } : {}),
     ...(options.audit ? { audit: createFileAuditSink() } : {}),
     ...(options.browser ? { browser: true as const } : {}),
     ...(options.github ? { github: resolveGitHub() } : {}),
@@ -1153,6 +1191,8 @@ export async function toAgentConfig(
       : {}),
     ...(options.mapTokens ? { repoMap: { tokens: options.mapTokens } } : {}),
     ...(options.autoLint ? { autoLint: { commands: options.autoLintCommands } } : {}),
+    ...(options.shell && options.shell !== 'auto' ? { shell: options.shell } : {}),
+    ...(Object.keys(options.autoFormatCommands ?? {}).length > 0 ? { autoFormat: { commands: options.autoFormatCommands } } : {}),
     ...(options.noProjectInstructions ? { disableProjectInstructions: true } : {}),
     ...(options.cheapModel
       ? {
@@ -1283,4 +1323,4 @@ function parseRegexCsv(raw: string | null): RegExp[] {
 }
 
 /** Tools that change anything outside the process; denied under `--dry-run`. */
-export const DRY_RUN_DENIED_TOOLS = ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command', 'browser_act', 'memory_write', 'memory_forget'];
+export const DRY_RUN_DENIED_TOOLS = ['write_file', 'edit_file', 'edit_notebook', 'apply_patch', 'run_command', 'bg_start', 'repo_clone', 'browser_act', 'memory_write', 'memory_forget'];

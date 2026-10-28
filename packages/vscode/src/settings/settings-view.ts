@@ -24,6 +24,7 @@ import {
   loadMcpCatalog,
   projectConfigPath,
   loadToolSandboxConfig,
+  mcpToolPrefix,
   registerMcpServer,
   saveForgeConfigFile,
   saveSpecialistsToConfig,
@@ -176,7 +177,7 @@ export class SettingsViewProvider {
               },
               // MCP tools are named mcp__<server>__<tool> (core mcp-client.ts).
               tools: (name: string) => {
-                const prefix = `mcp__${name}__`;
+                const prefix = mcpToolPrefix(name);
                 return mcp.tools().map((t) => t.name).filter((n) => n.startsWith(prefix)).map((n) => n.slice(prefix.length));
               },
               actions: { setMcpServerDisabled, uninstallMcpServer, registerMcpServer, installMcpServer, reload },

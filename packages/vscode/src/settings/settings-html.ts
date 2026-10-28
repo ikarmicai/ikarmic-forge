@@ -2,7 +2,7 @@ import { BUILTIN_TOOLS, MODEL_CATALOG, SUPPORTED_PROVIDERS } from '@ikarmic/forg
 
 import { PROVIDER_LABELS } from '../provider-labels.js';
 import { i18nScript } from '../chat/webview-i18n.js';
-import { BASE_CSS } from '../webview-base-css.js';
+import { DESIGN_CSS } from '../design/index.js';
 
 /**
  * Forge Settings page: section nav with search, one Save/Discard bar for
@@ -10,6 +10,107 @@ import { BASE_CSS } from '../webview-base-css.js';
  * Pure helpers come from dist/webview/settings-ui.js (`window.ForgeSettings`).
  *
  */
+/** Layout for this page, in tokens. A colour or a size under 12px here fails the design-system test. */
+export const SETTINGS_CSS = `
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; }
+  .layout { flex: 1; min-height: 0; display: flex; }
+  nav { flex: none; width: 220px; border-right: var(--border-hairline) solid var(--line-subtle); background: var(--bg-surface); padding: var(--space-sm) var(--space-xs); display: flex; flex-direction: column; gap: var(--space-2xs); overflow-y: auto; }
+  nav input[type="search"] { margin-bottom: var(--space-xs); }
+  .navlist { display: flex; flex-direction: column; gap: 2px; }
+  #section-picker { display: none; margin-bottom: var(--space-xs); }
+  nav .sep { font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); padding: var(--space-sm) var(--space-xs) var(--space-2xs); }
+  nav .ik-badge { margin-left: auto; }
+  .ik-badge:empty { display: none; }
+  main { flex: 1; min-width: 0; overflow-y: auto; padding: var(--space-md) var(--space-lg) var(--space-xl); }
+  section[hidden], #search-results[hidden], #unsaved[hidden], .row[hidden], .hidden { display: none !important; }
+  h2 { font: var(--text-page); color: var(--ink-strong); margin: 0 0 var(--space-2xs); display: flex; align-items: center; gap: var(--space-sm); }
+  h2 .sp { flex: 1; }
+  h2 .ik-badge, h2 .ik-btn { font-weight: 400; }
+  .lead { color: var(--ink-muted); margin: 0 0 var(--space-md); max-width: 70ch; }
+  #banner { margin: 0 0 var(--space-sm); }
+  #banner:empty { display: none; }
+  /* minmax(0, 1fr): a single column that may shrink, so a long no-wrap row (a workspace path) cannot widen the page. */
+  .setting { padding: var(--space-sm); margin: 0 calc(-1 * var(--space-sm)); border-left: var(--border-strong) solid transparent; border-bottom: var(--border-hairline) solid var(--line-subtle); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2xs); }
+  .setting:hover { background: var(--bg-overlay); }
+  .setting.modified { border-left-color: var(--warning); }
+  .setting.flash { outline: var(--border-strong) solid var(--focus-ring); outline-offset: calc(-1 * var(--border-strong)); }
+  .setting .t { font: var(--text-label); font-weight: 600; color: var(--ink-strong); }
+  .setting.modified .t::after { content: " (modified)"; font-weight: 400; color: var(--ink-muted); }
+  .setting .d { color: var(--ink-muted); font: var(--text-caption); max-width: 70ch; }
+  .err, .kstatus.bad { color: var(--danger); }
+  .kstatus.ok { color: var(--success); }
+  /* Wide windows: the name and its description sit beside the control, so the page is not a tall single column. */
+  @media (min-width: 1000px) {
+    .setting { grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); column-gap: var(--space-xl); align-items: start; }
+    .setting > .t { grid-column: 1; }
+    .setting > .t + .d { grid-column: 1; }
+    .setting > :not(.t):not(.t + .d) { grid-column: 2; }
+    .setting > .d { max-width: none; }
+  }
+  .row { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }
+  .allowed-row { flex-wrap: nowrap; }
+  .allowed-row code { flex: none; font: var(--text-code); }
+  .allowed-row .d { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .ik-input, .row .ik-select, nav .ik-input { width: min(320px, 100%); }
+  nav .ik-input, #section-picker { width: 100%; }
+  .rule .ik-input, .rule .ik-select, .agent .ik-input, .agent .ik-textarea, .setting .ik-textarea { width: 100%; }
+  input[type="checkbox"] { accent-color: var(--ion); margin: 0; }
+  .setting .row label { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: var(--control); }
+  .list { overflow: hidden; }
+  .item { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); min-width: 0; }
+  .item + .item, .item + .item-body, .item-body + .item { border-top: var(--border-hairline) solid var(--line-subtle); }
+  .item .main { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .item .name { font-weight: 600; color: var(--ink-strong); display: flex; gap: var(--space-xs); align-items: center; flex-wrap: wrap; }
+  .item .sub { font: var(--text-caption); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .sub.err { color: var(--danger); }
+  #builtin-agents .item .sub { white-space: normal; }
+  .item-body { padding: var(--space-xs) var(--space-sm) var(--space-sm) var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-2xs); background: var(--bg-sunken); }
+  .dot { width: 8px; height: 8px; border-radius: var(--radius-pill); flex: none; background: var(--ink-muted); }
+  .dot.connected { background: var(--success); } .dot.failed { background: var(--danger); } .dot.needs-auth { background: var(--warning); } .dot.disabled { background: transparent; box-shadow: inset 0 0 0 2px var(--ink-muted); }
+  .group-label { font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); margin: var(--space-md) 0 var(--space-xs); }
+  .group-label .path { text-transform: none; letter-spacing: 0; font: var(--text-code); margin-left: var(--space-xs); }
+  .ik-tabs { margin-bottom: var(--space-sm); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-xs); }
+  .card, .agent { padding: var(--pad-card); display: grid; gap: var(--space-xs); }
+  .agent { margin-top: var(--space-xs); }
+  .card .row { justify-content: space-between; margin-top: var(--space-2xs); }
+  .rule-head { display: flex; gap: var(--space-xs); font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); margin-bottom: var(--space-2xs); }
+  .checks { display: flex; flex-wrap: wrap; gap: 2px var(--space-md); }
+  .checks label { display: flex; gap: var(--space-xs); align-items: center; min-height: var(--control); font: var(--text-code); }
+  /* Provider names are product names, not code; only tool names read as monospace. */
+  #hidden-providers label { font-family: inherit; }
+  #hidden-providers { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px var(--space-md); }
+  .tool-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-xs); min-height: var(--control); padding: 2px 0; border-bottom: var(--border-hairline) solid var(--line-subtle); }
+  .tool-row .name { flex: 0 0 150px; min-width: 0; font: var(--text-caption); overflow-wrap: anywhere; }
+  .tool-row .hint { flex: 1 1 140px; min-width: 0; font: var(--text-caption); color: var(--ink-muted); overflow-wrap: anywhere; }
+  details.adv { margin: var(--space-sm) 0; }
+  details.adv > summary { cursor: pointer; min-height: var(--control); color: var(--ink-muted); }
+  .rule { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(130px, 1fr) minmax(140px, 2fr) auto; gap: var(--space-xs); align-items: center; margin-top: var(--space-xs); }
+  .pattern-rule { grid-template-columns: minmax(110px, 1fr) minmax(140px, 2fr) auto auto auto auto auto; }
+  .keyrow { display: grid; grid-template-columns: 120px minmax(100px, 150px) minmax(110px, 1fr) auto; gap: var(--space-xs); align-items: center; padding: var(--space-xs) 0; }
+  .keyrow > span:nth-child(2) { overflow-wrap: anywhere; font: var(--text-caption); }
+  .keyrow + .keyrow { border-top: var(--border-hairline) solid var(--line-subtle); }
+  .keyrow .kstatus { overflow-wrap: normal; }
+  .keyrow .row { flex-wrap: nowrap; gap: var(--space-2xs); }
+  #unsaved { flex: none; display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-md); border-top: var(--border-hairline) solid var(--line-subtle); background: var(--bg-surface); }
+  #unsaved .sp { flex: 1; }
+  #unsaved .dotmark { color: var(--warning); }
+  #search-results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: var(--border-hairline) solid var(--line-subtle); border-radius: 0; background: none; color: var(--ink-body); font: inherit; padding: var(--space-xs) var(--space-sm); cursor: pointer; }
+  #search-results button:hover { background: var(--bg-overlay); }
+  #search-results mark { background: var(--warning-tint); color: inherit; border-radius: var(--radius-xs); }
+  #search-results .count { color: var(--ink-muted); font: var(--text-caption); margin: 0 0 var(--space-xs); }
+  #search-results .crumb { color: var(--ink-muted); font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; }
+  @media (max-width: 560px) {
+    .layout { flex-direction: column; }
+    nav { width: auto; border-right: 0; border-bottom: var(--border-hairline) solid var(--line-subtle); overflow-y: visible; padding: var(--space-xs); }
+    /* Search stays available in a split editor, above a section picker (a strip of 14 buttons clipped its labels). */
+    .navlist { display: none; }
+    #section-picker { display: block; }
+    .keyrow, .rule { grid-template-columns: 1fr; }
+  }
+`;
+
 export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; strings?: Record<string, string> } = {}): string {
   const i18n = i18nScript(opts.strings ?? {});
   const i18nBlock = i18n ? `<script>${i18n}</script>\n` : '';
@@ -21,150 +122,15 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
 <head>
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src ${scriptSrc};">
-<style>${BASE_CSS}
-  :root { --line: var(--vscode-widget-border, var(--border)); }
-  html, body { margin: 0; height: 100%; }
-  body { font-family: var(--vscode-font-family); font-size: var(--fs-m); color: var(--fg); background: var(--vscode-editor-background); display: flex; flex-direction: column; }
-  .layout { flex: 1; min-height: 0; display: flex; }
-  nav { flex: none; width: 200px; border-right: 1px solid var(--hair); background: var(--canvas); padding: 10px 6px; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
-  nav input[type="search"] { margin: 0 4px 8px; width: auto; }
-  /* Small tracked caps for group labels, matching VS Code's own settings page. */
-  .navlist { display: flex; flex-direction: column; gap: 1px; }
-  #section-picker { display: none; width: 100%; margin: 0 0 8px; }
-  nav .sep { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 10px 8px 4px; }
-  nav button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; color: var(--fg); padding: 5px 8px; border-radius: var(--r-s); cursor: pointer; text-align: left; font: inherit; }
-  nav button:hover { background: var(--vscode-list-hoverBackground); }
-  nav button[aria-current="true"] { background: var(--sel); box-shadow: inset 2px 0 0 var(--ion); font-weight: 600; }
-  .badge { margin-left: auto; padding: 0 7px; border-radius: 9px; font-size: var(--fs-xs); line-height: 18px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
-  .badge:empty { display: none; }
-  .setting .err { color: var(--err); }
-  .badge.err { background: color-mix(in srgb, var(--err) 12%, var(--vscode-editor-background)); color: var(--err); }
-  main { flex: 1; min-width: 0; overflow-y: auto; padding: 18px 24px 32px; }
-  section[hidden], #search-results[hidden], #unsaved[hidden], .row[hidden], .hidden { display: none !important; }
-  h2 { font-size: var(--fs-xl); font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
-  h2 .sp { flex: 1; }
-  h2 button.btn, h2 button.link { font-size: var(--fs-m); font-weight: 400; }
-  .lead { color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
-  /* minmax(0, 1fr): a single column that may shrink, so a long no-wrap row (a workspace path) cannot widen the page. */
-  .setting { padding: 10px 12px; margin: 0 -12px; border-left: 2px solid transparent; border-bottom: 1px solid var(--hair); display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .setting:hover { background: var(--vscode-list-hoverBackground); }
-  .setting.modified { border-left-color: var(--vscode-settings-modifiedItemIndicator, var(--warn)); }
-  .setting.flash { outline: 1px solid var(--vscode-focusBorder); }
-  .setting .t { font-weight: 600; }
-  .setting.modified .t::after { content: " (modified)"; font-weight: 400; color: var(--muted); }
-  .setting .d { color: var(--muted); font-size: var(--fs-s); max-width: 70ch; }
-  /* Wide windows: the name and its description sit beside the control, so the page is not a tall single column. */
-  @media (min-width: 1000px) {
-    .setting { grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); column-gap: 28px; align-items: start; }
-    .setting > .t { grid-column: 1; }
-    .setting > .t + .d { grid-column: 1; }
-    .setting > :not(.t):not(.t + .d) { grid-column: 2; }
-    .setting > .d { max-width: none; }
-  }
-  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .allowed-row { flex-wrap: nowrap; }
-  .allowed-row code { flex: none; }
-  .allowed-row .d { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  input, select, textarea { font: inherit; color: var(--vscode-input-foreground, var(--fg)); background: var(--vscode-input-background); border: 1px solid var(--edge); border-radius: var(--r-s); padding: 3px 6px; min-height: 24px; }
-  select, input[type="text"], input[type="password"], input[type="search"] { width: min(320px, 100%); }
-  select option { background: var(--vscode-dropdown-background, var(--vscode-input-background)); color: var(--vscode-dropdown-foreground, var(--fg)); }
-  textarea { width: 100%; min-height: 60px; resize: vertical; }
-  input:focus, select:focus, textarea:focus { border-color: var(--vscode-focusBorder); }
-  input[type="checkbox"] { width: auto; accent-color: var(--vscode-button-background); }
-  button.btn { border: 0; border-radius: var(--r-s); padding: 4px 11px; cursor: pointer; font: inherit; background: var(--vscode-button-background); color: var(--vscode-button-foreground); white-space: nowrap; }
-  button.btn:hover { background: var(--vscode-button-hoverBackground); }
-  button.btn.sec, label.btn.sec { background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, .18)); color: var(--vscode-button-secondaryForeground, var(--fg)); box-shadow: inset 0 0 0 1px var(--vscode-button-border, var(--line)); }
-  button.btn.sec:hover, label.btn.sec:hover { background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, .28)); }
-  .keyrow .btn:disabled { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); opacity: .7; }
-  button.link { padding: 3px 4px; min-height: 24px; font: inherit; font-size: var(--fs-s); }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  .list { border: 1px solid var(--line); border-radius: var(--r-s); overflow: hidden; box-shadow: var(--elev-1); }
-  .item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; min-width: 0; }
-  .item + .item, .item + .item-body, .item-body + .item { border-top: 1px solid var(--line); }
-  .item .main { flex: 1; min-width: 0; display: grid; gap: 1px; }
-  .item .name { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  .item .sub { font-size: var(--fs-s); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .item .sub.err { color: var(--err); }
-  #builtin-agents .item .sub { white-space: normal; }
-  .item-body { padding: 8px 10px 10px 28px; display: flex; flex-wrap: wrap; gap: 4px; background: var(--vscode-sideBar-background); }
-  .pill { padding: 0 7px; border-radius: 9px; font-size: var(--fs-xs); line-height: 18px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 400; }
-  .chip { font-family: var(--vscode-editor-font-family); font-size: var(--fs-xs); border: 1px solid var(--line); border-radius: var(--r-s); padding: 0 5px; line-height: 18px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
-  .dot.connected { background: var(--ok); } .dot.failed { background: var(--err); } .dot.needs-auth { background: var(--warn); } .dot.disabled { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted); }
-  .group-label .path { text-transform: none; letter-spacing: 0; font-family: var(--vscode-editor-font-family); margin-left: 6px; }
-  .group-label { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 6px; }
-  .tabs { display: flex; gap: 16px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
-  .tabs button { border: 0; background: none; color: var(--muted); padding: 6px 0; font: inherit; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--vscode-focusBorder); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-  .card { border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px; display: grid; gap: 4px; box-shadow: var(--elev-1); }
-  .card .row { justify-content: space-between; margin-top: 4px; }
-  .mono { font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
-  .rule-head { display: flex; gap: 8px; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
-  #model-custom { min-height: 24px; }
-  .ok { color: var(--fg); }
-  .checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-  .checks { gap: 2px 14px; }
-  /* Provider names are product names, not code; only tool names read as monospace. */
-  #hidden-providers label { font-family: inherit; }
-  #hidden-providers { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px 14px; }
-  .tool-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 28px; padding: 2px 0; border-bottom: 1px solid var(--border); }
-  .tool-row .name { flex: 0 0 150px; min-width: 0; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); overflow-wrap: anywhere; }
-  .tool-row .hint { flex: 1 1 140px; min-width: 0; font-size: var(--fs-xs); color: var(--vscode-descriptionForeground, var(--muted)); overflow-wrap: anywhere; }
-  .seg { flex: none; display: inline-flex; border: 1px solid var(--edge); border-radius: var(--r-s); overflow: hidden; }
-  .seg button { min-height: 24px; padding: 0 10px; border: 0; border-left: 1px solid var(--edge); background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-s); cursor: pointer; }
-  .seg button:first-child { border-left: 0; }
-  .seg button:hover:not(:disabled) { background: var(--vscode-list-hoverBackground); }
-  .seg button[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); font-weight: 600; }
-  .checks label { display: flex; gap: 6px; align-items: center; min-height: 24px; font-family: var(--vscode-editor-font-family); font-size: var(--fs-s); }
-  .setting .row label { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; }
-  details.adv { margin: 10px 0; }
-  details.adv > summary { cursor: pointer; min-height: 24px; color: var(--muted); }
-  .rule { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(130px, 1fr) minmax(140px, 2fr) auto; gap: 6px; align-items: center; margin-top: 6px; }
-  .rule select, .rule input { width: 100%; }
-  .pattern-rule { grid-template-columns: minmax(110px, 1fr) minmax(140px, 2fr) auto auto auto auto; }
-  .agent { border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px; display: grid; gap: 6px; margin-top: 8px; box-shadow: var(--elev-1); }
-  .agent input[type="text"] { width: 100%; }
-  .keyrow { display: grid; grid-template-columns: 120px minmax(100px, 150px) minmax(110px, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; }
-  .keyrow > span:nth-child(2) { overflow-wrap: anywhere; font-size: var(--fs-s); }
-  button.btn:disabled { opacity: .45; cursor: default; }
-  .keyrow + .keyrow { border-top: 1px solid var(--line); }
-  .keyrow .kstatus { overflow-wrap: normal; }
-  .keyrow .row { flex-wrap: nowrap; gap: 4px; }
-  .keyrow .btn { padding: 4px 9px; }
-  .keyrow .kstatus.bad { color: var(--err); }
-  #banner { margin: 0 0 12px; padding: 6px 10px; border-left: 2px solid var(--warn); background: var(--vscode-inputValidation-warningBackground, transparent); }
-  #banner:empty { display: none; }
-  #banner.ok { border-left-color: var(--vscode-charts-green, #388a34); background: transparent; }
-  #unsaved { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--vscode-sideBar-background); }
-  #unsaved .sp { flex: 1; }
-  #search-results button { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--fg); font: inherit; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
-  #search-results button:hover { background: var(--vscode-list-hoverBackground); }
-  #search-results mark { background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, .33)); color: inherit; border-radius: 2px; }
-  #search-results .count { color: var(--muted); font-size: var(--fs-s); margin: 0 0 8px; }
-  #search-results .crumb { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em; }
-  @media (max-width: 560px) {
-    .layout { flex-direction: column; }
-    nav { width: auto; border-right: 0; border-bottom: 1px solid var(--border); overflow-y: visible; padding: 8px; }
-    /* Search stays available in a split editor, above a section picker (a strip of 14 buttons clipped its labels). */
-    nav input[type="search"] { width: 100%; margin: 0 0 8px; }
-    .navlist { display: none; }
-    #section-picker { display: block; }
-    .keyrow, .rule { grid-template-columns: 1fr; }
-  }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  @media (forced-colors: active) {
-    button, select, input, textarea, .list, .card, .seg { border: 1px solid ButtonText; }
-    .seg button[aria-pressed="true"], nav button[aria-current="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-  }
-</style>
+<style>${DESIGN_CSS}</style>
+<style>${SETTINGS_CSS}</style>
 </head>
-<body>
+<body class="ik-root" data-density="roomy">
 <script src="${opts.scriptUri ?? ''}" onerror="window.__forgeSettingsLoadFailed=true"></script>
 <div class="layout">
   <nav id="settings-nav" aria-label="Settings sections">
-    <input type="search" id="search" placeholder="Search settings" aria-label="Search settings" />
-    <select id="section-picker" aria-label="Settings section">
+    <input class="ik-input" type="search" id="search" placeholder="Search settings" aria-label="Search settings" />
+    <select class="ik-select" id="section-picker" aria-label="Settings section">
       <option value="model">Model</option>
       <option value="keys">API keys</option>
       <option value="providers">Providers</option>
@@ -181,42 +147,42 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <option value="backup">Backup</option>
     </select>
     <div class="navlist">
-    <button type="button" data-section="model">Model</button>
-    <button type="button" data-section="keys">API keys</button>
-    <button type="button" data-section="providers">Providers</button>
+    <button type="button" class="ik-navitem" data-section="model">Model</button>
+    <button type="button" class="ik-navitem" data-section="keys">API keys</button>
+    <button type="button" class="ik-navitem" data-section="providers">Providers</button>
     <div class="sep">Agent behaviour</div>
-    <button type="button" data-section="agents">Agents<span class="badge" id="badge-agents"></span></button>
-    <button type="button" data-section="mcp">MCP servers<span class="badge" id="badge-mcp"></span></button>
-    <button type="button" data-section="skills">Skills<span class="badge" id="badge-skills"></span></button>
-    <button type="button" data-section="perm">Permissions</button>
+    <button type="button" class="ik-navitem" data-section="agents">Agents<span class="ik-badge" id="badge-agents"></span></button>
+    <button type="button" class="ik-navitem" data-section="mcp">MCP servers<span class="ik-badge" id="badge-mcp"></span></button>
+    <button type="button" class="ik-navitem" data-section="skills">Skills<span class="ik-badge" id="badge-skills"></span></button>
+    <button type="button" class="ik-navitem" data-section="perm">Permissions</button>
     <div class="sep">Behaviour</div>
-    <button type="button" data-section="context">Context and memory</button>
-    <button type="button" data-section="safety">Safety and cost</button>
-    <button type="button" data-section="tools">Tools and web</button>
-    <button type="button" data-section="git">Git and quality</button>
-    <button type="button" data-section="advanced">Advanced</button>
+    <button type="button" class="ik-navitem" data-section="context">Context and memory</button>
+    <button type="button" class="ik-navitem" data-section="safety">Safety and cost</button>
+    <button type="button" class="ik-navitem" data-section="tools">Tools and web</button>
+    <button type="button" class="ik-navitem" data-section="git">Git and quality</button>
+    <button type="button" class="ik-navitem" data-section="advanced">Advanced</button>
     <div class="sep">Editor</div>
-    <button type="button" data-section="display">Display</button>
-    <button type="button" data-section="backup">Backup</button>
+    <button type="button" class="ik-navitem" data-section="display">Display</button>
+    <button type="button" class="ik-navitem" data-section="backup">Backup</button>
     </div>
   </nav>
   <main id="pane">
-    <div id="banner" role="status" aria-live="polite"></div>
+    <div id="banner" class="ik-note ik-note--warning" role="status" aria-live="polite"></div>
     <div id="search-results" hidden></div>
 
     <section id="sec-model">
       <h2>Model</h2>
       <p class="lead">The provider and model Forge uses for chat, specs and agents. Agents can override this.</p>
       <div class="setting" id="row-provider"><div class="t">Provider</div><div class="d">API keys are stored in VS Code's secret storage.</div>
-        <div class="row"><select id="provider" aria-label="Provider"></select><span id="provider-key" class="muted"></span></div>
+        <div class="row"><select class="ik-select" id="provider" aria-label="Provider"></select><span id="provider-key" class="ik-muted"></span></div>
         <div class="d" id="provider-effective" aria-live="polite"></div></div>
       <div class="setting" id="row-model"><div class="t">Model</div>
         <div class="d">Models come from the provider itself, so the list is current for your key.</div>
-        <div class="row"><select id="model" aria-label="Model"></select></div>
-        <div class="row" id="model-custom-row" hidden><input type="text" id="model-custom" class="mono" aria-label="Custom model id" placeholder="model id, e.g. my-model-v2" /></div>
-        <div class="d"><span id="model-status" aria-live="polite"></span> <button type="button" class="link" id="model-refresh">Refresh</button></div></div>
+        <div class="row"><select class="ik-select" id="model" aria-label="Model"></select></div>
+        <div class="row" id="model-custom-row" hidden><input type="text" id="model-custom" class="ik-input ik-input--mono" aria-label="Custom model id" placeholder="model id, e.g. my-model-v2" /></div>
+        <div class="d"><span id="model-status" aria-live="polite"></span> <button type="button" class="ik-btn ik-btn--link" id="model-refresh">Refresh</button></div></div>
       <div class="setting" id="row-effort"><div class="t">Reasoning effort</div><div class="d">Only used by models that support it.</div>
-        <div class="row"><select id="reasoning-effort" aria-label="Reasoning effort">
+        <div class="row"><select class="ik-select" id="reasoning-effort" aria-label="Reasoning effort">
           <option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option>
         </select></div></div>
       <div class="setting" id="row-hidden"><div class="t">Providers</div><div class="d">Turn a provider off to skip it in auto-detect and leave it out of the model pickers.</div>
@@ -224,93 +190,93 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <div class="setting" id="row-mode-models"><div class="t">Model per mode</div><div class="d">Give a built-in mode its own model (provider:model, a model id or an alias). Blank uses the main model; Agent mode always does.</div>
         <div id="mode-model-list"></div></div>
       <div class="setting" id="row-compaction-model"><div class="t">Compaction model</div><div class="d">The model that summarises long chats. Blank uses the main model.</div>
-        <div class="row"><input type="text" id="compaction-model" class="mono" aria-label="Compaction model" placeholder="model id or alias" /></div></div>
+        <div class="row"><input type="text" id="compaction-model" class="ik-input ik-input--mono" aria-label="Compaction model" placeholder="model id or alias" /></div></div>
       <div class="setting" id="row-subagent-model"><div class="t">Sub-agent model</div><div class="d">The model helper agents use. Blank uses the chat model.</div>
-        <div class="row"><input type="text" id="subagent-model" class="mono" aria-label="Sub-agent model" placeholder="model id, alias or id:model" /></div></div>
+        <div class="row"><input type="text" id="subagent-model" class="ik-input ik-input--mono" aria-label="Sub-agent model" placeholder="model id, alias or id:model" /></div></div>
       <div class="setting" id="row-retention"><div class="t">Delete old chats</div><div class="d">Delete saved chats not used for this many days when Forge starts. Blank keeps everything.</div>
-        <div class="row"><input type="text" id="retention-days" inputmode="numeric" class="mono" aria-label="Days to keep chats" placeholder="blank keeps all" /></div>
+        <div class="row"><input type="text" id="retention-days" inputmode="numeric" class="ik-input ik-input--mono" aria-label="Days to keep chats" placeholder="blank keeps all" /></div>
         <div class="err" id="retention-error" aria-live="polite"></div></div>
     </section>
 
     <section id="sec-keys" hidden>
-      <h2>API keys<span class="pill">Saves instantly</span></h2>
+      <h2>API keys<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Stored in VS Code's secret storage, never in settings files. A key can also come from an environment variable such as OPENAI_API_KEY; the row says so.</p>
       <div id="row-keys"><div id="key-rows"></div></div>
     </section>
 
     <section id="sec-providers" hidden>
-      <h2>Providers<span class="pill">Saves instantly</span></h2>
+      <h2>Providers<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Add any OpenAI-compatible service, or start from a preset. A model on it is written id:model, such as groq:llama-3.3-70b-versatile.</p>
       <div id="row-providers">
         <div id="provider-list"></div>
         <div class="group-label">Add or edit a provider</div>
-        <div class="row"><select id="prov-preset" aria-label="Start from a preset"></select></div>
-        <div class="row"><input type="text" id="prov-id" class="mono" aria-label="Provider id" placeholder="id, e.g. groq or my-gateway" /><input type="text" id="prov-name" aria-label="Display name" placeholder="display name" /></div>
-        <div class="row"><input type="text" id="prov-url" class="mono" aria-label="Base URL" placeholder="https://api.example.com/v1" /></div>
-        <div class="row"><input type="text" id="prov-env" class="mono" aria-label="Environment variable for the key" placeholder="key from this environment variable" /><input type="password" id="prov-key" autocomplete="off" aria-label="API key" placeholder="or paste a key (kept as plain text in the config file)" /></div>
-        <div class="row"><select id="prov-api" aria-label="API style"><option value="openai-compatible">OpenAI compatible</option><option value="anthropic">Anthropic messages</option></select><input type="number" id="prov-timeout" min="1" class="mono" aria-label="Request timeout in milliseconds" placeholder="timeout ms" /><input type="number" id="prov-chunk" min="1" class="mono" aria-label="Stream idle timeout in milliseconds" placeholder="idle ms" /></div>
-        <div class="row"><button type="button" class="btn" id="prov-save">Save provider</button><button type="button" class="btn sec" id="prov-clear">Clear form</button></div>
+        <div class="row"><select class="ik-select" id="prov-preset" aria-label="Start from a preset"></select></div>
+        <div class="row"><input type="text" id="prov-id" class="ik-input ik-input--mono" aria-label="Provider id" placeholder="id, e.g. groq or my-gateway" /><input class="ik-input" type="text" id="prov-name" aria-label="Display name" placeholder="display name" /></div>
+        <div class="row"><input type="text" id="prov-url" class="ik-input ik-input--mono" aria-label="Base URL" placeholder="https://api.example.com/v1" /></div>
+        <div class="row"><input type="text" id="prov-env" class="ik-input ik-input--mono" aria-label="Environment variable for the key" placeholder="key from this environment variable" /><input class="ik-input" type="password" id="prov-key" autocomplete="off" aria-label="API key" placeholder="or paste a key (kept as plain text in the config file)" /></div>
+        <div class="row"><select class="ik-select" id="prov-api" aria-label="API style"><option value="openai-compatible">OpenAI compatible</option><option value="anthropic">Anthropic messages</option></select><input type="number" id="prov-timeout" min="1" class="ik-input ik-input--mono" aria-label="Request timeout in milliseconds" placeholder="timeout ms" /><input type="number" id="prov-chunk" min="1" class="ik-input ik-input--mono" aria-label="Stream idle timeout in milliseconds" placeholder="idle ms" /></div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--primary" id="prov-save">Save provider</button><button type="button" class="ik-btn ik-btn--secondary" id="prov-clear">Clear form</button></div>
       </div>
     </section>
 
     <section id="sec-agents" hidden>
-      <h2>Agents<span class="sp"></span><button type="button" class="btn" id="add-agent">New agent</button></h2>
+      <h2>Agents<span class="sp"></span><button type="button" class="ik-btn ik-btn--primary" id="add-agent">New agent</button></h2>
       <p class="lead">Agents show up in the chat's mode menu and can be used in parallel runs. Built-in agents can't be edited; duplicate one to start from it.</p>
-      <div id="row-agents"><div class="group-label">Your agents</div><div id="agent-list"></div><div class="group-label">Built in</div><div class="list" id="builtin-agents"></div></div>
+      <div id="row-agents"><div class="group-label">Your agents</div><div id="agent-list"></div><div class="group-label">Built in</div><div class="ik-card list" id="builtin-agents"></div></div>
     </section>
 
     <section id="sec-mcp" hidden>
-      <h2>MCP servers<span class="pill">Saves instantly</span><span class="sp"></span><button type="button" class="btn sec" id="mcp-reload">Reload</button><button type="button" class="btn sec" id="mcp-open-config">Open mcp.json</button></h2>
+      <h2>MCP servers<span class="ik-badge ik-badge--outline">Saves instantly</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="mcp-reload">Reload</button><button type="button" class="ik-btn ik-btn--secondary" id="mcp-open-config">Open mcp.json</button></h2>
       <p class="lead">Servers give Forge extra tools. Turned-off servers don't start, and their tools are hidden from the agent.</p>
       <div id="row-mcp">
-        <div class="tabs" role="tablist"><button type="button" role="tab" id="mcp-tab-installed" aria-selected="true" aria-controls="mcp-installed" tabindex="0">Installed</button><button type="button" role="tab" id="mcp-tab-browse" aria-selected="false" aria-controls="mcp-browse" tabindex="-1">Browse</button></div>
-        <div id="mcp-installed" role="tabpanel" aria-labelledby="mcp-tab-installed"><p class="muted">Loading MCP servers…</p></div>
-        <div id="mcp-browse" class="hidden" role="tabpanel" aria-labelledby="mcp-tab-browse"><p class="muted">Loading the catalog…</p></div>
+        <div class="ik-tabs" role="tablist"><button type="button" role="tab" id="mcp-tab-installed" aria-selected="true" aria-controls="mcp-installed" tabindex="0">Installed</button><button type="button" role="tab" id="mcp-tab-browse" aria-selected="false" aria-controls="mcp-browse" tabindex="-1">Browse</button></div>
+        <div id="mcp-installed" role="tabpanel" aria-labelledby="mcp-tab-installed"><p class="ik-muted">Loading MCP servers…</p></div>
+        <div id="mcp-browse" class="hidden" role="tabpanel" aria-labelledby="mcp-tab-browse"><p class="ik-muted">Loading the catalog…</p></div>
       </div>
     </section>
 
     <section id="sec-skills" hidden>
-      <h2>Skills<span class="pill">Saves instantly</span><span class="sp"></span><button type="button" class="btn sec" id="skills-rescan">Rescan</button><button type="button" class="btn" id="skills-browse">Browse catalog</button></h2>
+      <h2>Skills<span class="ik-badge ik-badge--outline">Saves instantly</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="skills-rescan">Rescan</button><button type="button" class="ik-btn ik-btn--primary" id="skills-browse">Browse catalog</button></h2>
       <p class="lead">Skills are Markdown instructions Forge loads when a task matches them, read from three folders. Browse the catalog to install one.</p>
-      <div id="row-skills"><div id="skills-list"><p class="muted">Loading skills…</p></div><div id="skills-catalog"></div></div>
+      <div id="row-skills"><div id="skills-list"><p class="ik-muted">Loading skills…</p></div><div id="skills-catalog"></div></div>
     </section>
 
     <section id="sec-perm" hidden>
       <h2>Permissions</h2>
       <p class="lead">For each tool, whether Forge asks first, runs it without asking, or never sees it. Rules below narrow a tool to certain paths, commands or URLs.</p>
       <div class="setting" id="row-tools"><div class="t">Tools</div><div class="d">Ask confirms each call, Allow runs it, Block hides it. Command and browser tools always ask unless Autonomous is on.</div><div id="tool-table"></div></div>
-      <div class="setting" id="row-allowed"><div class="t">Commands you always allow <span class="pill">Saves instantly</span></div><div class="d">Commands you chose "Always allow" in chat, each for one workspace and that exact command. Remove one to be asked again.</div><div id="allowed-list"></div></div>
+      <div class="setting" id="row-allowed"><div class="t">Commands you always allow <span class="ik-badge ik-badge--outline">Saves instantly</span></div><div class="d">Commands you chose "Always allow" in chat, each for one workspace and that exact command. Remove one to be asked again.</div><div id="allowed-list"></div></div>
       <details class="adv"><summary>Advanced: allow only specific tools</summary>
         <div class="setting" id="row-allow"><div class="t">Allowed tools</div><div class="d">When any are ticked, only those tools are offered to the agent and all others are hidden. Leave empty to offer every tool that is not blocked.</div><div class="checks" id="allow-tools"></div></div>
       </details>
       <div class="setting" id="row-pattern-rules"><div class="t">Pattern rules</div><div class="d">Ordered rules; the last match wins. A .env read or a command that leaves the workspace asks unless a rule names it.</div>
-        <div id="pattern-rules"></div><div class="row"><button type="button" class="link" id="add-pattern-rule">+ Add rule</button></div></div>
+        <div id="pattern-rules"></div><div class="row"><button type="button" class="ik-btn ik-btn--link" id="add-pattern-rule">+ Add rule</button></div></div>
       <div class="setting" id="row-rules"><div class="t">Rules</div><div class="d">Limit a tool to, or keep it away from, certain paths, commands or URLs. Paths use globs; commands and URLs use regular expressions.</div>
-        <div id="rules"></div><div class="row"><button type="button" class="link" id="add-rule">+ Add rule</button></div></div>
+        <div id="rules"></div><div class="row"><button type="button" class="ik-btn ik-btn--link" id="add-rule">+ Add rule</button></div></div>
     </section>
 
     <section id="sec-context" hidden>
-      <h2>Context and memory<span class="pill">Saves instantly</span></h2>
+      <h2>Context and memory<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">How much of a chat Forge keeps, and what it remembers between chats.</p>
       <div id="rows-context"></div>
     </section>
     <section id="sec-safety" hidden>
-      <h2>Safety and cost<span class="pill">Saves instantly</span></h2>
+      <h2>Safety and cost<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Limits that stop a run early, and when Forge tells you it is done.</p>
       <div id="rows-safety"></div>
     </section>
     <section id="sec-tools" hidden>
-      <h2>Tools and web<span class="pill">Saves instantly</span></h2>
+      <h2>Tools and web<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Optional tools, and where Forge runs commands.</p>
       <div id="rows-tools"></div>
     </section>
     <section id="sec-git" hidden>
-      <h2>Git and quality<span class="pill">Saves instantly</span></h2>
+      <h2>Git and quality<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">What Forge does with git, and which checks it runs after it edits.</p>
       <div id="rows-git"></div>
     </section>
     <section id="sec-advanced" hidden>
-      <h2>Advanced<span class="pill">Saves instantly</span></h2>
+      <h2>Advanced<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Inline completion, voice input and provider endpoints.</p>
       <div id="rows-advanced"></div>
     </section>
@@ -318,30 +284,50 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     <section id="sec-display" hidden>
       <h2>Display</h2>
       <div class="setting" id="row-blocks"><div class="t">Tool rows</div><div class="d">Whether tool calls in the chat start open or closed. Edits always open.</div>
-        <div class="row"><select id="block-default" aria-label="Tool rows"><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
+        <div class="row"><select class="ik-select" id="block-default" aria-label="Tool rows"><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
       <div class="setting" id="row-show-reasoning"><div class="t">Show reasoning</div><div class="d">Show the model's reasoning above each reply, when the model provides it.</div>
         <div class="row"><label><input type="checkbox" id="show-reasoning" /> Show reasoning in the chat</label></div></div>
       <div class="setting" id="row-block-modes"><div class="t">Blocks by kind</div><div class="d">Override the two settings above for one kind of block. Default follows them.</div>
-        <div class="row"><label for="mode-reasoning">Reasoning</label><select id="mode-reasoning"><option value="">Default</option><option value="hidden">Hidden</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
-        <div class="row"><label for="mode-terminal">Command output</label><select id="mode-terminal"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
-        <div class="row"><label for="mode-edit">File edits</label><select id="mode-edit"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
-        <div class="row"><label for="mode-mcp">MCP tool results</label><select id="mode-mcp"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
-      <div class="setting"><div class="t">Presets</div><div class="d"><strong>Review first</strong> opens tool rows and shows reasoning; <strong>High autonomy</strong> does the reverse. Presets change only these two settings and apply as unsaved changes.</div><div class="row"><button type="button" class="btn sec" id="preset-review" title="Open tool rows and show reasoning">Review first</button><button type="button" class="btn sec" id="preset-autonomy" title="Close tool rows and hide reasoning">High autonomy</button></div></div>
+        <div class="row"><label for="mode-reasoning">Reasoning</label><select class="ik-select" id="mode-reasoning"><option value="">Default</option><option value="hidden">Hidden</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
+        <div class="row"><label for="mode-terminal">Command output</label><select class="ik-select" id="mode-terminal"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
+        <div class="row"><label for="mode-edit">File edits</label><select class="ik-select" id="mode-edit"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
+        <div class="row"><label for="mode-mcp">MCP tool results</label><select class="ik-select" id="mode-mcp"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
+      <div class="setting"><div class="t">Presets</div><div class="d"><strong>Review first</strong> opens tool rows and shows reasoning; <strong>High autonomy</strong> does the reverse. Presets change only these two settings and apply as unsaved changes.</div><div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="preset-review" title="Open tool rows and show reasoning">Review first</button><button type="button" class="ik-btn ik-btn--secondary" id="preset-autonomy" title="Close tool rows and hide reasoning">High autonomy</button></div></div>
     </section>
 
     <section id="sec-backup" hidden>
-      <h2>Backup<span class="pill">Saves instantly</span></h2>
+      <h2>Backup<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Export your Forge settings and custom agents to a JSON file, or import one. API keys, MCP servers and tool permissions are not included.</p>
-      <div id="row-backup" class="row"><button type="button" class="btn" id="export-btn">Export…</button><label class="btn sec">Import…<input type="file" id="import-file" accept="application/json" class="sr-only" /></label></div>
+      <div id="row-backup" class="row"><button type="button" class="ik-btn ik-btn--primary" id="export-btn">Export…</button><label class="ik-btn ik-btn--secondary">Import…<input type="file" id="import-file" accept="application/json" class="ik-sr-only" /></label></div>
       <div class="setting" id="row-config-files"><div class="t">Config files</div><div class="d">Open the files behind these settings. The project file adds to your own and can never loosen what you allowed.</div>
-        <div class="row"><button type="button" class="btn sec" id="open-user-config">Open user config</button><button type="button" class="btn sec" id="open-project-config">Open project config</button></div></div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="open-user-config">Open user config</button><button type="button" class="ik-btn ik-btn--secondary" id="open-project-config">Open project config</button></div></div>
     </section>
   </main>
 </div>
-<div id="unsaved" hidden><span class="ok" aria-hidden="true">●</span><span id="unsaved-count">1 unsaved change</span><span class="sp"></span><button type="button" class="btn sec" id="discard-all">Discard</button><button type="button" class="btn" id="save-all">Save</button></div>
+<div id="unsaved" hidden><span class="dotmark" aria-hidden="true">●</span><span id="unsaved-count">1 unsaved change</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="discard-all">Discard</button><button type="button" class="ik-btn ik-btn--primary" id="save-all">Save</button></div>
 <script>
   const vscode = acquireVsCodeApi();
   const FS = window.ForgeSettings;
+  function selectEl() { const n = document.createElement('select'); n.className = 'ik-select'; return n; }
+  /** A small check mark for a state that is done, drawn inline like the rest of the design system's icons. */
+  function tick() {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ik-icon'); s.setAttribute('aria-hidden', 'true');
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5'); s.appendChild(p);
+    return s;
+  }
+  /** A segmented choice (ik-seg): one radio per segment, so the browser keeps the keyboard and the state. disabled maps a value to why it cannot be picked. */
+  function segGroup(name, label, options, current, onPick, disabled) {
+    const grp = document.createElement('div'); grp.className = 'ik-seg'; grp.setAttribute('role', 'group'); grp.setAttribute('aria-label', label);
+    options.forEach((o) => {
+      const l = document.createElement('label');
+      const r = document.createElement('input'); r.type = 'radio'; r.name = name; r.value = o[0]; r.dataset.mode = o[0]; r.checked = o[0] === current;
+      if (disabled && disabled[o[0]]) { r.disabled = true; l.title = disabled[o[0]]; }
+      r.addEventListener('change', () => { if (r.checked) onPick(o[0]); });
+      const s = document.createElement('span'); s.textContent = o[1];
+      l.appendChild(r); l.appendChild(s); grp.appendChild(l);
+    });
+    return grp;
+  }
   const catalog = ${JSON.stringify(MODEL_CATALOG)};
   const providers = ${JSON.stringify(SUPPORTED_PROVIDERS)};
   const toolNames = ${JSON.stringify(tools)};
@@ -388,7 +374,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     navButtons.forEach((b) => b.setAttribute('aria-current', 'false'));
     box.hidden = false;
     box.textContent = '';
-    if (!hits.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'No settings match "' + q.trim() + '". Try a provider, a tool or a word from the description.'; box.appendChild(p); return; }
+    if (!hits.length) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'No settings match "' + q.trim() + '". Try a provider, a tool or a word from the description.'; box.appendChild(p); return; }
     const count = document.createElement('div'); count.className = 'count'; count.textContent = hits.length + (hits.length === 1 ? ' setting' : ' settings') + ' match "' + q.trim() + '"'; box.appendChild(count);
     // Wraps each search term in <mark>, building nodes (never markup) from the setting's own text.
     const marked = (parent, text) => {
@@ -408,7 +394,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       b.type = 'button';
       const crumb = document.createElement('div'); crumb.className = 'crumb'; crumb.textContent = h.sectionLabel;
       const name = document.createElement('div'); marked(name, h.label);
-      const desc = document.createElement('div'); desc.className = 'muted'; desc.style.fontSize = '12px'; marked(desc, h.description);
+      const desc = document.createElement('div'); desc.className = 'ik-muted'; desc.style.fontSize = '12px'; marked(desc, h.description);
       b.appendChild(crumb); b.appendChild(name); b.appendChild(desc);
       b.addEventListener('click', () => {
         $('search').value = '';
@@ -535,26 +521,26 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       const base = keysSet.has(p) ? '✓ Key set' : fromEnv ? '✓ From ' + envKeys[p] : 'No key';
       // Environment names may only wrap after an underscore, never in the middle of a word.
       const shown = esc(note ? note.text : base).split('_').join('_<wbr>');
-      row.innerHTML = '<span>' + esc(labelOf(p)) + '</span><span class="kstatus ' + (note && !note.ok ? 'bad' : keysSet.has(p) || fromEnv ? 'ok' : 'muted') + '" title="' + esc(note ? note.text : base) + '">' + shown + '</span>';
-      const input = document.createElement('input'); input.type = 'password'; input.placeholder = keysSet.has(p) || fromEnv ? 'Paste new key' : 'Paste key'; input.setAttribute('aria-label', labelOf(p) + ' API key');
+      row.innerHTML = '<span>' + esc(labelOf(p)) + '</span><span class="kstatus ' + (note && !note.ok ? 'bad' : keysSet.has(p) || fromEnv ? 'ok' : 'ik-muted') + '" title="' + esc(note ? note.text : base) + '">' + shown + '</span>';
+      const input = document.createElement('input'); input.type = 'password'; input.className = 'ik-input'; input.placeholder = keysSet.has(p) || fromEnv ? 'Paste new key' : 'Paste key'; input.setAttribute('aria-label', labelOf(p) + ' API key');
       const acts = document.createElement('span'); acts.className = 'row';
-      const save = document.createElement('button'); save.type = 'button'; save.className = 'btn'; save.textContent = 'Save'; save.disabled = true;
+      const save = document.createElement('button'); save.type = 'button'; save.className = 'ik-btn ik-btn--primary'; save.textContent = 'Save'; save.disabled = true;
       input.dataset.provider = p;
       if (typed[p]) { input.value = typed[p]; save.disabled = false; }
       input.addEventListener('input', () => { save.disabled = !input.value.trim(); });
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !save.disabled) { e.preventDefault(); save.click(); } });
       save.addEventListener('click', () => { if (input.value.trim()) vscode.postMessage({ type: 'setKey', provider: p, key: input.value.trim() }); input.value = ''; save.disabled = true; });
       acts.appendChild(save);
-      const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'link'; eye.textContent = 'Show';
+      const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'ik-btn ik-btn--link'; eye.textContent = 'Show';
       eye.addEventListener('click', () => { const show = input.type === 'password'; input.type = show ? 'text' : 'password'; eye.textContent = show ? 'Hide' : 'Show'; });
       acts.appendChild(eye);
       if (keysSet.has(p) || fromEnv) {
-        const test = document.createElement('button'); test.type = 'button'; test.className = 'link'; test.textContent = 'Test';
+        const test = document.createElement('button'); test.type = 'button'; test.className = 'ik-btn ik-btn--link'; test.textContent = 'Test';
         test.addEventListener('click', () => { keyNotes[p] = { ok: true, text: 'Testing…' }; renderKeys(); vscode.postMessage({ type: 'loadModels', provider: p, refresh: true, test: true }); });
         acts.appendChild(test);
       }
       if (keysSet.has(p)) {
-        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn sec'; rm.textContent = 'Remove';
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--secondary'; rm.textContent = 'Remove';
         rm.addEventListener('click', () => vscode.postMessage({ type: 'deleteKey', provider: p }));
         acts.appendChild(rm);
       }
@@ -569,7 +555,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     builtins.filter((b) => b.id !== 'orchestrator').forEach((b) => {
       const row = document.createElement('div'); row.className = 'row';
       const label = document.createElement('label'); label.textContent = b.id; label.style.minWidth = '9em';
-      const input = document.createElement('input'); input.type = 'text'; input.className = 'mono'; input.placeholder = 'Main model';
+      const input = document.createElement('input'); input.type = 'text'; input.className = 'ik-input ik-input--mono'; input.placeholder = 'Main model';
       input.setAttribute('aria-label', 'Model for ' + b.id + ' mode');
       input.value = draft.modeModels[b.id] || '';
       input.addEventListener('input', () => { draft.modeModels[b.id] = input.value; refreshDirty(); });
@@ -581,13 +567,13 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   function renderAgents() {
     const list = $('agent-list');
     list.textContent = '';
-    if (!draft.agents.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'No custom agents yet. Select New agent to add one.'; list.appendChild(p); }
+    if (!draft.agents.length) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'No custom agents yet. Select New agent to add one.'; list.appendChild(p); }
     draft.agents.forEach((a, i) => {
-      const card = document.createElement('div'); card.className = 'agent';
-      card.innerHTML = '<div class="row"><strong>Custom agent</strong><span class="sp" style="flex:1"></span><button type="button" class="link rm">Remove</button></div>' +
-        '<input type="text" class="f-id" placeholder="id, e.g. migrator" aria-label="Agent id" />' +
-        '<input type="text" class="f-desc" placeholder="What it does" aria-label="Agent description" />' +
-        '<textarea class="f-prompt" placeholder="System prompt" aria-label="System prompt"></textarea>';
+      const card = document.createElement('div'); card.className = 'ik-card agent';
+      card.innerHTML = '<div class="row"><strong>Custom agent</strong><span class="sp" style="flex:1"></span><button type="button" class="ik-btn ik-btn--link rm">Remove</button></div>' +
+        '<input type="text" class="ik-input f-id" placeholder="id, e.g. migrator" aria-label="Agent id" />' +
+        '<input type="text" class="ik-input f-desc" placeholder="What it does" aria-label="Agent description" />' +
+        '<textarea class="ik-textarea f-prompt" placeholder="System prompt" aria-label="System prompt"></textarea>';
       card.querySelector('.f-id').value = a.id;
       card.querySelector('.f-desc').value = a.description;
       card.querySelector('.f-prompt').value = a.systemPrompt;
@@ -602,9 +588,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     builtins.forEach((b) => {
       const row = document.createElement('div'); row.className = 'item';
       row.innerHTML = '<div class="main"><div class="name">' + esc(b.id) + '</div><div class="sub">' + esc(b.description) + '</div></div>';
-      const dup = document.createElement('button'); dup.type = 'button'; dup.className = 'link'; dup.textContent = 'Duplicate';
-      dup.addEventListener('click', () => { const copy = FS.agentsToDraft([b])[0]; copy.id = b.id + '-copy'; draft.agents.push(copy); renderAgents(); refreshDirty(); focusAgent(draft.agents.length - 1); });
-      row.appendChild(dup); bl.appendChild(row);
+      bl.appendChild(row);
     });
     $('badge-agents').textContent = String(draft.agents.length + builtins.length || '');
   }
@@ -618,7 +602,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   $('add-agent').addEventListener('click', () => { draft.agents.push({ id: '', description: '', systemPrompt: '', allowedTools: [], extra: {} }); renderAgents(); refreshDirty(); focusAgent(draft.agents.length - 1); });
 
   // permissions (draft)
-  const TOOL_HELP = { read_file: 'read a file', read_image: 'look at an image (sent to the model)', list_files: 'list a folder', search_files: 'search file contents', find_symbol: 'find a definition', list_symbols: 'outline a file', find_references: 'find usages', git_diff: 'read the uncommitted changes', dependency_audit: 'check dependencies for known vulnerabilities (runs the project package manager; contacts the registry)', write_file: 'create or overwrite a file', edit_file: 'change part of a file', edit_notebook: 'change a notebook cell', run_command: 'run a shell command', fetch_url: 'download a web page', memory_read: 'read project notes', memory_write: 'save project notes', sub_agent: 'start a helper agent', codebase_search: 'search by meaning', todo_write: 'keep a task checklist', todo_read: 'read the task checklist', ask_user: 'ask you a question' };
+  const TOOL_HELP = { read_file: 'read a file', read_image: 'look at an image (sent to the model)', list_files: 'list a folder', search_files: 'search file contents', find_symbol: 'find a definition', list_symbols: 'outline a file', find_references: 'find usages', git_diff: 'read the uncommitted changes', dependency_audit: 'check dependencies for known vulnerabilities (runs the project package manager; contacts the registry)', skill: 'load the instructions of an installed skill', suggest_plan: 'suggest planning first for a big request (you are asked)', repo_clone: 'download a public git repository to read it (reaches the network, runs git)', get_diagnostics: 'check files for compiler and linter problems (starts the language server for them)', bg_start: 'start a command that keeps running, such as a dev server (runs a program)', bg_read: 'read the output of a background command', bg_stop: 'stop a background command', write_file: 'create or overwrite a file', edit_file: 'change part of a file', edit_notebook: 'change a notebook cell', run_command: 'run a shell command', fetch_url: 'download a web page', memory_read: 'read project notes', memory_write: 'save project notes', sub_agent: 'start a helper agent', codebase_search: 'search by meaning', todo_write: 'keep a task checklist', todo_read: 'read the task checklist', ask_user: 'ask you a question' };
   function renderToolChecks(boxId, field) {
     const box = $(boxId);
     box.textContent = '';
@@ -631,9 +615,9 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         draft.sandbox[field] = set;
         refreshDirty();
       });
-      l.title = TOOL_HELP[t] || t;
-      l.appendChild(c); l.appendChild(document.createTextNode(' ' + t));
-      if (TOOL_HELP[t]) { const hint = document.createElement('span'); hint.className = 'muted'; hint.textContent = ' · ' + TOOL_HELP[t]; l.appendChild(hint); }
+      l.title = TOOL_HELP[t] || FS.toolLabel(t);
+      l.appendChild(c); l.appendChild(document.createTextNode(' ' + FS.toolLabel(t)));
+      if (TOOL_HELP[t]) { const hint = document.createElement('span'); hint.className = 'ik-muted'; hint.textContent = ' · ' + TOOL_HELP[t]; l.appendChild(hint); }
       box.appendChild(l);
     });
   }
@@ -650,7 +634,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       const row = document.createElement('div'); row.className = 'row allowed-row';
       const cmd = document.createElement('code'); cmd.textContent = e.command;
       const ws = document.createElement('span'); ws.className = 'd'; ws.textContent = ' in ' + e.workspace; ws.title = e.workspace;
-      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'link'; rm.textContent = 'Remove';
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
       rm.setAttribute('aria-label', 'Remove ' + e.command + ' in ' + e.workspace);
       rm.addEventListener('click', () => vscode.postMessage({ type: 'removeAllowedCommand', workspace: e.workspace, command: e.command }));
       row.appendChild(cmd); row.appendChild(ws); row.appendChild(rm);
@@ -663,26 +647,15 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     box.textContent = '';
     toolNames.forEach((t) => {
       const row = document.createElement('div'); row.className = 'tool-row';
-      const name = document.createElement('div'); name.className = 'name'; name.textContent = t;
+      const name = document.createElement('div'); name.className = 'name'; name.textContent = FS.toolLabel(t); name.title = t;
       const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = TOOL_HELP[t] || ''; hint.title = TOOL_HELP[t] || '';
-      const grp = document.createElement('div'); grp.className = 'seg';
-      grp.setAttribute('role', 'group'); grp.setAttribute('aria-label', t + ': ask, allow or block');
-      const modeBtns = [];
-      const paint = (mode) => modeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
-      [['ask', 'Ask'], ['allow', 'Allow'], ['block', 'Block']].forEach((o) => {
-        const b = document.createElement('button'); b.type = 'button'; b.dataset.mode = o[0]; b.textContent = o[1];
-        if (o[0] === 'allow' && askOnlyTools.indexOf(t) >= 0) { b.disabled = true; b.title = 'This tool always asks'; }
-        b.addEventListener('click', () => {
-          draft.sandbox.denyTools = draft.sandbox.denyTools.filter((x) => x !== t);
-          draft.autoApprove = draft.autoApprove.filter((x) => x !== t);
-          if (o[0] === 'block') draft.sandbox.denyTools.push(t);
-          if (o[0] === 'allow') draft.autoApprove = FS.sortedTools(draft.autoApprove.concat([t]));
-          paint(o[0]);
-          refreshDirty();
-        });
-        modeBtns.push(b); grp.appendChild(b);
-      });
-      paint(toolMode(t));
+      const grp = segGroup('tool-' + t, FS.toolLabel(t) + ': ask, allow or block', [['ask', 'Ask'], ['allow', 'Allow'], ['block', 'Block']], toolMode(t), (mode) => {
+        draft.sandbox.denyTools = draft.sandbox.denyTools.filter((x) => x !== t);
+        draft.autoApprove = draft.autoApprove.filter((x) => x !== t);
+        if (mode === 'block') draft.sandbox.denyTools.push(t);
+        if (mode === 'allow') draft.autoApprove = FS.sortedTools(draft.autoApprove.concat([t]));
+        refreshDirty();
+      }, askOnlyTools.indexOf(t) >= 0 ? { allow: 'This tool always asks' } : null);
       row.appendChild(name); row.appendChild(hint); row.appendChild(grp); box.appendChild(row);
     });
   }
@@ -696,14 +669,14 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     }
     draft.sandbox.rules.forEach((r, i) => {
       const row = document.createElement('div'); row.className = 'rule';
-      const tool = document.createElement('select'); tool.setAttribute('aria-label', 'Tool');
+      const tool = selectEl(); tool.setAttribute('aria-label', 'Tool');
       toolNames.forEach((t) => { const o = document.createElement('option'); o.value = t; o.textContent = t; tool.appendChild(o); });
       tool.value = r.tool;
-      const dim = document.createElement('select'); dim.setAttribute('aria-label', 'Kind');
+      const dim = selectEl(); dim.setAttribute('aria-label', 'Kind');
       DIMENSIONS.forEach((d) => { const o = document.createElement('option'); o.value = d[0]; o.textContent = d[1]; dim.appendChild(o); });
       dim.value = r.dimension;
-      const pat = document.createElement('input'); pat.type = 'text'; pat.className = 'mono'; pat.placeholder = 'glob or regex'; pat.setAttribute('aria-label', 'Pattern'); pat.value = r.pattern;
-      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'link'; rm.textContent = 'Remove';
+      const pat = document.createElement('input'); pat.type = 'text'; pat.className = 'ik-input ik-input--mono'; pat.placeholder = 'glob or regex'; pat.setAttribute('aria-label', 'Pattern'); pat.value = r.pattern;
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
       tool.addEventListener('change', () => { draft.sandbox.rules[i].tool = tool.value; refreshDirty(); });
       dim.addEventListener('change', () => { draft.sandbox.rules[i].dimension = dim.value; refreshDirty(); });
       pat.addEventListener('input', () => { draft.sandbox.rules[i].pattern = pat.value; refreshDirty(); });
@@ -717,22 +690,14 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     box.textContent = '';
     draft.permissionRules.forEach((r, i) => {
       const row = document.createElement('div'); row.className = 'rule pattern-rule';
-      const perm = document.createElement('select'); perm.setAttribute('aria-label', 'Permission');
+      const perm = selectEl(); perm.setAttribute('aria-label', 'Permission');
       PERMISSIONS.forEach((p) => { const o = document.createElement('option'); o.value = p; o.textContent = p; perm.appendChild(o); });
       perm.value = r.permission;
-      const pat = document.createElement('input'); pat.type = 'text'; pat.className = 'mono'; pat.placeholder = 'pattern, e.g. git status *'; pat.setAttribute('aria-label', 'Pattern'); pat.value = r.pattern;
-      const grp = document.createElement('div'); grp.className = 'seg'; grp.setAttribute('role', 'group'); grp.setAttribute('aria-label', 'Action');
-      const btns = [];
-      const paint = (a) => btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === a)));
-      [['ask', 'Ask'], ['allow', 'Allow'], ['deny', 'Block']].forEach((o) => {
-        const b = document.createElement('button'); b.type = 'button'; b.dataset.mode = o[0]; b.textContent = o[1];
-        b.addEventListener('click', () => { draft.permissionRules[i].action = o[0]; paint(o[0]); refreshDirty(); });
-        btns.push(b); grp.appendChild(b);
-      });
-      paint(r.action);
-      const up = document.createElement('button'); up.type = 'button'; up.className = 'link'; up.textContent = 'Up'; up.setAttribute('aria-label', 'Move rule up'); up.disabled = i === 0;
-      const down = document.createElement('button'); down.type = 'button'; down.className = 'link'; down.textContent = 'Down'; down.setAttribute('aria-label', 'Move rule down'); down.disabled = i === draft.permissionRules.length - 1;
-      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'link'; rm.textContent = 'Remove';
+      const pat = document.createElement('input'); pat.type = 'text'; pat.className = 'ik-input ik-input--mono'; pat.placeholder = 'pattern, e.g. git status *'; pat.setAttribute('aria-label', 'Pattern'); pat.value = r.pattern;
+      const grp = segGroup('rule-' + i, 'Action', [['ask', 'Ask'], ['allow', 'Allow'], ['deny', 'Block']], r.action, (mode) => { draft.permissionRules[i].action = mode; refreshDirty(); }, null);
+      const up = document.createElement('button'); up.type = 'button'; up.className = 'ik-btn ik-btn--link'; up.textContent = 'Up'; up.setAttribute('aria-label', 'Move rule up'); up.disabled = i === 0;
+      const down = document.createElement('button'); down.type = 'button'; down.className = 'ik-btn ik-btn--link'; down.textContent = 'Down'; down.setAttribute('aria-label', 'Move rule down'); down.disabled = i === draft.permissionRules.length - 1;
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
       perm.addEventListener('change', () => { draft.permissionRules[i].permission = perm.value; refreshDirty(); });
       pat.addEventListener('input', () => { draft.permissionRules[i].pattern = pat.value; refreshDirty(); });
       up.addEventListener('click', () => { const l = draft.permissionRules; l.splice(i - 1, 0, l.splice(i, 1)[0]); renderPatternRules(); refreshDirty(); });
@@ -817,68 +782,68 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     const failing = msg.servers.filter((s) => s.state === 'failed' || s.state === 'needs-auth').length;
     const badge = $('badge-mcp');
     badge.textContent = failing ? String(failing) : (msg.servers.length ? String(msg.servers.length) : '');
-    badge.classList.toggle('err', failing > 0);
-    if (!msg.enabled) { box.innerHTML = '<p class="muted">MCP is turned off (forge.mcp.enabled).</p>'; return; }
-    if (!msg.servers.length) { box.innerHTML = '<p class="muted">No MCP servers yet. Open the Browse tab to install one.</p>'; }
+    badge.classList.toggle('ik-badge--danger', failing > 0);
+    if (!msg.enabled) { box.innerHTML = '<p class="ik-muted">MCP is turned off (forge.mcp.enabled).</p>'; return; }
+    if (!msg.servers.length) { box.innerHTML = '<p class="ik-muted">No MCP servers yet. Open the Browse tab to install one.</p>'; }
     else {
-      const list = document.createElement('div'); list.className = 'list';
+      const list = document.createElement('div'); list.className = 'ik-card list';
       msg.servers.forEach((s) => {
         const item = document.createElement('div'); item.className = 'item';
         const ws = s.scope === 'workspace';
         const stateLabel = { connected: 'Connected', failed: 'Failed', disabled: 'Off', 'needs-auth': 'Sign-in needed' }[s.state] || s.state;
         item.innerHTML = '<span class="dot ' + esc(s.state) + '" aria-hidden="true"></span>' +
-          '<div class="main"><div class="name">' + esc(s.name) + ' <span class="pill">' + esc(s.scope) + '</span> <span class="pill">' + esc(stateLabel) + '</span></div>' +
+          '<div class="main"><div class="name">' + esc(s.name) + ' <span class="ik-badge ik-badge--outline">' + esc(s.scope) + '</span> <span class="ik-badge ik-badge--outline">' + esc(stateLabel) + '</span></div>' +
           '<div class="sub' + (s.error && s.state !== 'needs-auth' ? ' err' : '') + '" title="' + esc(s.error || '') + '">' + esc(s.error && s.state !== 'needs-auth' ? "Can't connect: " + s.error : (ws ? 'Defined in .forge/mcp.json · ' : '') + s.description) + '</div></div>';
         const acts = document.createElement('span'); acts.className = 'row';
         if (s.tools.length) {
-          const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'link'; tb.textContent = 'Tools';
+          const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'ik-btn ik-btn--link'; tb.textContent = 'Tools';
           tb.addEventListener('click', () => { const body = item.nextElementSibling; body.hidden = !body.hidden; tb.textContent = body.hidden ? 'Tools' : 'Hide tools'; });
           acts.appendChild(tb);
         }
         if (s.state === 'needs-auth') {
-          const signIn = document.createElement('button'); signIn.type = 'button'; signIn.className = 'btn'; signIn.textContent = 'Sign in';
+          const signIn = document.createElement('button'); signIn.type = 'button'; signIn.className = 'ik-btn ik-btn--primary'; signIn.textContent = 'Sign in';
           signIn.title = 'Opens your browser so you can sign in to ' + s.name;
           signIn.addEventListener('click', () => { signIn.disabled = true; signIn.textContent = 'Waiting for the browser…'; vscode.postMessage({ type: 'mcpSignIn', name: s.name }); });
           acts.appendChild(signIn);
         }
         if (s.state === 'failed') {
-          const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn sec'; retry.textContent = 'Retry';
+          const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'ik-btn ik-btn--secondary'; retry.textContent = 'Retry';
           retry.addEventListener('click', () => vscode.postMessage({ type: 'mcpReload' }));
           acts.appendChild(retry);
         }
         if (ws) {
-          const open = document.createElement('button'); open.type = 'button'; open.className = 'link'; open.textContent = 'Open workspace mcp.json';
+          const open = document.createElement('button'); open.type = 'button'; open.className = 'ik-btn ik-btn--link'; open.textContent = 'Open workspace mcp.json';
           open.addEventListener('click', () => vscode.postMessage({ type: 'openMcpConfig', scope: 'workspace' }));
           acts.appendChild(open);
         } else {
           const t = document.createElement('input'); t.type = 'checkbox'; t.checked = s.state !== 'disabled'; t.setAttribute('aria-label', 'Turn ' + s.name + ' on or off');
           t.addEventListener('change', () => vscode.postMessage({ type: 'mcpToggle', name: s.name }));
-          const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'link'; rm.textContent = 'Remove';
+          const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
           rm.addEventListener('click', () => vscode.postMessage({ type: 'mcpRemove', name: s.name }));
           acts.appendChild(t); acts.appendChild(rm);
         }
         item.appendChild(acts);
         list.appendChild(item);
         const body = document.createElement('div'); body.className = 'item-body'; body.hidden = true;
-        s.tools.forEach((n) => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = n; body.appendChild(c); });
+        s.tools.forEach((n) => { const c = document.createElement('span'); c.className = 'ik-badge ik-badge--outline'; c.textContent = n; body.appendChild(c); });
         list.appendChild(body);
       });
       box.appendChild(list);
     }
-    if (msg.projectSkipped) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Workspace MCP config skipped: this workspace is not trusted.'; box.appendChild(p); }
+    if (msg.projectSkipped) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'Workspace MCP config skipped: this workspace is not trusted.'; box.appendChild(p); }
   }
   function renderMcpCatalog(msg) {
     const box = $('mcp-browse');
     box.textContent = '';
-    if (msg.warning) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg.warning; box.appendChild(p); }
+    if (msg.warning) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = msg.warning; box.appendChild(p); }
     const grid = document.createElement('div'); grid.className = 'cards';
     msg.entries.forEach((e) => {
-      const card = document.createElement('div'); card.className = 'card';
-      card.innerHTML = '<strong>' + esc(e.displayName) + '</strong><span class="muted" style="font-size:12px">' + esc(e.description) + '</span>' +
-        '<div class="row"><span class="mono muted" title="' + esc(e.command) + '">' + esc(e.command.length > 34 ? e.command.slice(0, 33) + '…' : e.command) + '</span></div>';
+      const card = document.createElement('div'); card.className = 'ik-card card';
+      card.innerHTML = '<strong>' + esc(e.displayName) + '</strong><span class="ik-muted" style="font-size:12px">' + esc(e.description) + '</span>' +
+        '<div class="row"><span class="ik-mono ik-muted" title="' + esc(e.command) + '">' + esc(e.command.length > 34 ? e.command.slice(0, 33) + '…' : e.command) + '</span></div>';
       const row = card.querySelector('.row');
-      if (e.installed) { const s = document.createElement('span'); s.className = 'ok'; s.textContent = 'Installed'; row.appendChild(s); }
-      else { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Install'; b.addEventListener('click', () => vscode.postMessage({ type: 'mcpInstall', name: e.name })); row.appendChild(b); }
+      if (e.installed) { const s = document.createElement('span'); s.className = 'ik-badge ik-badge--success'; s.appendChild(tick()); s.appendChild(document.createTextNode('Installed')); row.appendChild(s); }
+      else { const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--primary'; b.textContent = 'Install'; b.addEventListener('click', () => vscode.postMessage({ type: 'mcpInstall', name: e.name })); row.appendChild(b); }
       grid.appendChild(card);
     });
     box.appendChild(grid);
@@ -897,12 +862,12 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       const label = document.createElement('div'); label.className = 'group-label'; label.textContent = sc[1];
       const where = document.createElement('span'); where.className = 'path'; where.textContent = sc[2]; label.appendChild(where); box.appendChild(label);
       const inScope = skills.filter((s) => s.scope === sc[0]);
-      if (!inScope.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'None yet.'; box.appendChild(p); return; }
-      const list = document.createElement('div'); list.className = 'list';
+      if (!inScope.length) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'None yet.'; box.appendChild(p); return; }
+      const list = document.createElement('div'); list.className = 'ik-card list';
       inScope.forEach((s) => {
         const item = document.createElement('div'); item.className = 'item';
         item.innerHTML = '<div class="main"><div class="name">' + esc(s.name) + '</div><div class="sub">' + esc(s.description) + '</div></div>';
-        const open = document.createElement('button'); open.type = 'button'; open.className = 'link'; open.textContent = 'Open';
+        const open = document.createElement('button'); open.type = 'button'; open.className = 'ik-btn ik-btn--link'; open.textContent = 'Open';
         open.addEventListener('click', () => vscode.postMessage({ type: 'skillOpen', path: s.path }));
         item.appendChild(open); list.appendChild(item);
       });
@@ -910,7 +875,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     });
   }
   /** Success notes use the green style; everything else keeps the warning style. */
-  function say(text, ok) { const b = $('banner'); b.textContent = text; b.classList.toggle('ok', !!ok); }
+  function say(text, ok) { const b = $('banner'); b.textContent = text; b.classList.toggle('ik-note--success', !!ok); b.classList.toggle('ik-note--warning', !ok); }
 
   function showEffective(effective) {
     $('provider-effective').textContent = effective
@@ -923,17 +888,17 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     box.textContent = '';
     const label = document.createElement('div'); label.className = 'group-label'; label.textContent = 'Catalog'; box.appendChild(label);
     if (error || !entries.length) {
-      const p = document.createElement('p'); p.className = error ? 'err' : 'muted'; p.textContent = error || 'The catalog has no skills yet.';
+      const p = document.createElement('p'); p.className = error ? 'err' : 'ik-muted'; p.textContent = error || 'The catalog has no skills yet.';
       box.appendChild(p);
       return;
     }
     const grid = document.createElement('div'); grid.className = 'cards';
     entries.forEach((e) => {
-      const card = document.createElement('div'); card.className = 'card';
-      card.innerHTML = '<strong>' + esc(e.displayName) + '</strong><span class="muted" style="font-size:12px">' + esc(e.description) + '</span><div class="row"></div>';
+      const card = document.createElement('div'); card.className = 'ik-card card';
+      card.innerHTML = '<strong>' + esc(e.displayName) + '</strong><span class="ik-muted" style="font-size:12px">' + esc(e.description) + '</span><div class="row"></div>';
       const row = card.querySelector('.row');
-      if (e.installed) { const s = document.createElement('span'); s.className = 'ok'; s.textContent = 'Installed'; row.appendChild(s); }
-      else { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Install'; b.addEventListener('click', () => vscode.postMessage({ type: 'skillInstall', name: e.name })); row.appendChild(b); }
+      if (e.installed) { const s = document.createElement('span'); s.className = 'ik-badge ik-badge--success'; s.appendChild(tick()); s.appendChild(document.createTextNode('Installed')); row.appendChild(s); }
+      else { const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--primary'; b.textContent = 'Install'; b.addEventListener('click', () => vscode.postMessage({ type: 'skillInstall', name: e.name })); row.appendChild(b); }
       grid.appendChild(card);
     });
     box.appendChild(grid);
@@ -970,7 +935,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         break;
       case 'rowSaved': {
         const status = document.getElementById('status-' + FS.rowId(msg.key));
-        if (status) { status.textContent = 'Saved'; status.className = 'muted'; }
+        if (status) { status.textContent = 'Saved'; status.className = 'ik-muted'; }
         break;
       }
       case 'rowError': {
@@ -1084,15 +1049,15 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     }
     const box = $('provider-list');
     box.textContent = '';
-    if (!msg.providers.length) { const none = document.createElement('p'); none.className = 'muted'; none.textContent = 'No custom providers yet. Presets with a key in the environment already appear in the model picker.'; box.appendChild(none); return; }
+    if (!msg.providers.length) { const none = document.createElement('p'); none.className = 'ik-muted'; none.textContent = 'No custom providers yet. Presets with a key in the environment already appear in the model picker.'; box.appendChild(none); return; }
     msg.providers.forEach((p) => {
       const row = document.createElement('div'); row.className = 'row allowed-row';
       const name = document.createElement('code'); name.textContent = p.id;
       const info = document.createElement('span'); info.className = 'd';
       info.textContent = ' ' + p.name + ' · ' + p.baseUrl + ' · ' + (p.hasInlineKey ? 'key stored' : p.apiKeyEnv ? 'key from ' + p.apiKeyEnv : 'no key') + (p.models ? ' · ' + p.models + ' model' + (p.models === 1 ? '' : 's') : '');
-      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'link'; edit.textContent = 'Edit'; edit.setAttribute('aria-label', 'Edit ' + p.id);
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'ik-btn ik-btn--link'; edit.textContent = 'Edit'; edit.setAttribute('aria-label', 'Edit ' + p.id);
       edit.addEventListener('click', () => fillProviderForm(p));
-      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'link'; rm.textContent = 'Remove'; rm.setAttribute('aria-label', 'Remove ' + p.id);
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove'; rm.setAttribute('aria-label', 'Remove ' + p.id);
       rm.addEventListener('click', () => vscode.postMessage({ type: 'deleteProvider', id: p.id }));
       row.appendChild(name); row.appendChild(info); row.appendChild(edit); row.appendChild(rm); box.appendChild(row);
     });
@@ -1149,25 +1114,25 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       control = document.createElement('input'); control.type = 'checkbox'; control.checked = r.value === true;
       control.addEventListener('change', () => send(control.checked));
     } else if (r.kind === 'enum') {
-      control = document.createElement('select');
-      (r.enum || []).forEach((v) => { const o = document.createElement('option'); o.value = v; o.textContent = v; control.appendChild(o); });
+      control = selectEl();
+      (r.enum || []).forEach((v) => { const o = document.createElement('option'); o.value = v; o.textContent = FS.enumLabel(r.key, v); control.appendChild(o); });
       control.value = String(r.value);
       control.addEventListener('change', () => send(control.value));
     } else if (r.kind === 'number') {
-      control = document.createElement('input'); control.type = 'number'; control.className = 'mono'; control.step = r.integer ? '1' : 'any';
+      control = document.createElement('input'); control.type = 'number'; control.className = 'ik-input ik-input--mono'; control.step = r.integer ? '1' : 'any';
       if (r.min !== undefined) control.min = String(r.min);
       if (r.max !== undefined) control.max = String(r.max);
       control.value = r.value === undefined || r.value === null ? '' : String(r.value);
       control.addEventListener('change', () => { if (control.value.trim() !== '') send(Number(control.value)); });
     } else {
-      control = document.createElement('input'); control.type = 'text'; control.className = 'mono'; control.value = typeof r.value === 'string' ? r.value : '';
+      control = document.createElement('input'); control.type = 'text'; control.className = 'ik-input ik-input--mono'; control.value = typeof r.value === 'string' ? r.value : '';
       control.addEventListener('change', () => send(control.value));
     }
     control.setAttribute('aria-label', r.label);
     row.appendChild(control);
-    if (parts.hint) { const hint = document.createElement('span'); hint.className = 'muted'; hint.textContent = parts.hint; row.appendChild(hint); }
+    if (parts.hint) { const hint = document.createElement('span'); hint.className = 'ik-muted'; hint.textContent = parts.hint; row.appendChild(hint); }
     if (r.default !== undefined) {
-      reset = document.createElement('button'); reset.type = 'button'; reset.className = 'link'; reset.textContent = 'Reset';
+      reset = document.createElement('button'); reset.type = 'button'; reset.className = 'ik-btn ik-btn--link'; reset.textContent = 'Reset';
       reset.title = 'Back to the default';
       reset.addEventListener('click', () => {
         if (r.kind === 'boolean') control.checked = r.default === true;

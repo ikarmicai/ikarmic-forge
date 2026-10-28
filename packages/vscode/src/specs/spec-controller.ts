@@ -3,7 +3,7 @@
  * vscode-free and dependency-injected; spec-commands.ts wires the adapters.
  *
  */
-import { keepDoneTasks } from '@ikarmic/forge-core';
+import { keepDoneTasks, runReasonLabel } from '@ikarmic/forge-core';
 import type {
   SpecDraft,
   SpecRunRecord,
@@ -105,7 +105,7 @@ export class SpecController {
       // Core ends a spec-mode run with reason 'spec' (agent.ts), including the iteration-cap
       // fallback; splitSpecSections then rejects output that lacks the three sections.
       if (outcome.reason !== 'spec' && outcome.reason !== 'completed') {
-        return err(`Spec generation ended (${outcome.reason}); no draft was created.`);
+        return err(`Spec generation ended (${runReasonLabel(outcome.reason)}); no draft was created.`);
       }
       let sections: SpecSections;
       try {
@@ -188,7 +188,7 @@ export class SpecController {
       const outcome = await sync.runInChat(await sync.task(specId, before), `Sync spec ${specId} with the code`);
       if (!outcome) return err('Spec sync did not start.');
       if (outcome.reason !== 'spec' && outcome.reason !== 'completed') {
-        return err(`Spec sync ended (${outcome.reason}); the spec was not changed.`);
+        return err(`Spec sync ended (${runReasonLabel(outcome.reason)}); the spec was not changed.`);
       }
       let after: SpecSections;
       try {

@@ -15,6 +15,8 @@ import {
   listSessions,
   snapshotWorktreeContext,
   type Checkpoint,
+  humanize,
+  toolLabel,
 } from '@ikarmic/forge-core';
 
 import type { ParsedCheckpointCommand } from '../options.js';
@@ -61,12 +63,12 @@ async function listCheckpoints(store: CheckpointStore, limit?: number): Promise<
     );
     return 0;
   }
-  process.stdout.write('id                       turn  trigger          files  size       when\n');
+  process.stdout.write('id                       turn  cause            files  size       when\n');
   process.stdout.write('────────────────────────────────────────────────────────────────────\n');
   for (const cp of items) {
     const id = cp.id.length > 24 ? cp.id.slice(0, 23) + '…' : cp.id.padEnd(24);
     const turn = String(cp.turnIndex).padEnd(5);
-    const trigger = cp.trigger.padEnd(15);
+    const trigger = humanize(cp.trigger).padEnd(15);
     const files = String(cp.fileCount).padEnd(6);
     const size = formatBytes(cp.totalBytes).padEnd(10);
     const when = cp.createdAt.replace('T', ' ').slice(0, 19);
@@ -83,10 +85,10 @@ async function showCheckpoint(store: CheckpointStore, id: string): Promise<numbe
   }
   process.stdout.write(`Checkpoint ${cp.id}\n`);
   process.stdout.write(`  turn:       ${cp.turnIndex}\n`);
-  process.stdout.write(`  trigger:    ${cp.trigger}\n`);
+  process.stdout.write(`  cause:      ${humanize(cp.trigger)}\n`);
   process.stdout.write(`  when:       ${cp.createdAt}\n`);
   process.stdout.write(`  description: ${cp.description}\n`);
-  if (cp.toolName) process.stdout.write(`  tool:       ${cp.toolName}\n`);
+  if (cp.toolName) process.stdout.write(`  tool:       ${toolLabel(cp.toolName)}\n`);
   process.stdout.write(`  files:      ${cp.files.length} (${formatBytes(cp.totalBytes)})\n`);
   for (const f of cp.files) {
     process.stdout.write(`    [${f.status.padEnd(8)}] ${f.path}`);
@@ -129,7 +131,7 @@ async function restoreCheckpoint(store: CheckpointStore, id: string, yes: boolea
     if (worktreeWarning) {
       // Prefix with a clear marker so users (and CI logs) can grep
       // for the warning class.
-      process.stderr.write(`  ⚠  worktree mismatch (${mismatch!.kind}): ${worktreeWarning}\n`);
+      process.stderr.write(`  ⚠  worktree mismatch: ${worktreeWarning}\n`);
     }
     process.stderr.write('Re-run with --yes to confirm. Refusing to overwrite uncommitted work without an explicit flag.\n');
     return 2;

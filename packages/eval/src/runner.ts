@@ -299,5 +299,6 @@ function emptyAgentResult(): AgentRunResult {
     costUsd: 0,
     costKnown: false,
     messages: [],
+    turnMessages: [],
   };
 }

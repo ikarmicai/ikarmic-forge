@@ -7,6 +7,8 @@
  */
 import path from 'node:path';
 
+import { displayMessages, isCompactionSummary } from '@ikarmic/forge-core';
+
 import type {
   CheckpointSummary,
   ListEntry,
@@ -115,6 +117,7 @@ export function transcriptFromMessages(messages: readonly unknown[], strip: (tex
     if (!m || typeof m !== 'object') continue;
     const { role, content } = m as { role?: unknown; content?: unknown };
     if (role !== 'user' && role !== 'assistant') continue;
+    if (isCompactionSummary(m as never)) continue;
     const text = role === 'user' ? strip(textOf(content)) : textOf(content);
     if (text.trim()) out.push({ role, text });
   }
@@ -139,7 +142,7 @@ export async function handleHistoryMessage(msg: HistoryMessage, deps: HistoryDep
 
       case 'resumeSession': {
         const session = await deps.loadSession(msg.id, deps.sessionDir);
-        return { type: 'sessionResumed', session, transcript: transcriptFromMessages(session.messages, deps.stripSteering) };
+        return { type: 'sessionResumed', session, transcript: transcriptFromMessages(displayMessages(session), deps.stripSteering) };
       }
 
       case 'renameSession': {

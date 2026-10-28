@@ -47,6 +47,12 @@ export function chatRunLimits(): Pick<AgentConfig, 'maxDurationMs'> {
 /** Per-check cap for commands detected from the project (explicit commands keep the 5-minute default). */
 const AUTO_VERIFY_TIMEOUT_MS = 120_000;
 
+/** A list setting from the user's own value only: a repository's settings file must not widen what the sandbox allows (RB-12). */
+export function userList(inspected: { globalValue?: unknown; defaultValue?: unknown } | undefined): string[] {
+  const v = inspected?.globalValue ?? inspected?.defaultValue;
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()) : [];
+}
+
 /** `forge.autoLint.commands` as extension -> command: leading dots dropped, empty or non-string entries ignored. */
 export function cleanLintCommands(raw: Record<string, unknown> | undefined): Record<string, string> {
   const out: Record<string, string> = {};
@@ -55,6 +61,20 @@ export function cleanLintCommands(raw: Record<string, unknown> | undefined): Rec
     if (ext && typeof value === 'string' && value.trim()) out[ext] = value.trim();
   }
   return out;
+}
+
+/**
+ * Which shell the integrated terminal runs, for the prompt's environment block (RB-27): the model should write the
+ * syntax of the shell its command lands in. `undefined` when the path says nothing useful.
+ */
+export function runnerShellOf(shellPath: string | undefined, platform: NodeJS.Platform): 'pwsh' | 'powershell' | 'bash' | 'cmd' | 'sh' | undefined {
+  const base = (shellPath ?? '').split(/[\\/]/).pop()?.toLowerCase().replace(/\.(exe|cmd|bat)$/, '') ?? '';
+  if (base === 'pwsh') return 'pwsh';
+  if (base === 'powershell') return 'powershell';
+  if (base === 'cmd') return 'cmd';
+  if (base === 'bash') return platform === 'win32' ? 'bash' : 'sh';
+  if (base === 'sh' || base === 'zsh' || base === 'fish' || base === 'dash') return 'sh';
+  return undefined;
 }
 
 /** The `semanticSearch` block of an agent config from the `forge.semantic.*` settings. */
@@ -83,6 +103,8 @@ export interface RunExtrasSettings {
   maxSteps?: number;
   /** `forge.commandSandbox`: run commands under bubblewrap / sandbox-exec; absent = off. */
   commandSandbox?: 'off' | 'on' | 'on-network';
+  /** Hosts Forge's own network tools may reach while the sandbox has the network off. */
+  commandSandboxHosts?: string[];
   cheapModel: string;
   verifyCommands: string[];
   verifyLsp?: boolean;
@@ -96,6 +118,8 @@ export interface RunExtrasSettings {
   repoMapTokens?: number;
   /** Per-file check after each write; absent or disabled = off. */
   autoLint?: { enabled: boolean; commands: Record<string, string> };
+  /** Formatter per file type, run on each written file; absent or empty = off. */
+  autoFormat?: { commands: Record<string, string> };
   webSearch?: { provider: 'off' | 'auto' | WebSearchProvider; searxngUrl: string };
 }
 
@@ -148,6 +172,7 @@ export function buildRunExtras(
   const webSearch = webSearchFor(settings.webSearch);
   if (webSearch) extras.webSearch = webSearch;
   if (settings.autoLint?.enabled) extras.autoLint = { commands: settings.autoLint.commands };
+  if (Object.keys(settings.autoFormat?.commands ?? {}).length > 0) extras.autoFormat = { commands: settings.autoFormat!.commands };
 
   if (settings.compaction.enabled) {
     extras.enableCompaction = true;
@@ -159,7 +184,9 @@ export function buildRunExtras(
   extras.maskOldResults = settings.context.maskOldResults ? { keepRecentTurns: settings.context.keepRecentTurns } : false;
   if (settings.maxCostUsd > 0) extras.maxCostUsd = settings.maxCostUsd;
   if ((settings.loopGuardThreshold ?? 0) > 0) extras.loopGuardThreshold = settings.loopGuardThreshold;
-  if (settings.commandSandbox && settings.commandSandbox !== 'off') extras.commandSandbox = { network: settings.commandSandbox === 'on-network' };
+  if (settings.commandSandbox && settings.commandSandbox !== 'off') {
+    extras.commandSandbox = { network: settings.commandSandbox === 'on-network', ...((settings.commandSandboxHosts ?? []).length > 0 ? { allowedHosts: settings.commandSandboxHosts } : {}) };
+  }
   if (settings.maxSteps !== undefined) extras.maxIterations = settings.maxSteps > 0 ? settings.maxSteps : Number.POSITIVE_INFINITY;
   const cheap = settings.cheapModel.trim();
   if (cheap) {

@@ -86,6 +86,21 @@ describe('handleHistoryMessage', () => {
     expect(res).toEqual({ type: 'sessionResumed', session, transcript: [{ role: 'user', text: 'q' }] });
   });
 
+  // RB-58: a reopened chat shows the whole conversation, not only what survived compaction.
+  it('resumeSession shows the full transcript when the session has one', async () => {
+    const session = {
+      id: 's1',
+      messages: [{ role: 'user', content: 'only the recent part' }],
+      transcript: [
+        { role: 'user', content: 'first' },
+        { role: 'assistant', content: 'early answer' },
+        { role: 'user', content: 'only the recent part' },
+      ],
+    };
+    const res = await handleHistoryMessage({ type: 'resumeSession', id: 's1' }, deps({ loadSession: vi.fn().mockResolvedValue(session) }));
+    expect((res as { transcript: unknown[] }).transcript).toHaveLength(3);
+  });
+
   it('surfaces loadSession errors as error responses', async () => {
     const loadSession = vi.fn().mockRejectedValue(new Error('session s1 is corrupt: bad'));
     const res = await handleHistoryMessage({ type: 'resumeSession', id: 's1' }, deps({ loadSession }));

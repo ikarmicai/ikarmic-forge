@@ -1,6 +1,8 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
+import { toolLabel } from '@ikarmic/forge-core';
+
 import { getUnifiedDiffText, summarizeResult, type DetailLevel } from '../tool-display.js';
 
 export interface ToolEventProps {
@@ -31,9 +33,9 @@ export const ToolEvent = React.memo(function ToolEvent(props: ToolEventProps): R
     <Box flexDirection="column" marginLeft={2} marginTop={1}>
       <Box>
         <Text color={isError ? 'red' : 'blue'} bold>
-          {isError ? '✗' : pending ? '◌' : '✓'} {name}
+          {isError ? '✗' : pending ? '◌' : '✓'} {toolLabel(name)}
         </Text>
-        <Text color="gray">{argSummary}</Text>
+        <Text color="gray"> {argSummary}</Text>
         {durationMs !== undefined && (
           <Text color="gray"> · {durationMs}ms</Text>
         )}

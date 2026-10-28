@@ -11,7 +11,7 @@ import { Agent, createLanguageModel } from '@ikarmic/forge-core';
 import { generateText } from 'ai';
 import { describe, expect, it } from 'vitest';
 
-import { COMPLETION_SYSTEM_PROMPT, buildPrompt, sanitize } from '../src/completion-helpers.js';
+import { requestCompletion, sanitize } from '../src/completion-helpers.js';
 import { IMPROVE_INSTRUCTION, INLINE_EDIT_SYSTEM, extractReplacement, inlineEditPrompt, terminalExplainTask, terminalFixTask } from '../src/editor/editor-tasks.js';
 
 const envFile = path.resolve(__dirname, '../../../.env.local');
@@ -73,13 +73,8 @@ describe.skipIf(!live)('live MiniMax-M3: editor and terminal tasks', () => {
 
   it('A15: as the completion model, M3 returns usable text within the default 512-token cap', async () => {
     const prefix = ['// add two numbers', 'function add(a, b) {', '  return a'].join('\n');
-    const { text, usage, finishReason } = await generateText({
-      model: createLanguageModel(model),
-      system: COMPLETION_SYSTEM_PROMPT,
-      prompt: buildPrompt('javascript', prefix, ''),
-      maxOutputTokens: 512,
-      temperature: 0.2,
-    });
+    // The editor's own request (RB-63), not a copy of it: a copy had drifted and could not show the fix.
+    const { text, usage, finishReason } = await requestCompletion({ model: createLanguageModel(model), languageId: 'javascript', prefix, suffix: '', maxTokens: 512 });
     console.log('M3 completion raw:', JSON.stringify(text.slice(0, 200)), 'finish:', finishReason, 'out tokens:', usage?.outputTokens);
     const cleaned = sanitize(text);
     expect(cleaned.length).toBeGreaterThan(0);
