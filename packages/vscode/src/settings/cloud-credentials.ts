@@ -67,3 +67,19 @@ export function cloudCredentialProblem(values: Readonly<Record<string, string | 
   }
   return undefined;
 }
+
+/**
+ * Keep the values, then read each back. A host with no working secret storage (a Linux machine without a keyring) can
+ * accept a write and keep nothing; without the read-back that looks like a save that worked and is never used. When a
+ * value did not stick, everything is removed again and the sentence says so, never naming a value.
+ */
+export async function saveCloudCredentials(store: CloudCredentialStore, values: Readonly<Record<string, string | undefined>>): Promise<void> {
+  for (const field of AWS_CREDENTIALS) await store.set(field.id, (values[field.id] ?? '').trim());
+  for (const field of AWS_CREDENTIALS) {
+    const wanted = (values[field.id] ?? '').trim();
+    if (wanted && (await store.get(field.id)) !== wanted) {
+      for (const f of AWS_CREDENTIALS) await store.set(f.id, '').catch(() => undefined);
+      throw new Error('This editor could not keep the access keys. Secret storage is not available here; on Linux it needs a keyring such as gnome-keyring. Set the keys as environment variables instead.');
+    }
+  }
+}

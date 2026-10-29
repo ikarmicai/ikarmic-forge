@@ -22,7 +22,8 @@ export const SETTINGS_CSS = `
   nav .sep { font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); padding: var(--space-sm) var(--space-xs) var(--space-2xs); }
   nav .ik-badge { margin-left: auto; }
   .ik-badge:empty { display: none; }
-  main { flex: 1; min-width: 0; overflow-y: auto; padding: var(--space-md) var(--space-lg) var(--space-xl); }
+  /* The page is measured by its own column, not the window: beside the sidebar and the chat the column is about 450px in a window twice that. */
+  main { container: pane / inline-size; flex: 1; min-width: 0; overflow-y: auto; padding: var(--space-md) var(--space-lg) var(--space-xl); }
   section[hidden], #search-results[hidden], #unsaved[hidden], .row[hidden], .hidden { display: none !important; }
   h2 { font: var(--text-page); color: var(--ink-strong); margin: 0 0 var(--space-2xs); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
   h2 .sp { flex: 1; }
@@ -85,7 +86,7 @@ export const SETTINGS_CSS = `
   .listed-items { display: grid; gap: var(--space-xs); }
   .listed-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
   .listed-row .ik-input { flex: 1 1 12rem; min-width: 0; width: auto; }
-  .pagebar { display: flex; flex-wrap: wrap; gap: var(--space-xs); justify-content: flex-end; margin-bottom: var(--space-sm); }
+  .pagebar { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); justify-content: flex-end; margin-bottom: var(--space-2xs); }
   .card.keyed { padding: 0; gap: 0; }
   .card.keyed .ik-card__head { display: grid; gap: var(--space-2xs); }
   .card.keyed .ik-card__head .row { margin-top: 0; }
@@ -134,6 +135,7 @@ export const SETTINGS_CSS = `
   .kmore .ik-btn { min-height: 24px; }
   .agent .ik-field { gap: var(--space-2xs); }
   .agent-title { font: var(--text-title-sm); color: var(--ink-strong); }
+  @container pane (max-width: 500px) { .keyrow { grid-template-columns: minmax(0, 1fr) 9.5rem; } .keyrow > .kcell { justify-items: end; text-align: right; } }
   .keyrow + .keyrow { border-top: var(--border-hairline) solid var(--line-subtle); }
   .keyrow .kstatus { overflow-wrap: normal; }
   .keyrow .row { flex-wrap: nowrap; gap: var(--space-2xs); }
@@ -218,9 +220,9 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   </nav>
   <main id="pane">
     <div class="pagebar">
-      <button type="button" class="ik-btn ik-btn--secondary" id="bar-user-config">Open user config</button>
-      <button type="button" class="ik-btn ik-btn--secondary" id="bar-project-config">Open project config</button>
-      <button type="button" class="ik-btn ik-btn--secondary" id="bar-reload">Reload settings</button>
+      <button type="button" class="ik-btn ik-btn--link" id="bar-user-config">Open user config</button>
+      <button type="button" class="ik-btn ik-btn--link" id="bar-project-config">Open project config</button>
+      <button type="button" class="ik-btn ik-btn--link" id="bar-reload">Reload settings</button>
     </div>
     <div id="banner" class="ik-note ik-note--warning" role="status" aria-live="polite"></div>
     <div id="search-results" hidden></div>
@@ -1086,7 +1088,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     jump.textContent = 'Add your own';
     jump.addEventListener('click', () => { const text = $('mcp-add-text'); text.scrollIntoView({ block: 'center' }); text.focus(); });
     const bar = document.createElement('div'); bar.style.display = 'flex'; bar.style.flexWrap = 'wrap'; bar.style.alignItems = 'center'; bar.style.gap = 'var(--space-sm)';
-    search.style.flex = '1 1 0'; search.style.minWidth = '0';
+    search.style.flex = '1 1 12rem'; search.style.minWidth = '0';
     bar.appendChild(search); bar.appendChild(jump);
     const need = msg.entries.filter((e) => e.secrets.length > 0).length;
     const filter = segGroup('mcp-filter', 'Show servers by key', [['all', 'All ' + msg.entries.length], ['key', 'Needs a key ' + need], ['none', 'No key needed ' + (msg.entries.length - need)]], mcpFilter, (v) => { mcpFilter = v; drawMcpCards(results); });

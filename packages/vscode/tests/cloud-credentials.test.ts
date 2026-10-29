@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AWS_CREDENTIALS, applyCloudCredentials, cloudCredentialProblem, createCloudCredentialStore, savedCloudCredentials } from '../src/settings/cloud-credentials.js';
+import { AWS_CREDENTIALS, applyCloudCredentials, cloudCredentialProblem, createCloudCredentialStore, saveCloudCredentials, savedCloudCredentials } from '../src/settings/cloud-credentials.js';
 import { getSettingsHtml } from '../src/settings/settings-html.js';
 import { handleSettingsMessage, type SettingsDeps } from '../src/settings/settings-protocol.js';
 
@@ -149,5 +149,40 @@ describe('wiring', () => {
     const ext = readFileSync(join(__dirname, '..', 'src', 'extension.ts'), 'utf8');
     expect(ext).toContain('setCloudCredentialStore(cloudCredentials)');
     expect(ext).toMatch(/new CommandRegistry\([\s\S]*cloudCredentials,/);
+  });
+});
+
+describe('saveCloudCredentials', () => {
+  const pair = { accessKeyId: 'AKIAIOSFODNN7EXAMPLE', secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY' };
+
+  it('saves every value and reads each one back', async () => {
+    const store = createCloudCredentialStore(secretStorage() as never);
+    await saveCloudCredentials(store, { ...pair, sessionToken: '' });
+    expect(await store.get('accessKeyId')).toBe(pair.accessKeyId);
+    expect(await store.get('secretAccessKey')).toBe(pair.secretAccessKey);
+    expect(await store.get('sessionToken')).toBeUndefined();
+  });
+
+  it('says so, and leaves nothing half saved, when the host accepts the write but does not keep it', async () => {
+    // A Linux machine without a keyring: store() returns, get() finds nothing. It used to look like it worked.
+    const ss = secretStorage();
+    const forgetful = { ...ss, store: async () => undefined };
+    const store = createCloudCredentialStore(forgetful as never);
+    await expect(saveCloudCredentials(store, pair)).rejects.toThrow(/could not keep/i);
+    expect(await store.get('accessKeyId')).toBeUndefined();
+  });
+
+  it('never puts a value in the message', async () => {
+    const forgetful = { ...secretStorage(), store: async () => undefined };
+    const err = await saveCloudCredentials(createCloudCredentialStore(forgetful as never), pair).catch((e: Error) => e);
+    expect((err as Error).message).not.toContain(pair.secretAccessKey);
+    expect((err as Error).message).not.toContain(pair.accessKeyId);
+  });
+
+  it('is what the Settings view calls, not the bare setter', () => {
+    const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const { join } = require('node:path') as typeof import('node:path');
+    const view = readFileSync(join(__dirname, '..', 'src', 'settings', 'settings-view.ts'), 'utf8');
+    expect(view).toContain('saveCloudCredentials(');
   });
 });

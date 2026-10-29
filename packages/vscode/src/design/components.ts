@@ -81,7 +81,7 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 .ik-seg input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .ik-seg span { display: grid; place-items: center; min-width: var(--control); min-height: var(--control); padding: 0 var(--pad-control); font: var(--text-label); font-variant-numeric: tabular-nums; color: var(--ink-body); }
 .ik-seg label + label span { border-left: var(--border-hairline) solid var(--line-control); }
-.ik-seg input:checked + span { background: var(--ion-tint); color: var(--ion-text); font-weight: 600; box-shadow: inset 0 calc(-1 * var(--border-strong)) 0 var(--ion); }
+.ik-seg input:checked + span { background: var(--ion-tint); color: var(--ion-text); box-shadow: inset 0 calc(-1 * var(--border-strong)) 0 var(--ion); }
 .ik-seg input:disabled, .ik-seg input:disabled + span { cursor: not-allowed; }
 .ik-seg input:disabled + span { color: var(--ink-disabled); }
 .ik-seg input:focus-visible + span { outline: var(--border-strong) solid var(--focus-ring); outline-offset: calc(-1 * var(--border-strong)); }

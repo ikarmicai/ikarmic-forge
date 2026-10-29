@@ -42,6 +42,7 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **`--no-project-instructions` also turns off a folder's `AGENTS.md`.** The nearest `AGENTS.md` above a file Forge reads was attached whether or not project instructions were off; it follows the flag now, and so do sub-agents, parallel agents and the router (RB-112).
 
 ### Fixed
+- **The API keys page no longer scrolls sideways beside the chat.** Its four-column rows needed about 480px and the page column is about 450px when the sidebar and the chat are open, so Save was cut off and a horizontal scrollbar showed. The page is now laid out by its own column width instead of the window (RB-110).
 
 - **The terminal app now fills variables in MCP server settings.** A token written as a variable reached the server as literal text (RB-105).
 - **A hook agent keeps your limits.** A hook that runs an agent used only its own tool list and dropped what you had denied, so a denied `write_file` still wrote. It now narrows your limits and never widens them. (RB-14)

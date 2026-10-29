@@ -43,7 +43,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Windows is covered by the private repository's CI on the same commit; this job proves the mirror builds against the core on npm.
+        os: [ubuntu-latest]
 
     steps:
       - uses: actions/checkout@v4

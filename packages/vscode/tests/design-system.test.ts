@@ -258,3 +258,14 @@ describe('design system: a page that has moved onto it', () => {
     });
   }
 });
+
+describe('a segmented choice keeps one width whichever segment is chosen', () => {
+  it('does not change the weight of the chosen segment, which widens it by about 2px and leaves a column of choices ragged', () => {
+    // Found by the Linux UI run: the left edges of the Ask, Allow and Block groups in Permissions differed by 2px because
+    // the chosen label was bold. The inset bar and the tint already mark the choice, so the weight is not needed.
+    const rule = /\.ik-seg input:checked \+ span \{([^}]*)\}/.exec(COMPONENTS_CSS);
+    expect(rule, 'the chosen-segment rule').not.toBeNull();
+    expect(rule![1]).not.toMatch(/font-weight/);
+    expect(rule![1]).toMatch(/box-shadow: inset/);
+  });
+});

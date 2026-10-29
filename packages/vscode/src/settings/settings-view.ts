@@ -50,7 +50,7 @@ import { loadRuntimeConfig } from '../runtime-config.js';
 import { KEY_PROVIDERS, applyProviderEnv, resolveApiKeysWithStore } from '../api-keys.js';
 import { readCleanup, recordCleanup, type CleanupStore } from './cleanup-record.js';
 import { SemanticUi } from '../semantic-ui.js';
-import { applyCloudCredentials, savedCloudCredentials, type CloudCredentialStore, AWS_CREDENTIALS } from './cloud-credentials.js';
+import { AWS_CREDENTIALS, applyCloudCredentials, saveCloudCredentials, savedCloudCredentials, type CloudCredentialStore } from './cloud-credentials.js';
 import { cloudProviderStatus } from './cloud-status.js';
 import { createInstructionFile, scanInstructionFiles } from './instructions-scan.js';
 import { handleSettingsMessage, markBuiltin, type SettingsDeps, type SettingsMessage } from './settings-protocol.js';
@@ -212,7 +212,7 @@ export class SettingsViewProvider {
         save: async (values: Record<string, string>) => {
           const store = this.opts?.cloudCredentials;
           if (!store) throw new Error('This editor cannot keep secrets.');
-          for (const f of AWS_CREDENTIALS) await store.set(f.id, values[f.id] ?? '');
+          await saveCloudCredentials(store, values);
         },
         clear: async () => {
           for (const f of AWS_CREDENTIALS) await this.opts?.cloudCredentials?.set(f.id, '');
