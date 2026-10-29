@@ -69,3 +69,30 @@ describe('getSettingsHtml', () => {
     expect(() => new Function(scripts[0]!)).not.toThrow();
   });
 });
+
+describe('combo boxes on the Settings page', () => {
+  const html = getSettingsHtml({ scriptUri: 'vscode-resource:/dist/webview/settings-ui.js', cspSource: 'vscode-resource:' });
+
+  it('gives the compaction and sub-agent model fields a list that still takes any text', () => {
+    for (const id of ['compaction-model', 'subagent-model']) {
+      expect(html, id).toMatch(new RegExp('<div class="ik-combo" data-combo="models"><input type="text" id="' + id + '" class="ik-input ik-input--mono" role="combobox"'));
+    }
+    expect(html).toContain('class="ik-combo__toggle"');
+  });
+
+  it('builds every combo with one function that the page script defines', () => {
+    expect(html).toContain('function makeCombo(');
+    expect(html).toContain('FS.modelGroups(');
+    expect(html).toContain('FS.filterGroups(');
+    expect(html).toContain('FS.isKnownValue(');
+  });
+
+  it('keeps a saved value the list does not know, and says so', () => {
+    expect(html).toContain('Not in the list. Forge keeps it as typed.');
+    expect(html).toContain('Use what I typed');
+  });
+
+  it('reads the alias map from the loaded config and uses the one list for every combo', () => {
+    expect(html).toContain('aliases = msg.config.aliases || {}');
+  });
+});

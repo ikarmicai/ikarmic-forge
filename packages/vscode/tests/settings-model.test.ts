@@ -87,7 +87,7 @@ describe('filterSettings', () => {
   });
 
   it('indexes every section once at least', () => {
-    expect(new Set(SETTINGS_INDEX.map((e) => e.section))).toEqual(new Set(['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'perm', 'context', 'safety', 'tools', 'git', 'advanced', 'display', 'backup']));
+    expect(new Set(SETTINGS_INDEX.map((e) => e.section))).toEqual(new Set(['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'instructions', 'perm', 'context', 'safety', 'notifications', 'tools', 'git', 'advanced', 'display', 'about', 'backup']));
   });
 });
 

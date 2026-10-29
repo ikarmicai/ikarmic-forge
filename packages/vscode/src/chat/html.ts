@@ -1540,7 +1540,7 @@ export function chatHtml(
       row.setAttribute('role', 'option');
       row.dataset.slash = e.name;
       const label = document.createElement('span'); label.textContent = '/' + e.name; row.appendChild(label);
-      const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = e.description + (e.source === 'custom' ? ' (yours)' : e.source === 'skill' ? ' (skill)' : ''); row.appendChild(hint);
+      const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = e.description + (e.source === 'custom' ? ' (yours)' : e.source === 'skill' ? ' (skill)' : e.source === 'mcp' ? ' (MCP)' : ''); row.appendChild(hint);
       row.addEventListener('mousedown', (ev) => { ev.preventDefault(); chooseSlash(e.name); });
       mentionList.appendChild(row);
     });
@@ -2969,6 +2969,12 @@ export function chatHtml(
         break;
       case 'slash_commands':
         slashEntries = Array.isArray(msg.entries) ? msg.entries : [];
+        // The MCP servers connect after the first "/": while a command is being typed the menu is drawn again with what
+        // they offer (a menu with no matching row has closed itself, so this goes by the text, not by the menu).
+        {
+          const openQuery = UI ? UI.slashMenuQuery(inputEl.value, inputEl.selectionStart) : undefined;
+          if (openQuery !== undefined) showSlashMenu(openQuery);
+        }
         break;
       case 'open_model_menu':
         if (modelMenu.hidden) modelLabel.click();

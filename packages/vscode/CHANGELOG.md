@@ -10,6 +10,56 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.5.0] - 2026-10-29
+
+### Added
+
+- **A catalog of 44 MCP servers, grouped by kind of work.** Settings → MCP servers → Browse now lists code hosting (GitHub, GitLab), work tracking (Linear, Atlassian, Notion), monitoring (Sentry, Grafana, PagerDuty, New Relic, Honeycomb), cloud and deploy (Azure, AWS documentation, Cloudflare, Vercel, Netlify, Firebase), infrastructure (Terraform, Kubernetes), databases (MongoDB, Redis, ClickHouse, Pinecone), design and content, testing, payments, web search, security, analytics and AI. Each was matched to its vendor through the official MCP Registry or the package's own repository (RB-107). The entries that only repeated a Forge tool (files, git, fetch) or the date are gone.
+- **Secrets on the card.** A server that needs a token or connection string asks for it on its card; it is kept in your editor's secret storage and `mcp.json` holds only a placeholder. Variables (`${NAME}`) work in VS Code and in the terminal app, and a stored secret is never offered to a server a repository defines (RB-105, RB-106).
+- **Add your own.** Paste a command (npx, uvx or docker), an https address or JSON for one server, see exactly what would run, then add it. For skills, paste an https address or choose a file.
+- **Tools Forge already has are hidden, and you can show them.** If a server offers its own read-file, write-file, fetch or command tool, Forge hides that tool and says so on the server's row, with a switch to turn it back on.
+- **Two bundled skills.** `write-requirements` (numbered requirements with acceptance criteria) and `review-changes` (a read-only review of a diff, with file and line).
+- **Switch any skill off,** bundled ones included, from Settings → Skills. Bundled skills and skills from a link now have their own groups on that page.
+- **MCP prompts as slash commands.** A connected server's prompts appear in the slash menu as `/mcp-<server>-<prompt>` with an (MCP) label. Write arguments as `name=value` (or just the value when the prompt has one). A missing argument is refused with a sentence that names it, and nothing is sent to the model (RB-111).
+- **A server's tools refresh when it says they changed.** A server that adds or removes tools while Forge is running no longer needs a reload; a refresh that fails keeps the tools you have (RB-111).
+- **Lists and name-to-value settings can be edited on the page.** The hosts a sandboxed command may reach, the commands that check a run, the files copied into each Agent Manager worktree, the certificate files for a proxy, the lint and format command for each file type, and the documentation sources used to be editable only in settings.json. Each is now a row you add to and remove from; a repeat is not added twice.
+- **Every Settings page has Open user config, Open project config and Reload settings,** and each sidebar item has an icon. Reload re-reads the files behind the page and refuses, saying why, while you have unsaved changes.
+- **AWS access keys can be entered in Settings.** On API keys, Enter access keys opens a dialog for the access key ID, the secret access key and an optional session token. They are kept in the editor's secret storage, put in the environment when a run starts, never shown again, and removable. A Google credentials file setting for Vertex AI is on the Advanced page (user settings only, like the other settings that name a credential).
+- **API keys shows what Forge finds for Bedrock, Vertex and Azure.** These three use your cloud account rather than a key Forge stores, and a missing variable failed only when a run started. A Cloud accounts block says per provider, in words, what is set and what is missing (a lone half of the AWS access key pair, no Vertex project, no Azure key or resource); it counts a key saved above and the settings on Advanced, and never shows a value.
+- **Context and memory says when old chats were last deleted,** and how many, whether it ran when VS Code started or on request.
+- **The code index shows what it is doing.** Tools and web has a Code index block above its settings: off, not built yet, reading your code (files done of total), ready (pieces and files) or the problem, in words. It follows the Search by meaning switch and updates while the index runs, and a button deletes the index after asking.
+- **An Instructions page.** It lists the three files Forge reads at the start of every chat (AGENTS.md, CLAUDE.md, CONVENTIONS.md) with whether each is used, empty or missing, and warns when one is longer than Forge reads. Open one, or create a missing one from a short starter; an existing file is never replaced. It also starts a new steering note.
+- **Delete old chats now.** Chats older than Days to keep chats were only deleted when VS Code started. A button on the Context and memory page counts them, asks, and deletes them on request.
+- **Notifications is its own settings page.** Whether, how and when Forge tells you a run has finished (notify, sound, desktop notification, minimum run length) were mixed in with spending caps and step limits under Safety and cost.
+- **A Reset all settings button, and an About page.** Backup can put every setting on the Context and memory, Safety and cost, Tools and web, Git and quality, and Advanced pages back to its default after asking first; API keys, MCP servers, agents and permissions are not touched. About shows the version and opens the log, the issue page and the documentation. Importing a file over 1 MB is refused with a sentence.
+- **A server that needs a key asks for it in a dialog.** Browse cards are all the same height: each says what it needs (Needs a key, Needs details or No key needed) and opens a dialog to enter it, where an empty field is named in words instead of a greyed-out Install button. The dialog has a show/hide button for secrets, closes on Escape and keeps keyboard focus inside. A filter above the list shows all servers, only those that need a key, or only those that do not.
+
+### Changed
+
+- **A `${NAME}` in an MCP server's settings is now filled, or the server is not started.** A variable that is not set used to be passed to the server as the literal text; it now fails with a message naming the variable (RB-105). A form Forge does not read, such as `${env:NAME}`, is refused the same way.
+- **"Add your own" is easy to find.** The MCP Browse tab has an Add your own button beside the search box that jumps to the card, and the empty Installed list says where to find it. The card used to be the last thing under all 44 catalog cards.
+- **PagerDuty is the hosted server.** The catalog entry pointed at PagerDuty's local server, which PagerDuty has archived in favour of its hosted one; it now uses `https://mcp.pagerduty.com/mcp` with a sign-in (RB-107).
+- **`--no-project-instructions` also turns off a folder's `AGENTS.md`.** The nearest `AGENTS.md` above a file Forge reads was attached whether or not project instructions were off; it follows the flag now, and so do sub-agents, parallel agents and the router (RB-112).
+
+### Fixed
+
+- **The terminal app now fills variables in MCP server settings.** A token written as a variable reached the server as literal text (RB-105).
+- **A hook agent keeps your limits.** A hook that runs an agent used only its own tool list and dropped what you had denied, so a denied `write_file` still wrote. It now narrows your limits and never widens them. (RB-14)
+- **The orchestrator's planning step has no tools.** It was offered every built-in tool although it only writes a plan as text. (RB-14)
+- **A skill file cannot close the skills block early.** Text in a skill that looked like the closing tag ended the block, so the rest of the skill sat outside it. It is escaped now, as steering text already was. (RB-35)
+- **A failed chat run is written to Output > Forge.** The error showed in the chat but not in the log, so a chat that could not be continued was found only by reading the session file. Secrets are removed from the line. (RB-84)
+- **Retry no longer asks the "Big request" question again.** After you chose Just do it or Plan first, Retry and Edit ran the message without remembering the answer. (RB-88)
+- **Removing an MCP server from the Command Palette forgets its stored secrets.** Only the Settings page did; the Palette left the token in the editor's secret storage (RB-106).
+- **The MCP and Skills pages no longer scroll sideways in a narrow window.** The heading's buttons, including Browse catalog, could sit off the page, and a token field could stick out of its card (RB-110).
+- **The notice about ignored project settings also covers a multi-root workspace file.** Settings a `.code-workspace` file tried to set were ignored without a word (RB-12).
+- **Long MCP tool lists, slow tools and Stop.** Only the first page of a server's tools was read; one tool with a broken `outputSchema` made the whole list fail; a slow tool that reported progress was cut off after 60 seconds; and Stop did not end a call in progress (RB-111).
+
+### Security
+
+- **A project can no longer set a command or a server address.** Ten settings were read from a project's `.vscode/settings.json` as well as from yours, so a repository you had cloned and trusted could point Forge at its own server and receive your API key or your code (`forge.providers.azureBaseUrl`, `forge.providers.openaiCompatibleBaseUrl`, `forge.providers.lmstudioBaseUrl`, `forge.providers.ollamaBaseUrl`, `forge.providers.azureResourceName`, `forge.semantic.baseUrl`, `forge.semantic.apiKeyEnv`, `forge.webSearch.searxngUrl`), or name commands that run after Forge edits files (`forge.verify.commands`, `forge.autoLint.commands`). They are user-only now: VS Code ignores a project's value, and Forge tells you once per project which ones its settings file tried to set. **If you kept `forge.verify.commands` or `forge.autoLint.commands` in a project's settings, move them to your user settings.** (RB-12)
+- **A workspace you have not trusted can no longer feed Forge instructions.** In Restricted Mode a repository's `AGENTS.md`, `CLAUDE.md`, `CONVENTIONS.md`, project skills (`skills/`, `.forge/skills/`, project plugins) and the `AGENTS.md` of a folder you read from were still sent to the model. They are left out now, the chat says once what was ignored, and **Trust the workspace** turns them back on (RB-112).
+
+
 ## [5.4.1] - 2026-10-28
 
 ### Fixed
@@ -185,7 +235,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Memory**, **steering files** and per-project instructions.
 - **Verification**: Forge runs your project's own typecheck, lint and tests after edits, with Ask/On/Off.
 
-[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.1...HEAD
+[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.0...HEAD
+[5.5.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.1...v5.5.0
 [5.4.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.0...v5.4.1
 [5.4.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.3.0...v5.4.0
 [5.3.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.2.0...v5.3.0

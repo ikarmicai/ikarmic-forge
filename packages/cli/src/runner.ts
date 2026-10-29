@@ -47,6 +47,7 @@ export interface RunHandle {
 export function startAgent(req: RunRequest): RunHandle {
   const controller = new AbortController();
   if (req.abortSignal) {
+    // abort-listener: one per run, on a signal the caller made for this run, so it ends with the run (no caller passes one today).
     req.abortSignal.addEventListener('abort', () => controller.abort(), { once: true });
   }
   const config: AgentConfig = {
@@ -102,6 +103,7 @@ export interface StructuredRunHandle {
 export function startStructuredAgent(req: StructuredRunRequest): StructuredRunHandle {
   const controller = new AbortController();
   if (req.abortSignal) {
+    // abort-listener: one per run, on a signal the caller made for this run, so it ends with the run (no caller passes one today).
     req.abortSignal.addEventListener('abort', () => controller.abort(), { once: true });
   }
   const config: AgentConfig = {

@@ -268,6 +268,7 @@ const RAW_INDEX: readonly IndexEntry[] = [
   { section: 'agents', sectionLabel: 'Agents', rowId: 'row-agents', label: 'Custom agents', description: 'Agents in the chat mode menu and parallel runs' },
   { section: 'mcp', sectionLabel: 'MCP servers', rowId: 'row-mcp', label: 'MCP servers', description: 'Servers that give Forge extra tools; turn on or off, install from the catalog' },
   { section: 'skills', sectionLabel: 'Skills', rowId: 'row-skills', label: 'Skills', description: 'Markdown instructions loaded when a task matches; browse the catalog' },
+  { section: 'instructions', sectionLabel: 'Instructions', rowId: 'row-instructions', label: 'Instruction files', description: 'AGENTS.md, CLAUDE.md and CONVENTIONS.md: which Forge reads, which are cut off; start one' },
   { section: 'perm', sectionLabel: 'Permissions', rowId: 'row-tools', label: 'Tools: ask, allow or block', description: 'Per tool: confirm each call, run without asking, or hide it from Forge' },
   { section: 'perm', sectionLabel: 'Permissions', rowId: 'row-allow', label: 'Allowed tools', description: 'Only these tools are offered; empty allows all' },
   { section: 'perm', sectionLabel: 'Permissions', rowId: 'row-pattern-rules', label: 'Pattern rules', description: 'Ordered allow, ask or deny rules for reads, edits, shell commands and web access; the last match wins' },
@@ -275,6 +276,7 @@ const RAW_INDEX: readonly IndexEntry[] = [
   { section: 'display', sectionLabel: 'Display', rowId: 'row-blocks', label: 'Tool rows', description: 'Whether tool calls in the chat start open or closed' },
   { section: 'display', sectionLabel: 'Display', rowId: 'row-show-reasoning', label: 'Show reasoning', description: "Show the model's reasoning above each reply" },
   { section: 'display', sectionLabel: 'Display', rowId: 'row-block-modes', label: 'Blocks by kind', description: 'Reasoning, command output, file edits and MCP results: hidden, collapsed or expanded' },
+  { section: 'about', sectionLabel: 'About', rowId: 'row-about', label: 'Version and help', description: 'Which version is running; open the log, report an issue, read the documentation' },
   { section: 'backup', sectionLabel: 'Backup', rowId: 'row-backup', label: 'Export and import', description: 'Settings, agents, MCP servers and permissions as JSON; keys are never exported' },
 ];
 
@@ -300,6 +302,8 @@ const KEYWORDS: Record<string, string> = {
   'row-blocks': 'collapse expand tool calls chat',
   'row-show-reasoning': 'thinking thought think',
   'row-backup': 'export import json restore settings file',
+  'row-instructions': 'agents claude conventions rules steering prompt project notes system',
+  'row-about': 'version build log output bug report help support docs readme',
 };
 
 /** Every `forge.*` row is searchable by its label and its setting name (forge.maxCostUsd). */

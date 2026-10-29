@@ -6,7 +6,7 @@
 export interface SlashEntry {
   name: string;
   description: string;
-  source: 'builtin' | 'custom' | 'skill';
+  source: 'builtin' | 'custom' | 'skill' | 'mcp';
   takesArgs: boolean;
 }
 
@@ -41,6 +41,17 @@ export function parseSlash(text: string, known: readonly SlashEntry[]): { name: 
 export function expandSkillCommand(skill: { name: string; body: string }, args: string): string {
   const task = args.trim() || 'the work in this conversation';
   return `Follow the skill "${skill.name}" below.\n\n<skill name="${skill.name}">\n${skill.body.trim()}\n</skill>\n\nApply it to: ${task}`;
+}
+
+/**
+ * The prompt a `/mcp-server-prompt args` message becomes: what the server's prompt says, quoted as coming from that server.
+ * The text is the server's, so it cannot end the block early (RB-35) and the names cannot leave their attributes.
+ */
+export function expandMcpPrompt(prompt: { server: string; name: string }, text: string): string {
+  // A name from the server stays one plain word run inside its attribute: no quote, no tag character, no line break.
+  const attr = (s: string): string => s.replace(/["<>\r\n]/g, '');
+  const body = text.trim().replace(/<\/mcp-prompt/gi, '&lt;/mcp-prompt');
+  return `Use the prompt "${attr(prompt.name)}" from the MCP server "${attr(prompt.server)}" below.\n\n<mcp-prompt server="${attr(prompt.server)}" name="${attr(prompt.name)}">\n${body}\n</mcp-prompt>`;
 }
 
 /** Entries matching `query`: names starting with it first, then names containing it, each in the original order. */

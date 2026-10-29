@@ -12,6 +12,8 @@ export interface CommandRunPlan {
   variant?: 'low' | 'medium' | 'high';
   /** Why part of the front matter was not used. */
   problem?: string;
+  /** When set the message is not run at all: this sentence is shown instead (an MCP prompt that cannot be given). */
+  blocked?: string;
 }
 
 /**

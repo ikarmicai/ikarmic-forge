@@ -1178,6 +1178,7 @@ export async function toAgentConfig(
   const sharedConfig = await loadForgeConfigFile();
   const [skillsRegistry, hooksConfig, sandboxFromFile, steering] = await Promise.all([
     loadSkillsRegistryAsync(cwd, sharedConfig.config.skillPaths ?? [], {
+      disabledSkills: sharedConfig.config.disabledSkills ?? [],
       onWarning: (w) => process.stderr.write(`forge: skills: ${w}\n`),
     }),
     loadHooksConfig(cwd),

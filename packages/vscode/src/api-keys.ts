@@ -24,6 +24,7 @@ export interface ProviderEnvSettings {
   awsRegion: string;
   vertexProject: string;
   vertexLocation: string;
+  googleCredentialsFile: string;
   azureResourceName: string;
   azureBaseUrl: string;
   openaiCompatibleBaseUrl: string;
@@ -35,6 +36,7 @@ const PROVIDER_ENV_VARS: Record<keyof ProviderEnvSettings, string> = {
   awsRegion: 'AWS_REGION',
   vertexProject: 'GOOGLE_VERTEX_PROJECT',
   vertexLocation: 'GOOGLE_VERTEX_LOCATION',
+  googleCredentialsFile: 'GOOGLE_APPLICATION_CREDENTIALS',
   azureResourceName: 'AZURE_RESOURCE_NAME',
   azureBaseUrl: 'AZURE_OPENAI_BASE_URL',
   openaiCompatibleBaseUrl: 'OPENAI_COMPATIBLE_BASE_URL',

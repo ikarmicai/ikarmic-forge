@@ -112,6 +112,8 @@ export function registerAgents(
           autoApproveTools: resolveAutoApprove(shared.autoApproveTools),
           ...permissionExtras(shared),
           ...(sandbox ? { toolSandbox: sandbox } : {}),
+          // A workspace that is not trusted gets no project instructions, in the router or in any step (RB-112).
+          disableProjectInstructions: !trusted,
           worktrees: 'always',
           commitChanges: true,
           cleanupBranches: true,

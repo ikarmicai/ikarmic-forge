@@ -321,6 +321,20 @@
       },
       "description": "Extra places to read skills from: folders (absolute, ~/..., or relative to the workspace) or http(s) URLs of a skill file or a skill index. User config only."
     },
+    "disabledSkills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Skills (by name, bundled ones included) the model never sees. User config only."
+    },
+    "mcpShowDuplicates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "MCP servers (by name) whose tools that duplicate a Forge tool stay offered to the model. The others are hidden. User config only."
+    },
     "caCertificates": {
       "type": "array",
       "items": {

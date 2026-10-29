@@ -19,6 +19,11 @@ export interface McpActionDeps {
   registerMcpServer: typeof registerMcpServer;
   installMcpServer: typeof installMcpServer;
   reload(): Promise<void>;
+  /**
+   * The secrets a person stored on a server's card. Removing the server forgets them, from whichever surface asks
+   * (RB-106). Optional: a surface with no secret storage has nothing to forget.
+   */
+  secrets?: { idsOf(server: string): Promise<string[]>; set(server: string, id: string, value: string): Promise<void> };
 }
 
 export type McpActionResult = { ok: true } | { ok: false; message: string };
@@ -34,7 +39,10 @@ export async function toggleServer(s: McpServerStatus, deps: McpActionDeps): Pro
 
 export async function removeServer(s: McpServerStatus, deps: McpActionDeps): Promise<McpActionResult> {
   if (s.scope === 'workspace') return { ok: false, message: WORKSPACE_READONLY };
+  // Read the ids first: once the server is uninstalled, its entry and so its placeholders are gone.
+  const secretIds = deps.secrets ? await deps.secrets.idsOf(s.name) : [];
   await deps.uninstallMcpServer({ name: s.name });
+  for (const id of secretIds) await deps.secrets!.set(s.name, id, '');
   await deps.reload();
   return { ok: true };
 }

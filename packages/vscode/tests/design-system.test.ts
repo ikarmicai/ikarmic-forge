@@ -163,10 +163,14 @@ describe('design system: components', () => {
   });
 
   it('uses only the documented fixed lengths; any other size is a token or a new, deliberate entry here', () => {
-    const allowed = new Set(['1px', '2px', '3px', '4px', '12px', '14px', '20px', '72px', '440px']);
+    const allowed = new Set(['1px', '2px', '3px', '4px', '12px', '14px', '20px', '72px', '280px', '440px']);
     const found = new Set<string>();
     for (const m of css.matchAll(/(?<![\w-])-?(\d+(?:\.\d+)?)px/g)) if (!allowed.has(`${m[1]}px`)) found.add(`${m[1]}px`);
     expect([...found]).toEqual([]);
+  });
+
+  it('an element with the hidden attribute is hidden whatever display its class sets (RB-101)', () => {
+    expect(COMPONENTS_CSS).toContain('.ik-root [hidden] { display: none !important; }');
   });
 
   it('uses only the radius tokens', () => {

@@ -24,25 +24,27 @@ export const SETTINGS_CSS = `
   .ik-badge:empty { display: none; }
   main { flex: 1; min-width: 0; overflow-y: auto; padding: var(--space-md) var(--space-lg) var(--space-xl); }
   section[hidden], #search-results[hidden], #unsaved[hidden], .row[hidden], .hidden { display: none !important; }
-  h2 { font: var(--text-page); color: var(--ink-strong); margin: 0 0 var(--space-2xs); display: flex; align-items: center; gap: var(--space-sm); }
+  h2 { font: var(--text-page); color: var(--ink-strong); margin: 0 0 var(--space-2xs); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
   h2 .sp { flex: 1; }
   h2 .ik-badge, h2 .ik-btn { font-weight: 400; }
   .lead { color: var(--ink-muted); margin: 0 0 var(--space-md); max-width: 70ch; }
   #banner { margin: 0 0 var(--space-sm); }
   #banner:empty { display: none; }
   /* minmax(0, 1fr): a single column that may shrink, so a long no-wrap row (a workspace path) cannot widen the page. */
-  .setting { padding: var(--space-sm); margin: 0 calc(-1 * var(--space-sm)); border-left: var(--border-strong) solid transparent; border-bottom: var(--border-hairline) solid var(--line-subtle); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2xs); }
+  /* The row bleeds 12px each side so the hover colour has room, but its text and its separator sit on the page gutter, like the heading above it. */
+  .setting { position: relative; padding: var(--space-sm); margin: 0 calc(-1 * var(--space-sm)); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2xs); }
+  .setting::after { content: ""; position: absolute; left: var(--space-sm); right: var(--space-sm); bottom: 0; height: var(--border-hairline); background: var(--line-subtle); }
   .setting:hover { background: var(--bg-overlay); }
-  .setting.modified { border-left-color: var(--warning); }
+  .setting.modified { box-shadow: inset var(--border-strong) 0 0 var(--warning); }
   .setting.flash { outline: var(--border-strong) solid var(--focus-ring); outline-offset: calc(-1 * var(--border-strong)); }
-  .setting .t { font: var(--text-label); font-weight: 600; color: var(--ink-strong); }
+  .setting .t { font: var(--text-title-sm); color: var(--ink-strong); }
   .setting.modified .t::after { content: " (modified)"; font-weight: 400; color: var(--ink-muted); }
   .setting .d { color: var(--ink-muted); font: var(--text-caption); max-width: 70ch; }
   .err, .kstatus.bad { color: var(--danger); }
   .kstatus.ok { color: var(--success); }
   /* Wide windows: the name and its description sit beside the control, so the page is not a tall single column. */
   @media (min-width: 1000px) {
-    .setting { grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); column-gap: var(--space-xl); align-items: start; }
+    .setting { grid-template-columns: minmax(200px, 320px) minmax(0, 1fr); column-gap: var(--space-xl); align-items: start; }
     .setting > .t { grid-column: 1; }
     .setting > .t + .d { grid-column: 1; }
     .setting > :not(.t):not(.t + .d) { grid-column: 2; }
@@ -53,6 +55,9 @@ export const SETTINGS_CSS = `
   .allowed-row code { flex: none; font: var(--text-code); }
   .allowed-row .d { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row .ik-input, .row .ik-select, nav .ik-input { width: min(320px, 100%); }
+  .row .ik-combo { width: min(320px, 100%); }
+  .row input[type="number"].ik-input { width: min(140px, 100%); }
+  .row .ik-combo .ik-input { width: 100%; }
   nav .ik-input, #section-picker { width: 100%; }
   .rule .ik-input, .rule .ik-select, .agent .ik-input, .agent .ik-textarea, .setting .ik-textarea { width: 100%; }
   input[type="checkbox"] { accent-color: var(--ion); margin: 0; }
@@ -68,28 +73,67 @@ export const SETTINGS_CSS = `
   .item-body { padding: var(--space-xs) var(--space-sm) var(--space-sm) var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-2xs); background: var(--bg-sunken); }
   .dot { width: 8px; height: 8px; border-radius: var(--radius-pill); flex: none; background: var(--ink-muted); }
   .dot.connected { background: var(--success); } .dot.failed { background: var(--danger); } .dot.needs-auth { background: var(--warning); } .dot.disabled { background: transparent; box-shadow: inset 0 0 0 2px var(--ink-muted); }
-  .group-label { font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); margin: var(--space-md) 0 var(--space-xs); }
+  .group-label { font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-body); margin: var(--space-lg) 0 var(--space-xs); padding-bottom: var(--space-2xs); border-bottom: var(--border-hairline) solid var(--line-subtle); }
   .group-label .path { text-transform: none; letter-spacing: 0; font: var(--text-code); margin-left: var(--space-xs); }
   .ik-tabs { margin-bottom: var(--space-sm); }
   .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-xs); }
-  .card, .agent { padding: var(--pad-card); display: grid; gap: var(--space-xs); }
+  /* minmax(0, 1fr): an input has an intrinsic width, and a plain grid column grows to fit it instead of the card. */
+  .card, .agent { padding: var(--pad-card); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); }
   .agent { margin-top: var(--space-xs); }
   .card .row { justify-content: space-between; margin-top: var(--space-2xs); }
+  .listed { display: grid; gap: var(--space-xs); width: min(560px, 100%); }
+  .listed-items { display: grid; gap: var(--space-xs); }
+  .listed-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
+  .listed-row .ik-input { flex: 1 1 12rem; min-width: 0; width: auto; }
+  .pagebar { display: flex; flex-wrap: wrap; gap: var(--space-xs); justify-content: flex-end; margin-bottom: var(--space-sm); }
+  .card.keyed { padding: 0; gap: 0; }
+  .card.keyed .ik-card__head { display: grid; gap: var(--space-2xs); }
+  .card.keyed .ik-card__head .row { margin-top: 0; }
+  .card.keyed .ik-card__foot .cmd { min-width: 0; overflow-wrap: anywhere; }
+  .grow { flex: 1 1 0; }
+  /* The key dialog: a fixed layer over the page. The scrim and the dialog are the design system's; only the placement is here. */
+  .dlg-layer { position: fixed; inset: 0; z-index: 20; }
+  .dlg-layer .ik-dialog { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(28rem, calc(100% - 2 * var(--space-md))); max-height: calc(100% - 2 * var(--space-md)); overflow-y: auto; display: grid; gap: var(--space-sm); }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+  .dlg-head h2 { margin: 0; font: var(--text-title-sm); color: var(--ink-strong); }
+  .dlg-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); }
+  .key-row { display: flex; gap: var(--space-xs); }
+  .key-row .ik-input { flex: 1 1 0; min-width: 0; }
   .rule-head { display: flex; gap: var(--space-xs); font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); margin-bottom: var(--space-2xs); }
   .checks { display: flex; flex-wrap: wrap; gap: 2px var(--space-md); }
   .checks label { display: flex; gap: var(--space-xs); align-items: center; min-height: var(--control); font: var(--text-code); }
   /* Provider names are product names, not code; only tool names read as monospace. */
   #hidden-providers label { font-family: inherit; }
   #hidden-providers { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px var(--space-md); }
-  .tool-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-xs); min-height: var(--control); padding: 2px 0; border-bottom: var(--border-hairline) solid var(--line-subtle); }
-  .tool-row .name { flex: 0 0 150px; min-width: 0; font: var(--text-caption); overflow-wrap: anywhere; }
-  .tool-row .hint { flex: 1 1 140px; min-width: 0; font: var(--text-caption); color: var(--ink-muted); overflow-wrap: anywhere; }
+  /* One row per tool: the name over its description on the left, the Ask / Allow / Block control centred on the right. */
+  .tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-md); align-items: center; padding: var(--space-xs) 0; border-bottom: var(--border-hairline) solid var(--line-subtle); }
+  /* A long list gets the whole width, not the right-hand column. */
+  .setting.stack { grid-template-columns: minmax(0, 1fr) !important; }
+  .setting.stack > * { grid-column: 1 !important; }
+  .setting.stack > .d { max-width: 70ch !important; }
+  .tool-row .name { grid-column: 1; grid-row: 1; min-width: 0; font: var(--text-label); color: var(--ink-strong); overflow-wrap: anywhere; }
+  .tool-row .hint { grid-column: 1; grid-row: 2; min-width: 0; font: var(--text-caption); color: var(--ink-muted); overflow-wrap: anywhere; }
+  .tool-row > .ik-seg { grid-column: 2; grid-row: 1 / span 2; }
+  .kind { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2xs); }
+  .kind + .kind { margin-top: var(--space-xs); }
+  .setting .row.kind label { min-height: 0; color: var(--ink-muted); font: var(--text-caption); }
+  /* A form of labelled fields: two columns when there is room, one when there is not. */
+  .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); max-width: 720px; margin-top: var(--space-sm); }
+  .form .full { grid-column: 1 / -1; }
+  .form .ik-label { color: var(--ink-strong); }
+  /* Controls sit at the bottom of their cell, so a label that wraps never pushes its input out of line with its neighbour. */
+  .form .ik-field { justify-content: flex-end; }
+  @media (max-width: 900px) { .form { grid-template-columns: minmax(0, 1fr); } }
   details.adv { margin: var(--space-sm) 0; }
   details.adv > summary { cursor: pointer; min-height: var(--control); color: var(--ink-muted); }
   .rule { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(130px, 1fr) minmax(140px, 2fr) auto; gap: var(--space-xs); align-items: center; margin-top: var(--space-xs); }
   .pattern-rule { grid-template-columns: minmax(110px, 1fr) minmax(140px, 2fr) auto auto auto auto auto; }
-  .keyrow { display: grid; grid-template-columns: 120px minmax(100px, 150px) minmax(110px, 1fr) auto; gap: var(--space-xs); align-items: center; padding: var(--space-xs) 0; }
-  .keyrow > span:nth-child(2) { overflow-wrap: anywhere; font: var(--text-caption); }
+  .keyrow { display: grid; grid-template-columns: 120px minmax(110px, 160px) minmax(110px, 1fr) auto; gap: var(--space-xs); align-items: center; padding: var(--space-xs) 0; }
+  .keyrow > .kcell { display: grid; gap: var(--space-2xs); overflow-wrap: anywhere; font: var(--text-caption); }
+  .kmore { display: flex; gap: var(--space-sm); }
+  .kmore .ik-btn { min-height: 24px; }
+  .agent .ik-field { gap: var(--space-2xs); }
+  .agent-title { font: var(--text-title-sm); color: var(--ink-strong); }
   .keyrow + .keyrow { border-top: var(--border-hairline) solid var(--line-subtle); }
   .keyrow .kstatus { overflow-wrap: normal; }
   .keyrow .row { flex-wrap: nowrap; gap: var(--space-2xs); }
@@ -137,36 +181,47 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <option value="agents">Agents</option>
       <option value="mcp">MCP servers</option>
       <option value="skills">Skills</option>
+      <option value="instructions">Instructions</option>
       <option value="perm">Permissions</option>
       <option value="context">Context and memory</option>
       <option value="safety">Safety and cost</option>
+      <option value="notifications">Notifications</option>
       <option value="tools">Tools and web</option>
       <option value="git">Git and quality</option>
       <option value="advanced">Advanced</option>
       <option value="display">Display</option>
       <option value="backup">Backup</option>
+      <option value="about">About</option>
     </select>
     <div class="navlist">
-    <button type="button" class="ik-navitem" data-section="model">Model</button>
-    <button type="button" class="ik-navitem" data-section="keys">API keys</button>
-    <button type="button" class="ik-navitem" data-section="providers">Providers</button>
+    <button type="button" class="ik-navitem" data-section="model"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l1.5 4.5L14 8l-4.5 1.5L8 14l-1.5-4.5L2 8l4.5-1.5z"/></svg>Model</button>
+    <button type="button" class="ik-navitem" data-section="keys"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 4.5a2.5 2.5 0 1 0-1 2L13 13M11 9l2 2"/></svg>API keys</button>
+    <button type="button" class="ik-navitem" data-section="providers"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 11.5a3 3 0 0 1 .3-6 4 4 0 0 1 7.6 1 2.5 2.5 0 0 1-.4 5z"/></svg>Providers</button>
     <div class="sep">Agent behaviour</div>
-    <button type="button" class="ik-navitem" data-section="agents">Agents<span class="ik-badge" id="badge-agents"></span></button>
-    <button type="button" class="ik-navitem" data-section="mcp">MCP servers<span class="ik-badge" id="badge-mcp"></span></button>
-    <button type="button" class="ik-navitem" data-section="skills">Skills<span class="ik-badge" id="badge-skills"></span></button>
-    <button type="button" class="ik-navitem" data-section="perm">Permissions</button>
+    <button type="button" class="ik-navitem" data-section="agents"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 13.5c.5-2.5 2.5-4 5-4s4.5 1.5 5 4"/></svg>Agents<span class="ik-badge" id="badge-agents"></span></button>
+    <button type="button" class="ik-navitem" data-section="mcp"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/></svg>MCP servers<span class="ik-badge" id="badge-mcp"></span></button>
+    <button type="button" class="ik-navitem" data-section="skills"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2L4 9h4l-1 5 5-7H8z"/></svg>Skills<span class="ik-badge" id="badge-skills"></span></button>
+    <button type="button" class="ik-navitem" data-section="instructions"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h5.5L12 5v8.5H4zM9.5 2.5V5H12M6 8h4M6 10.5h4"/></svg>Instructions</button>
+    <button type="button" class="ik-navitem" data-section="perm"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l5 2v4c0 3-2 5-5 6-3-1-5-3-5-6V4z"/></svg>Permissions</button>
     <div class="sep">Behaviour</div>
-    <button type="button" class="ik-navitem" data-section="context">Context and memory</button>
-    <button type="button" class="ik-navitem" data-section="safety">Safety and cost</button>
-    <button type="button" class="ik-navitem" data-section="tools">Tools and web</button>
-    <button type="button" class="ik-navitem" data-section="git">Git and quality</button>
-    <button type="button" class="ik-navitem" data-section="advanced">Advanced</button>
+    <button type="button" class="ik-navitem" data-section="context"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 3-6 3-6-3zM2 8.5l6 3 6-3M2 11l6 3 6-3"/></svg>Context and memory</button>
+    <button type="button" class="ik-navitem" data-section="safety"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 7h9v6.5h-9zM5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>Safety and cost</button>
+    <button type="button" class="ik-navitem" data-section="notifications"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5a3.5 3.5 0 0 0-3.5 3.5v2.5L3 11h10l-1.5-2.5V6A3.5 3.5 0 0 0 8 2.5zM6.5 13a1.5 1.5 0 0 0 3 0"/></svg>Notifications</button>
+    <button type="button" class="ik-navitem" data-section="tools"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5a3 3 0 0 0-2.8 4L2.5 11.7a1.4 1.4 0 0 0 2 2l5.2-5.2a3 3 0 0 0 4-2.8l-2 2-1.7-.5-.5-1.7z"/></svg>Tools and web</button>
+    <button type="button" class="ik-navitem" data-section="git"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v8M11 5.5v1c0 2-6 1-6 4M5 13.5a1 1 0 1 0 0-.01M11 3.5a1 1 0 1 0 0-.01"/></svg>Git and quality</button>
+    <button type="button" class="ik-navitem" data-section="advanced"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5h6M11 5h2M3 11h2M7 11h6M9 3.5v3M5 9.5v3"/></svg>Advanced</button>
     <div class="sep">Editor</div>
-    <button type="button" class="ik-navitem" data-section="display">Display</button>
-    <button type="button" class="ik-navitem" data-section="backup">Backup</button>
+    <button type="button" class="ik-navitem" data-section="display"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM6 8a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/></svg>Display</button>
+    <button type="button" class="ik-navitem" data-section="backup"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7M5 7l3 3 3-3M3 12.5h10"/></svg>Backup</button>
+    <button type="button" class="ik-navitem" data-section="about"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 7v4M8 4.8v.01M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12z"/></svg>About</button>
     </div>
   </nav>
   <main id="pane">
+    <div class="pagebar">
+      <button type="button" class="ik-btn ik-btn--secondary" id="bar-user-config">Open user config</button>
+      <button type="button" class="ik-btn ik-btn--secondary" id="bar-project-config">Open project config</button>
+      <button type="button" class="ik-btn ik-btn--secondary" id="bar-reload">Reload settings</button>
+    </div>
     <div id="banner" class="ik-note ik-note--warning" role="status" aria-live="polite"></div>
     <div id="search-results" hidden></div>
 
@@ -190,11 +245,13 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <div class="setting" id="row-mode-models"><div class="t">Model per mode</div><div class="d">Give a built-in mode its own model (provider:model, a model id or an alias). Blank uses the main model; Agent mode always does.</div>
         <div id="mode-model-list"></div></div>
       <div class="setting" id="row-compaction-model"><div class="t">Compaction model</div><div class="d">The model that summarises long chats. Blank uses the main model.</div>
-        <div class="row"><input type="text" id="compaction-model" class="ik-input ik-input--mono" aria-label="Compaction model" placeholder="model id or alias" /></div></div>
+        <div class="row"><div class="ik-combo" data-combo="models"><input type="text" id="compaction-model" class="ik-input ik-input--mono" role="combobox" aria-expanded="false" autocomplete="off" aria-label="Compaction model" placeholder="model id or alias" /><button type="button" class="ik-combo__toggle" tabindex="-1" aria-label="Show models"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><div class="ik-combo__list" role="listbox" hidden></div></div></div></div>
       <div class="setting" id="row-subagent-model"><div class="t">Sub-agent model</div><div class="d">The model helper agents use. Blank uses the chat model.</div>
-        <div class="row"><input type="text" id="subagent-model" class="ik-input ik-input--mono" aria-label="Sub-agent model" placeholder="model id, alias or id:model" /></div></div>
+        <div class="row"><div class="ik-combo" data-combo="models"><input type="text" id="subagent-model" class="ik-input ik-input--mono" role="combobox" aria-expanded="false" autocomplete="off" aria-label="Sub-agent model" placeholder="model id, alias or id:model" /><button type="button" class="ik-combo__toggle" tabindex="-1" aria-label="Show models"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><div class="ik-combo__list" role="listbox" hidden></div></div></div></div>
       <div class="setting" id="row-retention"><div class="t">Delete old chats</div><div class="d">Delete saved chats not used for this many days when Forge starts. Blank keeps everything.</div>
         <div class="row"><input type="text" id="retention-days" inputmode="numeric" class="ik-input ik-input--mono" aria-label="Days to keep chats" placeholder="blank keeps all" /></div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="prune-chats">Delete old chats now</button></div>
+        <div class="d" id="cleanup-last" aria-live="polite"></div>
         <div class="err" id="retention-error" aria-live="polite"></div></div>
     </section>
 
@@ -202,6 +259,9 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <h2>API keys<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Stored in VS Code's secret storage, never in settings files. A key can also come from an environment variable such as OPENAI_API_KEY; the row says so.</p>
       <div id="row-keys"><div id="key-rows"></div></div>
+      <div class="group-label">Cloud accounts</div>
+      <p class="ik-muted">AWS Bedrock, Google Vertex AI and Azure OpenAI use your cloud account, not a key stored here. This is what Forge finds for each; no value is shown.</p>
+      <div class="ik-card list" id="cloud-status"></div>
     </section>
 
     <section id="sec-providers" hidden>
@@ -210,18 +270,24 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <div id="row-providers">
         <div id="provider-list"></div>
         <div class="group-label">Add or edit a provider</div>
-        <div class="row"><select class="ik-select" id="prov-preset" aria-label="Start from a preset"></select></div>
-        <div class="row"><input type="text" id="prov-id" class="ik-input ik-input--mono" aria-label="Provider id" placeholder="id, e.g. groq or my-gateway" /><input class="ik-input" type="text" id="prov-name" aria-label="Display name" placeholder="display name" /></div>
-        <div class="row"><input type="text" id="prov-url" class="ik-input ik-input--mono" aria-label="Base URL" placeholder="https://api.example.com/v1" /></div>
-        <div class="row"><input type="text" id="prov-env" class="ik-input ik-input--mono" aria-label="Environment variable for the key" placeholder="key from this environment variable" /><input class="ik-input" type="password" id="prov-key" autocomplete="off" aria-label="API key" placeholder="or paste a key (kept as plain text in the config file)" /></div>
-        <div class="row"><select class="ik-select" id="prov-api" aria-label="API style"><option value="openai-compatible">OpenAI compatible</option><option value="anthropic">Anthropic messages</option></select><input type="number" id="prov-timeout" min="1" class="ik-input ik-input--mono" aria-label="Request timeout in milliseconds" placeholder="timeout ms" /><input type="number" id="prov-chunk" min="1" class="ik-input ik-input--mono" aria-label="Stream idle timeout in milliseconds" placeholder="idle ms" /></div>
-        <div class="row"><button type="button" class="ik-btn ik-btn--primary" id="prov-save">Save provider</button><button type="button" class="ik-btn ik-btn--secondary" id="prov-clear">Clear form</button></div>
+        <div class="form">
+          <div class="ik-field full"><label class="ik-label" for="prov-preset">Start from a preset</label><select class="ik-select" id="prov-preset" aria-label="Start from a preset"></select></div>
+          <div class="ik-field"><label class="ik-label" for="prov-id">Provider id</label><input type="text" id="prov-id" class="ik-input ik-input--mono" aria-label="Provider id" placeholder="id, e.g. groq or my-gateway" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-name">Display name</label><input class="ik-input" type="text" id="prov-name" aria-label="Display name" placeholder="display name" /></div>
+          <div class="ik-field full"><label class="ik-label" for="prov-url">Base URL</label><input type="text" id="prov-url" class="ik-input ik-input--mono" aria-label="Base URL" placeholder="https://api.example.com/v1" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-env">Environment variable for the key</label><input type="text" id="prov-env" class="ik-input ik-input--mono" aria-label="Environment variable for the key" placeholder="key from this environment variable" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-key">API key</label><input class="ik-input" type="password" id="prov-key" autocomplete="off" aria-label="API key" placeholder="or paste a key (kept as plain text in the config file)" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-api">API style</label><select class="ik-select" id="prov-api" aria-label="API style"><option value="openai-compatible">OpenAI compatible</option><option value="anthropic">Anthropic messages</option></select></div>
+          <div class="ik-field"><label class="ik-label" for="prov-timeout">Request timeout in milliseconds</label><input type="number" id="prov-timeout" min="1" class="ik-input ik-input--mono" aria-label="Request timeout in milliseconds" placeholder="timeout ms" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-chunk">Stream idle timeout in milliseconds</label><input type="number" id="prov-chunk" min="1" class="ik-input ik-input--mono" aria-label="Stream idle timeout in milliseconds" placeholder="idle ms" /></div>
+          <div class="row full"><button type="button" class="ik-btn ik-btn--primary" id="prov-save">Save provider</button><button type="button" class="ik-btn ik-btn--secondary" id="prov-clear">Clear form</button></div>
+        </div>
       </div>
     </section>
 
     <section id="sec-agents" hidden>
       <h2>Agents<span class="sp"></span><button type="button" class="ik-btn ik-btn--primary" id="add-agent">New agent</button></h2>
-      <p class="lead">Agents show up in the chat's mode menu and can be used in parallel runs. Built-in agents can't be edited; duplicate one to start from it.</p>
+      <p class="lead">Agents show up in the chat's mode menu and can be used in parallel runs. Built-in agents can't be edited; add your own agent to change how one behaves.</p>
       <div id="row-agents"><div class="group-label">Your agents</div><div id="agent-list"></div><div class="group-label">Built in</div><div class="ik-card list" id="builtin-agents"></div></div>
     </section>
 
@@ -244,7 +310,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     <section id="sec-perm" hidden>
       <h2>Permissions</h2>
       <p class="lead">For each tool, whether Forge asks first, runs it without asking, or never sees it. Rules below narrow a tool to certain paths, commands or URLs.</p>
-      <div class="setting" id="row-tools"><div class="t">Tools</div><div class="d">Ask confirms each call, Allow runs it, Block hides it. Command and browser tools always ask unless Autonomous is on.</div><div id="tool-table"></div></div>
+      <div class="setting stack" id="row-tools"><div class="t">Tools</div><div class="d">Ask confirms each call, Allow runs it, Block hides it. Command and browser tools always ask unless Autonomous is on.</div><div id="tool-table"></div></div>
       <div class="setting" id="row-allowed"><div class="t">Commands you always allow <span class="ik-badge ik-badge--outline">Saves instantly</span></div><div class="d">Commands you chose "Always allow" in chat, each for one workspace and that exact command. Remove one to be asked again.</div><div id="allowed-list"></div></div>
       <details class="adv"><summary>Advanced: allow only specific tools</summary>
         <div class="setting" id="row-allow"><div class="t">Allowed tools</div><div class="d">When any are ticked, only those tools are offered to the agent and all others are hidden. Leave empty to offer every tool that is not blocked.</div><div class="checks" id="allow-tools"></div></div>
@@ -262,12 +328,19 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     </section>
     <section id="sec-safety" hidden>
       <h2>Safety and cost<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
-      <p class="lead">Limits that stop a run early, and when Forge tells you it is done.</p>
+      <p class="lead">Limits that stop a run early.</p>
       <div id="rows-safety"></div>
+    </section>
+    <section id="sec-notifications" hidden>
+      <h2>Notifications<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
+      <p class="lead">When and how Forge tells you a run has finished.</p>
+      <div id="rows-notifications"></div>
     </section>
     <section id="sec-tools" hidden>
       <h2>Tools and web<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Optional tools, and where Forge runs commands.</p>
+      <div class="setting" id="row-index-status"><div class="t">Code index</div><div class="d" id="index-status-text"></div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="index-delete" hidden>Delete the index</button></div></div>
       <div id="rows-tools"></div>
     </section>
     <section id="sec-git" hidden>
@@ -283,26 +356,41 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
 
     <section id="sec-display" hidden>
       <h2>Display</h2>
+      <p class="lead">How the chat shows tool calls, reasoning and results.</p>
       <div class="setting" id="row-blocks"><div class="t">Tool rows</div><div class="d">Whether tool calls in the chat start open or closed. Edits always open.</div>
         <div class="row"><select class="ik-select" id="block-default" aria-label="Tool rows"><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
       <div class="setting" id="row-show-reasoning"><div class="t">Show reasoning</div><div class="d">Show the model's reasoning above each reply, when the model provides it.</div>
-        <div class="row"><label><input type="checkbox" id="show-reasoning" /> Show reasoning in the chat</label></div></div>
+        <div class="row"><label class="ik-check"><input type="checkbox" id="show-reasoning" /> Show reasoning in the chat</label></div></div>
       <div class="setting" id="row-block-modes"><div class="t">Blocks by kind</div><div class="d">Override the two settings above for one kind of block. Default follows them.</div>
-        <div class="row"><label for="mode-reasoning">Reasoning</label><select class="ik-select" id="mode-reasoning"><option value="">Default</option><option value="hidden">Hidden</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
-        <div class="row"><label for="mode-terminal">Command output</label><select class="ik-select" id="mode-terminal"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
-        <div class="row"><label for="mode-edit">File edits</label><select class="ik-select" id="mode-edit"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
-        <div class="row"><label for="mode-mcp">MCP tool results</label><select class="ik-select" id="mode-mcp"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
+        <div class="row kind"><label for="mode-reasoning">Reasoning</label><select class="ik-select" id="mode-reasoning"><option value="">Default</option><option value="hidden">Hidden</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
+        <div class="row kind"><label for="mode-terminal">Command output</label><select class="ik-select" id="mode-terminal"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
+        <div class="row kind"><label for="mode-edit">File edits</label><select class="ik-select" id="mode-edit"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div>
+        <div class="row kind"><label for="mode-mcp">MCP tool results</label><select class="ik-select" id="mode-mcp"><option value="">Default</option><option value="collapsed">Collapsed</option><option value="expanded">Expanded</option></select></div></div>
       <div class="setting"><div class="t">Presets</div><div class="d"><strong>Review first</strong> opens tool rows and shows reasoning; <strong>High autonomy</strong> does the reverse. Presets change only these two settings and apply as unsaved changes.</div><div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="preset-review" title="Open tool rows and show reasoning">Review first</button><button type="button" class="ik-btn ik-btn--secondary" id="preset-autonomy" title="Close tool rows and hide reasoning">High autonomy</button></div></div>
     </section>
 
+    <section id="sec-about" hidden>
+      <h2>About</h2>
+      <p class="lead">What you are running, and where to go when something is wrong.</p>
+      <div class="setting" id="row-about"><div class="t">IKarmic AI Forge</div><div class="d" id="about-version">Version not available.</div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="about-log">Open the log</button><button type="button" class="ik-btn ik-btn--secondary" id="about-issues">Report an issue</button><button type="button" class="ik-btn ik-btn--secondary" id="about-docs">Read the documentation</button></div></div>
+    </section>
+    <section id="sec-instructions" hidden>
+      <h2>Instructions</h2>
+      <p class="lead">Files Forge reads at the start of every chat so it knows how your project works.</p>
+      <div id="row-instructions"></div>
+    </section>
     <section id="sec-backup" hidden>
       <h2>Backup<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">Export your Forge settings and custom agents to a JSON file, or import one. API keys, MCP servers and tool permissions are not included.</p>
       <div id="row-backup" class="row"><button type="button" class="ik-btn ik-btn--primary" id="export-btn">Export…</button><label class="ik-btn ik-btn--secondary">Import…<input type="file" id="import-file" accept="application/json" class="ik-sr-only" /></label></div>
+      <div class="setting" id="row-reset"><div class="t">Reset settings</div><div class="d">Put every setting on the Context and memory, Safety and cost, Tools and web, Git and quality, and Advanced pages back to its default. API keys, MCP servers, agents and permissions are not changed.</div><div class="row"><button type="button" class="ik-btn ik-btn--danger" id="reset-rows">Reset all settings</button></div></div>
       <div class="setting" id="row-config-files"><div class="t">Config files</div><div class="d">Open the files behind these settings. The project file adds to your own and can never loosen what you allowed.</div>
         <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="open-user-config">Open user config</button><button type="button" class="ik-btn ik-btn--secondary" id="open-project-config">Open project config</button></div></div>
     </section>
   </main>
+  <!-- The key dialog lives outside every section, so it opens from any page (MCP cards and the AWS access keys). -->
+  <div id="mcp-dialog-layer" class="dlg-layer" hidden></div>
 </div>
 <div id="unsaved" hidden><span class="dotmark" aria-hidden="true">●</span><span id="unsaved-count">1 unsaved change</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="discard-all">Discard</button><button type="button" class="ik-btn ik-btn--primary" id="save-all">Save</button></div>
 <script>
@@ -360,6 +448,10 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     navButtons.forEach((b) => b.setAttribute('aria-current', String(b.dataset.section === name)));
     $('section-picker').value = name;
     if (name === 'mcp' && !mcpLoaded) { mcpLoaded = true; vscode.postMessage({ type: 'mcpList' }); }
+    if (name === 'instructions') vscode.postMessage({ type: 'loadInstructions' });
+    if (name === 'tools') vscode.postMessage({ type: 'loadIndexStatus' });
+    if (name === 'keys') vscode.postMessage({ type: 'loadCloudStatus' });
+    if (name === 'context') vscode.postMessage({ type: 'loadCleanup' });
     if (name === 'skills' && !skillsLoaded) { skillsLoaded = true; vscode.postMessage({ type: 'skillsList' }); }
   }
   navButtons.forEach((b) => b.addEventListener('click', () => { $('search').value = ''; showSection(b.dataset.section); }));
@@ -507,6 +599,110 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   $('model-refresh').addEventListener('click', () => requestModels(true));
   $('reasoning-effort').addEventListener('change', () => { draft.reasoningEffort = $('reasoning-effort').value; refreshDirty(); });
 
+  // Combo boxes: a text input with a list of suggestions. The list only suggests; any typed text stays valid.
+  let aliases = {};
+  let comboSeq = 0;
+  let openCombo = null;
+  let comboApis = [];
+  function isConfigured(p) { return p === listProvider() || keysSet.has(p) || !!envKeys[p]; }
+  function comboGroups(kind) {
+    if (kind === 'awsRegions') return FS.AWS_REGIONS;
+    if (kind === 'vertexLocations') return FS.VERTEX_LOCATIONS;
+    if (kind === 'voiceLanguages') return FS.VOICE_LANGUAGES;
+    return FS.modelGroups({ aliases: aliases, mainProvider: listProvider(), lists: modelLists, catalog: catalog, providers: providers.filter(isConfigured), labelOf: labelOf, bareOnly: kind === 'modelIds' });
+  }
+  // Other providers' lists load the first time a model combo opens, once each, and only for providers with a key.
+  function ensureModelLists() {
+    providers.forEach((p) => {
+      if (modelLists[p] || modelLoading[p] || !isConfigured(p)) return;
+      modelLoading[p] = true;
+      vscode.postMessage({ type: 'loadModels', provider: p, refresh: false });
+    });
+  }
+  function buildCombo(label, placeholder, value) {
+    const root = document.createElement('div'); root.className = 'ik-combo';
+    const input = document.createElement('input'); input.type = 'text'; input.className = 'ik-input ik-input--mono';
+    input.setAttribute('role', 'combobox'); input.setAttribute('aria-expanded', 'false'); input.setAttribute('autocomplete', 'off');
+    input.setAttribute('aria-label', label); if (placeholder) input.placeholder = placeholder; input.value = value || '';
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'ik-combo__toggle'; toggle.tabIndex = -1;
+    toggle.setAttribute('aria-label', 'Show models');
+    toggle.innerHTML = '<svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
+    const list = document.createElement('div'); list.className = 'ik-combo__list'; list.setAttribute('role', 'listbox'); list.hidden = true;
+    root.appendChild(input); root.appendChild(toggle); root.appendChild(list);
+    return root;
+  }
+  // opts.live: report every keystroke (a draft field); otherwise only a pick or a finished edit (a saved row).
+  function makeCombo(root, kind, opts) {
+    const input = root.querySelector('input');
+    const toggle = root.querySelector('.ik-combo__toggle');
+    const list = root.querySelector('.ik-combo__list');
+    let active = -1;
+    let rows = [];
+    list.id = 'combo-list-' + (++comboSeq);
+    input.setAttribute('aria-controls', list.id);
+    function render(filter) {
+      list.textContent = ''; rows = []; active = -1;
+      const all = comboGroups(kind);
+      FS.filterGroups(all, filter).forEach((g) => {
+        const h = document.createElement('div'); h.className = 'ik-combo__group'; h.textContent = g.label; list.appendChild(h);
+        g.options.forEach((o) => {
+          const el = document.createElement('div'); el.className = 'ik-combo__option'; el.setAttribute('role', 'option'); el.dataset.value = o.value;
+          el.id = list.id + '-' + rows.length;
+          el.setAttribute('aria-selected', String(input.value.trim() === o.value));
+          const a = document.createElement('span'); a.textContent = o.label;
+          const b = document.createElement('span'); b.className = 'ik-combo__id'; b.textContent = o.value;
+          el.appendChild(a); el.appendChild(b); list.appendChild(el); rows.push(el);
+        });
+      });
+      const typed = (filter || '').trim();
+      if (typed && !FS.isKnownValue(all, typed)) {
+        const c = document.createElement('div'); c.className = 'ik-combo__option ik-combo__custom'; c.setAttribute('role', 'option'); c.dataset.value = typed;
+        c.id = list.id + '-' + rows.length;
+        const a = document.createElement('span'); a.textContent = 'Use what I typed';
+        const t = document.createElement('span'); t.className = 'ik-combo__id'; t.textContent = typed;
+        c.appendChild(a); c.appendChild(t); list.appendChild(c); rows.push(c);
+      }
+    }
+    function open(filter) {
+      if (openCombo && openCombo !== api) openCombo.close();
+      if (kind === 'models' || kind === 'modelIds') ensureModelLists();
+      render(filter); list.hidden = false; input.setAttribute('aria-expanded', 'true'); openCombo = api; place();
+    }
+    // Open upward when there is no room below the field inside the scrolling page, and more room above.
+    function place() {
+      list.classList.remove('ik-combo__list--up');
+      const area = root.closest('main');
+      const bounds = area ? area.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+      const rect = root.getBoundingClientRect();
+      const below = bounds.bottom - rect.bottom;
+      const above = rect.top - bounds.top;
+      if (below < Math.min(list.scrollHeight, 280) + 8 && above > below) list.classList.add('ik-combo__list--up');
+    }
+    function close() {
+      list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant');
+      if (openCombo === api) openCombo = null;
+    }
+    function pick(value) { input.value = value; close(); opts.set(value); }
+    function mark() {
+      rows.forEach((r, i) => { r.classList.toggle('ik-combo__option--active', i === active); });
+      if (rows[active]) { rows[active].scrollIntoView({ block: 'nearest' }); input.setAttribute('aria-activedescendant', rows[active].id); }
+    }
+    const api = { close: close, alive: () => root.isConnected, refresh: () => { if (!list.hidden) { render(input.value); place(); } } };
+    toggle.addEventListener('click', () => { if (list.hidden) open(''); else close(); input.focus(); });
+    input.addEventListener('input', () => { open(input.value); if (opts.live) opts.set(input.value); });
+    input.addEventListener('change', () => { if (!opts.live) opts.set(input.value); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) open(FS.isKnownValue(comboGroups(kind), input.value.trim()) ? '' : input.value); active = Math.min(active + 1, rows.length - 1); mark(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); mark(); }
+      else if (e.key === 'Enter' && !list.hidden) { e.preventDefault(); if (rows[active]) pick(rows[active].dataset.value); else { close(); if (!opts.live) opts.set(input.value); } }
+      else if (e.key === 'Escape' && !list.hidden) { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    // Keep focus in the input for any press inside the list, so a heading or the scrollbar does not close it.
+    list.addEventListener('mousedown', (e) => { e.preventDefault(); const o = e.target.closest('.ik-combo__option'); if (o) pick(o.dataset.value); });
+    root.addEventListener('focusout', (e) => { if (!root.contains(e.relatedTarget)) close(); });
+    return api;
+  }
+
   // keys (immediate)
   function renderKeys() {
     const box = $('key-rows');
@@ -521,10 +717,11 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       const base = keysSet.has(p) ? '✓ Key set' : fromEnv ? '✓ From ' + envKeys[p] : 'No key';
       // Environment names may only wrap after an underscore, never in the middle of a word.
       const shown = esc(note ? note.text : base).split('_').join('_<wbr>');
-      row.innerHTML = '<span>' + esc(labelOf(p)) + '</span><span class="kstatus ' + (note && !note.ok ? 'bad' : keysSet.has(p) || fromEnv ? 'ok' : 'ik-muted') + '" title="' + esc(note ? note.text : base) + '">' + shown + '</span>';
+      row.innerHTML = '<span>' + esc(labelOf(p)) + '</span><span class="kcell"><span class="kstatus ' + (note && !note.ok ? 'bad' : keysSet.has(p) || fromEnv ? 'ok' : 'ik-muted') + '" title="' + esc(note ? note.text : base) + '">' + shown + '</span><span class="kmore"></span></span>';
+      const kmore = row.querySelector('.kmore');
       const input = document.createElement('input'); input.type = 'password'; input.className = 'ik-input'; input.placeholder = keysSet.has(p) || fromEnv ? 'Paste new key' : 'Paste key'; input.setAttribute('aria-label', labelOf(p) + ' API key');
       const acts = document.createElement('span'); acts.className = 'row';
-      const save = document.createElement('button'); save.type = 'button'; save.className = 'ik-btn ik-btn--primary'; save.textContent = 'Save'; save.disabled = true;
+      const save = document.createElement('button'); save.type = 'button'; save.className = 'ik-btn ik-btn--secondary'; save.textContent = 'Save'; save.disabled = true;
       input.dataset.provider = p;
       if (typed[p]) { input.value = typed[p]; save.disabled = false; }
       input.addEventListener('input', () => { save.disabled = !input.value.trim(); });
@@ -537,12 +734,12 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       if (keysSet.has(p) || fromEnv) {
         const test = document.createElement('button'); test.type = 'button'; test.className = 'ik-btn ik-btn--link'; test.textContent = 'Test';
         test.addEventListener('click', () => { keyNotes[p] = { ok: true, text: 'Testing…' }; renderKeys(); vscode.postMessage({ type: 'loadModels', provider: p, refresh: true, test: true }); });
-        acts.appendChild(test);
+        kmore.appendChild(test);
       }
       if (keysSet.has(p)) {
-        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--secondary'; rm.textContent = 'Remove';
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
         rm.addEventListener('click', () => vscode.postMessage({ type: 'deleteKey', provider: p }));
-        acts.appendChild(rm);
+        kmore.appendChild(rm);
       }
       row.appendChild(input); row.appendChild(acts); box.appendChild(row);
     });
@@ -555,11 +752,9 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     builtins.filter((b) => b.id !== 'orchestrator').forEach((b) => {
       const row = document.createElement('div'); row.className = 'row';
       const label = document.createElement('label'); label.textContent = b.id; label.style.minWidth = '9em';
-      const input = document.createElement('input'); input.type = 'text'; input.className = 'ik-input ik-input--mono'; input.placeholder = 'Main model';
-      input.setAttribute('aria-label', 'Model for ' + b.id + ' mode');
-      input.value = draft.modeModels[b.id] || '';
-      input.addEventListener('input', () => { draft.modeModels[b.id] = input.value; refreshDirty(); });
-      row.appendChild(label); row.appendChild(input); box.appendChild(row);
+      const root = buildCombo('Model for ' + b.id + ' mode', 'Main model', draft.modeModels[b.id] || '');
+      comboApis.push(makeCombo(root, 'models', { live: true, set: (v) => { draft.modeModels[b.id] = v; refreshDirty(); } }));
+      row.appendChild(label); row.appendChild(root); box.appendChild(row);
     });
   }
 
@@ -570,14 +765,15 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     if (!draft.agents.length) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'No custom agents yet. Select New agent to add one.'; list.appendChild(p); }
     draft.agents.forEach((a, i) => {
       const card = document.createElement('div'); card.className = 'ik-card agent';
-      card.innerHTML = '<div class="row"><strong>Custom agent</strong><span class="sp" style="flex:1"></span><button type="button" class="ik-btn ik-btn--link rm">Remove</button></div>' +
-        '<input type="text" class="ik-input f-id" placeholder="id, e.g. migrator" aria-label="Agent id" />' +
-        '<input type="text" class="ik-input f-desc" placeholder="What it does" aria-label="Agent description" />' +
-        '<textarea class="ik-textarea f-prompt" placeholder="System prompt" aria-label="System prompt"></textarea>';
+      card.innerHTML = '<div class="row"><strong class="agent-title"></strong><span class="sp" style="flex:1"></span><button type="button" class="ik-btn ik-btn--link rm">Remove</button></div>' +
+        '<label class="ik-field"><span class="ik-label">Agent id</span><input type="text" class="ik-input f-id" placeholder="id, e.g. migrator" aria-label="Agent id" /></label>' +
+        '<label class="ik-field"><span class="ik-label">Agent description</span><input type="text" class="ik-input f-desc" placeholder="What it does" aria-label="Agent description" /></label>' +
+        '<label class="ik-field"><span class="ik-label">System prompt</span><textarea class="ik-textarea f-prompt" placeholder="System prompt" aria-label="System prompt"></textarea></label>';
+      card.querySelector('.agent-title').textContent = a.id || 'New agent';
       card.querySelector('.f-id').value = a.id;
       card.querySelector('.f-desc').value = a.description;
       card.querySelector('.f-prompt').value = a.systemPrompt;
-      card.querySelector('.f-id').addEventListener('input', (e) => { draft.agents[i].id = e.target.value; refreshDirty(); });
+      card.querySelector('.f-id').addEventListener('input', (e) => { draft.agents[i].id = e.target.value; card.querySelector('.agent-title').textContent = e.target.value || 'New agent'; refreshDirty(); });
       card.querySelector('.f-desc').addEventListener('input', (e) => { draft.agents[i].description = e.target.value; refreshDirty(); });
       card.querySelector('.f-prompt').addEventListener('input', (e) => { draft.agents[i].systemPrompt = e.target.value; refreshDirty(); });
       card.querySelector('.rm').addEventListener('click', () => { draft.agents.splice(i, 1); renderAgents(); refreshDirty(); });
@@ -602,7 +798,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   $('add-agent').addEventListener('click', () => { draft.agents.push({ id: '', description: '', systemPrompt: '', allowedTools: [], extra: {} }); renderAgents(); refreshDirty(); focusAgent(draft.agents.length - 1); });
 
   // permissions (draft)
-  const TOOL_HELP = { read_file: 'read a file', read_image: 'look at an image (sent to the model)', list_files: 'list a folder', search_files: 'search file contents', find_symbol: 'find a definition', list_symbols: 'outline a file', find_references: 'find usages', git_diff: 'read the uncommitted changes', dependency_audit: 'check dependencies for known vulnerabilities (runs the project package manager; contacts the registry)', skill: 'load the instructions of an installed skill', suggest_plan: 'suggest planning first for a big request (you are asked)', repo_clone: 'download a public git repository to read it (reaches the network, runs git)', get_diagnostics: 'check files for compiler and linter problems (starts the language server for them)', bg_start: 'start a command that keeps running, such as a dev server (runs a program)', bg_read: 'read the output of a background command', bg_stop: 'stop a background command', write_file: 'create or overwrite a file', edit_file: 'change part of a file', edit_notebook: 'change a notebook cell', run_command: 'run a shell command', fetch_url: 'download a web page', memory_read: 'read project notes', memory_write: 'save project notes', sub_agent: 'start a helper agent', codebase_search: 'search by meaning', todo_write: 'keep a task checklist', todo_read: 'read the task checklist', ask_user: 'ask you a question' };
+  const TOOL_HELP = { read_file: 'read a file', read_image: 'look at an image (sent to the model)', list_files: 'list a folder', search_files: 'search file contents', find_symbol: 'find a definition', list_symbols: 'outline a file', find_references: 'find usages', git_diff: 'read the uncommitted changes', dependency_audit: 'check dependencies for known vulnerabilities (runs the project package manager; contacts the registry)', skill: 'load the instructions of an installed skill', suggest_plan: 'suggest planning first for a big request (you are asked)', repo_clone: 'download a public git repository to read it (reaches the network, runs git)', get_diagnostics: 'check files for compiler and linter problems (starts the language server for them)', bg_start: 'start a command that keeps running, such as a dev server (runs a program)', bg_read: 'read the output of a background command', bg_stop: 'stop a background command', write_file: 'create or overwrite a file', edit_file: 'change part of a file', edit_notebook: 'change a notebook cell', apply_patch: 'change several files at once', memory_forget: 'remove a project note', run_command: 'run a shell command', fetch_url: 'download a web page', memory_read: 'read project notes', memory_write: 'save project notes', sub_agent: 'start a helper agent', codebase_search: 'search by meaning', todo_write: 'keep a task checklist', todo_read: 'read the task checklist', ask_user: 'ask you a question' };
   function renderToolChecks(boxId, field) {
     const box = $(boxId);
     box.textContent = '';
@@ -648,7 +844,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     toolNames.forEach((t) => {
       const row = document.createElement('div'); row.className = 'tool-row';
       const name = document.createElement('div'); name.className = 'name'; name.textContent = FS.toolLabel(t); name.title = t;
-      const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = TOOL_HELP[t] || ''; hint.title = TOOL_HELP[t] || '';
+      const hint = document.createElement('span'); hint.className = 'hint'; const helpText = (TOOL_HELP[t] || '') + (askOnlyTools.indexOf(t) >= 0 ? '. Always asks first.' : ''); hint.textContent = helpText.trim(); hint.title = helpText.trim();
       const grp = segGroup('tool-' + t, FS.toolLabel(t) + ': ask, allow or block', [['ask', 'Ask'], ['allow', 'Allow'], ['block', 'Block']], toolMode(t), (mode) => {
         draft.sandbox.denyTools = draft.sandbox.denyTools.filter((x) => x !== t);
         draft.autoApprove = draft.autoApprove.filter((x) => x !== t);
@@ -711,12 +907,20 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   $('add-rule').addEventListener('click', () => { draft.sandbox.rules.push({ tool: toolNames[0], dimension: 'deniedPaths', pattern: '' }); renderRules(); refreshDirty(); });
 
   // compaction model and chat retention (draft)
-  $('compaction-model').addEventListener('input', () => { draft.compactionModel = $('compaction-model').value; refreshDirty(); });
-  $('subagent-model').addEventListener('input', () => { draft.subagentModel = $('subagent-model').value; refreshDirty(); });
+  comboApis.push(makeCombo($('compaction-model').parentNode, 'models', { live: true, set: (v) => { draft.compactionModel = v; refreshDirty(); } }));
+  comboApis.push(makeCombo($('subagent-model').parentNode, 'models', { live: true, set: (v) => { draft.subagentModel = v; refreshDirty(); } }));
   $('retention-days').addEventListener('input', () => {
     draft.sessionRetentionDays = $('retention-days').value;
     $('retention-error').textContent = FS.retentionProblem(draft.sessionRetentionDays) || '';
     refreshDirty();
+  });
+  $('bar-user-config').addEventListener('click', () => vscode.postMessage({ type: 'openConfig', scope: 'user' }));
+  $('bar-project-config').addEventListener('click', () => vscode.postMessage({ type: 'openConfig', scope: 'project' }));
+  $('bar-reload').addEventListener('click', () => {
+    if (FS.dirtyKeys(saved, draft).length) { say('You have unsaved changes. Save or discard them before reloading.', false); return; }
+    ['load', 'loadRows', 'loadProviders', 'loadKeys', 'loadAgents'].forEach((t) => vscode.postMessage({ type: t }));
+    vscode.postMessage({ type: 'loadSandbox', cwd: '' });
+    say('Settings reloaded from their files.', true);
   });
   $('open-user-config').addEventListener('click', () => vscode.postMessage({ type: 'openConfig', scope: 'user' }));
   $('open-project-config').addEventListener('click', () => vscode.postMessage({ type: 'openConfig', scope: 'project' }));
@@ -784,21 +988,30 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     badge.textContent = failing ? String(failing) : (msg.servers.length ? String(msg.servers.length) : '');
     badge.classList.toggle('ik-badge--danger', failing > 0);
     if (!msg.enabled) { box.innerHTML = '<p class="ik-muted">MCP is turned off (forge.mcp.enabled).</p>'; return; }
-    if (!msg.servers.length) { box.innerHTML = '<p class="ik-muted">No MCP servers yet. Open the Browse tab to install one.</p>'; }
+    if (!msg.servers.length) { box.innerHTML = '<p class="ik-muted">No MCP servers yet. Open the Browse tab to install one or to add your own.</p>'; }
     else {
       const list = document.createElement('div'); list.className = 'ik-card list';
       msg.servers.forEach((s) => {
         const item = document.createElement('div'); item.className = 'item';
         const ws = s.scope === 'workspace';
         const stateLabel = { connected: 'Connected', failed: 'Failed', disabled: 'Off', 'needs-auth': 'Sign-in needed' }[s.state] || s.state;
+        const stateTone = { connected: 'ik-badge--success', failed: 'ik-badge--danger', 'needs-auth': 'ik-badge--warning' }[s.state] || 'ik-badge--outline';
         item.innerHTML = '<span class="dot ' + esc(s.state) + '" aria-hidden="true"></span>' +
-          '<div class="main"><div class="name">' + esc(s.name) + ' <span class="ik-badge ik-badge--outline">' + esc(s.scope) + '</span> <span class="ik-badge ik-badge--outline">' + esc(stateLabel) + '</span></div>' +
-          '<div class="sub' + (s.error && s.state !== 'needs-auth' ? ' err' : '') + '" title="' + esc(s.error || '') + '">' + esc(s.error && s.state !== 'needs-auth' ? "Can't connect: " + s.error : (ws ? 'Defined in .forge/mcp.json · ' : '') + s.description) + '</div></div>';
+          '<div class="main"><div class="name">' + esc(s.name) + ' <span class="ik-muted">' + esc(s.scope) + '</span> <span class="ik-badge ' + stateTone + '">' + esc(stateLabel) + '</span></div>' +
+          '<div class="sub' + (s.error && s.state !== 'needs-auth' ? ' err' : '') + '" title="' + esc(s.error || '') + '">' + esc(s.error && s.state !== 'needs-auth' ? "Can't connect: " + s.error : (ws ? 'Defined in .forge/mcp.json · ' : '') + s.description) + '</div>' +
+          ((s.hiddenToolCount || s.overlapShown) ? '<div class="sub">' + esc(s.overlapShown ? 'Tools that Forge already has are switched on for this server.' : s.hiddenToolCount + ' tool' + (s.hiddenToolCount === 1 ? '' : 's') + ' hidden because Forge already has ' + (s.hiddenToolCount === 1 ? 'one' : 'them') + '.') + '</div>' : '') + '</div>';
         const acts = document.createElement('span'); acts.className = 'row';
         if (s.tools.length) {
           const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'ik-btn ik-btn--link'; tb.textContent = 'Tools';
           tb.addEventListener('click', () => { const body = item.nextElementSibling; body.hidden = !body.hidden; tb.textContent = body.hidden ? 'Tools' : 'Hide tools'; });
           acts.appendChild(tb);
+        }
+        if ((s.hiddenToolCount || s.overlapShown) && !ws) {
+          const dup = document.createElement('button'); dup.type = 'button'; dup.className = 'ik-btn ik-btn--link';
+          dup.textContent = s.overlapShown ? 'Hide duplicate tools' : 'Show duplicate tools';
+          dup.title = 'Forge already has these tools, with its own approval and path rules. Showing them gives the model a second way to do the same job.';
+          dup.addEventListener('click', () => vscode.postMessage({ type: 'mcpOverlapToggle', name: s.name }));
+          acts.appendChild(dup);
         }
         if (s.state === 'needs-auth') {
           const signIn = document.createElement('button'); signIn.type = 'button'; signIn.className = 'ik-btn ik-btn--primary'; signIn.textContent = 'Sign in';
@@ -820,10 +1033,34 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
           t.addEventListener('change', () => vscode.postMessage({ type: 'mcpToggle', name: s.name }));
           const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
           rm.addEventListener('click', () => vscode.postMessage({ type: 'mcpRemove', name: s.name }));
-          acts.appendChild(t); acts.appendChild(rm);
+          const tl = document.createElement('label'); tl.className = 'ik-check';
+          const tt = document.createElement('span'); const showOn = () => { tt.textContent = t.checked ? 'On' : 'Off'; }; showOn();
+          t.addEventListener('change', showOn);
+          tl.appendChild(t); tl.appendChild(tt);
+          acts.appendChild(tl); acts.appendChild(rm);
         }
         item.appendChild(acts);
         list.appendChild(item);
+        if (s.secrets && s.secrets.length) {
+          const box2 = document.createElement('div'); box2.className = 'item-body';
+          box2.hidden = s.secrets.every((x) => x.set);
+          s.secrets.forEach((x) => {
+            const field = document.createElement('div'); field.className = 'ik-field';
+            const fid = 'mcp-secret-row-' + s.name + '-' + x.id;
+            const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = fid; lab.textContent = x.label + (x.set ? ' (saved)' : '');
+            const inp = document.createElement('input'); inp.type = 'password'; inp.className = 'ik-input'; inp.id = fid; inp.autocomplete = 'off'; inp.spellcheck = false;
+            inp.placeholder = x.set ? 'Type a new value to replace it' : '';
+            const save = document.createElement('button'); save.type = 'button'; save.className = 'ik-btn ik-btn--secondary'; save.textContent = x.set ? 'Replace' : 'Save';
+            save.addEventListener('click', () => { if (inp.value.trim()) vscode.postMessage({ type: 'mcpSecretSet', server: s.name, id: x.id, value: inp.value.trim() }); });
+            const r = document.createElement('div'); r.className = 'row'; r.appendChild(inp); r.appendChild(save);
+            field.appendChild(lab); field.appendChild(r);
+            box2.appendChild(field);
+          });
+          const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'ik-btn ik-btn--link'; sb.textContent = 'Secrets';
+          sb.addEventListener('click', () => { box2.hidden = !box2.hidden; });
+          acts.insertBefore(sb, acts.firstChild);
+          list.appendChild(box2);
+        }
         const body = document.createElement('div'); body.className = 'item-body'; body.hidden = true;
         s.tools.forEach((n) => { const c = document.createElement('span'); c.className = 'ik-badge ik-badge--outline'; c.textContent = n; body.appendChild(c); });
         list.appendChild(body);
@@ -832,36 +1069,208 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     }
     if (msg.projectSkipped) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'Workspace MCP config skipped: this workspace is not trusted.'; box.appendChild(p); }
   }
+  let mcpCatalogEntries = [];
+  let mcpQuery = '';
+  let mcpFilter = 'all';
   function renderMcpCatalog(msg) {
     const box = $('mcp-browse');
     box.textContent = '';
+    mcpCatalogEntries = msg.entries;
     if (msg.warning) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = msg.warning; box.appendChild(p); }
-    const grid = document.createElement('div'); grid.className = 'cards';
-    msg.entries.forEach((e) => {
-      const card = document.createElement('div'); card.className = 'ik-card card';
-      card.innerHTML = '<strong>' + esc(e.displayName) + '</strong><span class="ik-muted" style="font-size:12px">' + esc(e.description) + '</span>' +
-        '<div class="row"><span class="ik-mono ik-muted" title="' + esc(e.command) + '">' + esc(e.command.length > 34 ? e.command.slice(0, 33) + '…' : e.command) + '</span></div>';
-      const row = card.querySelector('.row');
-      if (e.installed) { const s = document.createElement('span'); s.className = 'ik-badge ik-badge--success'; s.appendChild(tick()); s.appendChild(document.createTextNode('Installed')); row.appendChild(s); }
-      else { const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--primary'; b.textContent = 'Install'; b.addEventListener('click', () => vscode.postMessage({ type: 'mcpInstall', name: e.name })); row.appendChild(b); }
-      grid.appendChild(card);
+    const search = document.createElement('input'); search.type = 'search'; search.className = 'ik-input';
+    search.placeholder = 'Search servers'; search.setAttribute('aria-label', 'Search servers'); search.value = mcpQuery;
+    const results = document.createElement('div');
+    search.addEventListener('input', () => { mcpQuery = search.value; drawMcpCards(results); });
+    // "Add your own" sits below every catalog card, so the top of the tab points to it.
+    const jump = document.createElement('button'); jump.type = 'button'; jump.className = 'ik-btn ik-btn--secondary'; jump.id = 'mcp-jump-add';
+    jump.textContent = 'Add your own';
+    jump.addEventListener('click', () => { const text = $('mcp-add-text'); text.scrollIntoView({ block: 'center' }); text.focus(); });
+    const bar = document.createElement('div'); bar.style.display = 'flex'; bar.style.flexWrap = 'wrap'; bar.style.alignItems = 'center'; bar.style.gap = 'var(--space-sm)';
+    search.style.flex = '1 1 0'; search.style.minWidth = '0';
+    bar.appendChild(search); bar.appendChild(jump);
+    const need = msg.entries.filter((e) => e.secrets.length > 0).length;
+    const filter = segGroup('mcp-filter', 'Show servers by key', [['all', 'All ' + msg.entries.length], ['key', 'Needs a key ' + need], ['none', 'No key needed ' + (msg.entries.length - need)]], mcpFilter, (v) => { mcpFilter = v; drawMcpCards(results); });
+    filter.style.margin = 'var(--space-sm) 0';
+    box.appendChild(bar); box.appendChild(filter); box.appendChild(results);
+    drawMcpCards(results);
+    box.appendChild(addYourOwnCard());
+  }
+  function drawMcpCards(results) {
+    results.textContent = '';
+    const q = mcpQuery.trim().toLowerCase();
+    const shown = mcpCatalogEntries.filter((e) => (!q || (e.displayName + ' ' + e.description + ' ' + e.vertical).toLowerCase().includes(q)) && (mcpFilter === 'all' || (mcpFilter === 'key') === (e.secrets.length > 0)));
+    if (!shown.length) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'No server matches that search.'; results.appendChild(p); return; }
+    const groups = new Map();
+    shown.forEach((e) => { if (!groups.has(e.vertical)) groups.set(e.vertical, []); groups.get(e.vertical).push(e); });
+    groups.forEach((entries, vertical) => {
+      const label = document.createElement('div'); label.className = 'group-label'; label.textContent = vertical; results.appendChild(label);
+      const grid = document.createElement('div'); grid.className = 'cards';
+      entries.forEach((e) => grid.appendChild(mcpCard(e)));
+      results.appendChild(grid);
     });
-    box.appendChild(grid);
+  }
+  /** "Add your own": paste a command, a link or JSON; Forge reads it, shows what would run, and adds it only on confirm. */
+  function addYourOwnCard() {
+    const card = document.createElement('div'); card.className = 'ik-card card';
+    card.style.marginTop = 'var(--space-sm)';
+    const title = document.createElement('strong'); title.textContent = 'Add your own';
+    const sub = document.createElement('span'); sub.className = 'ik-muted'; sub.style.fontSize = '12px';
+    sub.textContent = 'Paste a command that starts with npx, uvx or docker, an https address, or JSON for one server.';
+    const field = document.createElement('div'); field.className = 'ik-field';
+    const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = 'mcp-add-text'; lab.textContent = 'Command, link or JSON';
+    const text = document.createElement('textarea'); text.id = 'mcp-add-text'; text.className = 'ik-textarea ik-input--mono'; text.rows = 3; text.spellcheck = false;
+    field.appendChild(lab); field.appendChild(text);
+    const preview = document.createElement('div'); preview.setAttribute('aria-live', 'polite');
+    const row = document.createElement('div'); row.className = 'row';
+    const check = document.createElement('button'); check.type = 'button'; check.className = 'ik-btn ik-btn--secondary'; check.textContent = 'Check';
+    row.appendChild(check);
+    check.addEventListener('click', () => { addPreviewTarget = preview; addTextBox = text; vscode.postMessage({ type: 'mcpAddPreview', text: text.value }); });
+    card.appendChild(title); card.appendChild(sub); card.appendChild(field); card.appendChild(row); card.appendChild(preview);
+    return card;
+  }
+  let addPreviewTarget = null;
+  let addTextBox = null;
+  function showAddPreview(msg) {
+    const box = addPreviewTarget; if (!box) return;
+    box.textContent = '';
+    if (!msg.ok) { const p = document.createElement('p'); p.className = 'err'; p.textContent = msg.reason; box.appendChild(p); return; }
+    const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'Forge would run this on your machine whenever the server starts:'; box.appendChild(p);
+    const code = document.createElement('code'); code.className = 'ik-code'; code.textContent = msg.command; box.appendChild(code);
+    if (msg.environment.length) { const e = document.createElement('code'); e.className = 'ik-code'; e.style.display = 'block'; e.textContent = msg.environment.join('\\n'); box.appendChild(e); }
+    if (msg.secrets.length) { const n = document.createElement('p'); n.className = 'ik-muted'; n.textContent = 'You will be asked for ' + msg.secrets.join(', ') + ' once the server is added.'; box.appendChild(n); }
+    if (msg.variables.length) { const n = document.createElement('p'); n.className = 'ik-muted'; n.textContent = 'It reads ' + msg.variables.join(', ') + ' from your environment.'; box.appendChild(n); }
+    const field = document.createElement('div'); field.className = 'ik-field';
+    const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = 'mcp-add-name'; lab.textContent = 'Name';
+    const name = document.createElement('input'); name.type = 'text'; name.id = 'mcp-add-name'; name.className = 'ik-input'; name.value = msg.name; name.spellcheck = false;
+    field.appendChild(lab); field.appendChild(name); box.appendChild(field);
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'ik-btn ik-btn--primary'; add.textContent = 'Add server';
+    add.addEventListener('click', () => vscode.postMessage({ type: 'mcpAddConfirm', name: name.value.trim(), text: addTextBox ? addTextBox.value : '' }));
+    box.appendChild(add);
+  }
+  /** A 16px line icon for a card or dialog (DS-13: inline SVG, currentColor). */
+  function mcpIcon(path) {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 16 16'); s.setAttribute('class', 'ik-icon'); s.setAttribute('aria-hidden', 'true');
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', path); s.appendChild(p);
+    return s;
+  }
+  const MCP_ICON_KEY = 'M8 4.5a2.5 2.5 0 1 0-1 2L13 13M11 9l2 2';
+  const MCP_ICON_OK = 'M3.5 8.5l3 3 6-6.5';
+  const MCP_ICON_EYE = 'M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM6 8a2 2 0 1 0 4 0a2 2 0 1 0-4 0';
+  const MCP_ICON_ALERT = 'M8 2.5l6 10.5H2L8 2.5zM8 7v3M8 11.5v.5';
+  const MCP_ICON_LOCK = 'M3.5 7h9v6.5h-9zM5.5 7V5.5a2.5 2.5 0 0 1 5 0V7';
+  const MCP_ICON_CLOSE = 'M4 4l8 8M12 4l-8 8';
+  /** The key dialog: every field a server needs, in one place, whatever the number. Escape and the scrim close it; focus comes back to the button that opened it. */
+  function openKeyDialog(cfg, opener) {
+    const layer = $('mcp-dialog-layer');
+    layer.textContent = ''; layer.hidden = false;
+    const close = () => { layer.hidden = true; layer.textContent = ''; if (opener && opener.focus) opener.focus(); };
+    const scrim = document.createElement('div'); scrim.className = 'ik-scrim';
+    scrim.addEventListener('click', close);
+    const dlg = document.createElement('form'); dlg.className = 'ik-dialog key-dialog'; dlg.noValidate = true;
+    dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-labelledby', 'mcp-dlg-title');
+    const head = document.createElement('div'); head.className = 'dlg-head';
+    const title = document.createElement('h2'); title.id = 'mcp-dlg-title'; title.textContent = cfg.title;
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'ik-btn ik-btn--ghost ik-btn--icon'; x.setAttribute('aria-label', 'Close'); x.title = 'Close';
+    x.appendChild(mcpIcon(MCP_ICON_CLOSE)); x.addEventListener('click', close);
+    head.appendChild(title); head.appendChild(x); dlg.appendChild(head);
+    const fields = [];
+    cfg.fields.forEach((sf) => {
+      const id = 'mcp-key-' + cfg.prefix + '-' + sf.id;
+      const field = document.createElement('div'); field.className = 'ik-field';
+      const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = id; lab.textContent = sf.label;
+      const input = document.createElement('input'); input.type = 'password'; input.className = 'ik-input'; input.id = id; input.autocomplete = 'off'; input.spellcheck = false;
+      const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'ik-btn ik-btn--secondary ik-btn--icon'; eye.setAttribute('aria-label', 'Show ' + sf.label); eye.title = 'Show ' + sf.label;
+      eye.appendChild(mcpIcon(MCP_ICON_EYE));
+      eye.addEventListener('click', () => {
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        const word = (show ? 'Hide ' : 'Show ') + sf.label;
+        eye.setAttribute('aria-label', word); eye.title = word;
+      });
+      const row = document.createElement('div'); row.className = 'key-row'; row.appendChild(input); row.appendChild(eye);
+      const err = document.createElement('span'); err.className = 'ik-status ik-status--bad'; err.id = id + '-error'; err.hidden = true;
+      err.appendChild(mcpIcon(MCP_ICON_ALERT)); err.appendChild(document.createTextNode('Enter the ' + sf.label + '.'));
+      const help = document.createElement('span'); help.className = 'ik-help'; help.textContent = sf.help;
+      input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby'); err.hidden = true; });
+      field.appendChild(lab); field.appendChild(row); field.appendChild(err); field.appendChild(help); dlg.appendChild(field);
+      fields.push({ sf, input, err });
+    });
+    const note = document.createElement('p'); note.className = 'ik-note';
+    note.appendChild(mcpIcon(MCP_ICON_LOCK));
+    const noteText = document.createElement('span'); noteText.textContent = cfg.note || "Saved in your editor's secret storage. It is never written to mcp.json."; note.appendChild(noteText);
+    dlg.appendChild(note);
+    const foot = document.createElement('div'); foot.className = 'dlg-foot';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ik-btn ik-btn--ghost'; cancel.textContent = 'Cancel'; cancel.addEventListener('click', close);
+    const go = document.createElement('button'); go.type = 'submit'; go.className = 'ik-btn ik-btn--primary'; go.textContent = cfg.submitLabel || 'Add server';
+    foot.appendChild(cancel); foot.appendChild(go); dlg.appendChild(foot);
+    dlg.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      let firstEmpty = null;
+      fields.forEach((f) => {
+        if (f.sf.optional || f.input.value.trim()) return;
+        f.input.setAttribute('aria-invalid', 'true'); f.input.setAttribute('aria-describedby', f.err.id); f.err.hidden = false;
+        if (!firstEmpty) firstEmpty = f.input;
+      });
+      if (firstEmpty) { firstEmpty.focus(); return; }
+      const values = {};
+      fields.forEach((f) => { values[f.sf.id] = f.input.value; });
+      cfg.submit(values);
+      close();
+    });
+    dlg.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); return; }
+      if (ev.key !== 'Tab') return;
+      const stops = dlg.querySelectorAll('button, input');
+      const first = stops[0]; const last = stops[stops.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    });
+    layer.appendChild(scrim); layer.appendChild(dlg);
+    if (fields.length) fields[0].input.focus();
+  }
+  function openMcpKeyDialog(e, opener) {
+    openKeyDialog({ title: 'Add ' + e.displayName, prefix: e.name, fields: e.secrets, submit: (secretValues) => vscode.postMessage({ type: 'mcpInstall', name: e.name, secretValues }) }, opener);
+  }
+  function mcpCard(e) {
+    const needs = e.secrets.length > 0;
+    const card = document.createElement('div'); card.className = 'ik-card card keyed';
+    card.innerHTML = '<div class="ik-card__head"><div class="row"><strong>' + esc(e.displayName) + '</strong><span class="ik-badge ik-badge--outline">' + (e.remote ? 'Hosted' : 'On your machine') + '</span></div>' +
+      '<span class="ik-help">' + esc(e.description) + '</span></div>';
+    const foot = document.createElement('div'); foot.className = 'ik-card__foot';
+    const cmd = document.createElement('span'); cmd.className = 'ik-mono ik-muted cmd'; cmd.title = e.command; cmd.textContent = e.command.length > 34 ? e.command.slice(0, 33) + '…' : e.command;
+    const gap = document.createElement('span'); gap.className = 'grow';
+    if (e.installed) {
+      const s = document.createElement('span'); s.className = 'ik-badge ik-badge--success'; s.appendChild(tick()); s.appendChild(document.createTextNode('Installed'));
+      foot.appendChild(s); foot.appendChild(cmd); card.appendChild(foot); return card;
+    }
+    const status = document.createElement('span'); status.className = 'ik-status ' + (needs ? 'ik-status--warn' : 'ik-status--ok');
+    status.appendChild(mcpIcon(needs ? MCP_ICON_KEY : MCP_ICON_OK));
+    status.appendChild(document.createTextNode(needs ? (e.secrets.length > 1 ? 'Needs details' : 'Needs a key') : 'No key needed'));
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--secondary';
+    b.textContent = needs ? (e.secrets.length > 1 ? 'Enter details' : 'Enter key') : 'Add server';
+    b.addEventListener('click', () => {
+      if (needs) openMcpKeyDialog(e, b);
+      else vscode.postMessage({ type: 'mcpInstall', name: e.name, secretValues: {} });
+    });
+    foot.appendChild(status); foot.appendChild(cmd); foot.appendChild(gap); foot.appendChild(b); card.appendChild(foot);
+    return card;
   }
 
   // skills (immediate)
   let skillsLoaded = false;
-  const SCOPES = [['local', 'This workspace', 'skills/'], ['project', 'This project', '.forge/skills/'], ['global', 'Your account', '~/.forge/skills/']];
+  const SCOPES = [['local', 'This workspace', 'skills/'], ['project', 'This project', '.forge/skills/'], ['global', 'Your account', '~/.forge/skills/'], ['remote', 'From a link', ''], ['builtin', 'Built into Forge', '']];
   $('skills-rescan').addEventListener('click', () => vscode.postMessage({ type: 'skillsList' }));
   $('skills-browse').addEventListener('click', () => vscode.postMessage({ type: 'skillCatalog' }));
   function renderSkills(skills) {
     const box = $('skills-list');
     box.textContent = '';
     $('badge-skills').textContent = skills.length ? String(skills.length) : '';
+    const help = document.createElement('p'); help.className = 'ik-muted'; help.textContent = 'Switch a skill off and the model never sees it. The switch applies to every skill with that name, whoever wrote it.'; box.appendChild(help);
     SCOPES.forEach((sc) => {
       const label = document.createElement('div'); label.className = 'group-label'; label.textContent = sc[1];
       const where = document.createElement('span'); where.className = 'path'; where.textContent = sc[2]; label.appendChild(where); box.appendChild(label);
       const inScope = skills.filter((s) => s.scope === sc[0]);
+      if (!inScope.length && (sc[0] === 'builtin' || sc[0] === 'remote')) { label.remove(); return; }
       if (!inScope.length) { const p = document.createElement('p'); p.className = 'ik-muted'; p.textContent = 'None yet.'; box.appendChild(p); return; }
       const list = document.createElement('div'); list.className = 'ik-card list';
       inScope.forEach((s) => {
@@ -869,10 +1278,35 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         item.innerHTML = '<div class="main"><div class="name">' + esc(s.name) + '</div><div class="sub">' + esc(s.description) + '</div></div>';
         const open = document.createElement('button'); open.type = 'button'; open.className = 'ik-btn ik-btn--link'; open.textContent = 'Open';
         open.addEventListener('click', () => vscode.postMessage({ type: 'skillOpen', path: s.path }));
-        item.appendChild(open); list.appendChild(item);
+        const sw = document.createElement('input'); sw.type = 'checkbox'; sw.checked = s.enabled; sw.setAttribute('aria-label', 'Turn ' + s.name + ' on or off for the model');
+        sw.addEventListener('change', () => vscode.postMessage({ type: 'skillToggle', name: s.name }));
+        const sl = document.createElement('label'); sl.className = 'ik-check';
+        const st = document.createElement('span'); const showOn = () => { st.textContent = sw.checked ? 'On' : 'Off'; }; showOn(); sw.addEventListener('change', showOn);
+        sl.appendChild(sw); sl.appendChild(st);
+        const acts = document.createElement('span'); acts.className = 'row'; acts.appendChild(sl); acts.appendChild(open);
+        item.appendChild(acts); list.appendChild(item);
       });
       box.appendChild(list);
     });
+    box.appendChild(addYourOwnSkill());
+  }
+  function addYourOwnSkill() {
+    const card = document.createElement('div'); card.className = 'ik-card card'; card.style.marginTop = 'var(--space-sm)';
+    const title = document.createElement('strong'); title.textContent = 'Add your own';
+    const sub = document.createElement('span'); sub.className = 'ik-muted'; sub.style.fontSize = '12px';
+    sub.textContent = 'Paste the https address of a skill file or a list of skills, or choose a skill file on this computer.';
+    const field = document.createElement('div'); field.className = 'ik-field';
+    const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = 'skill-add-url'; lab.textContent = 'Address';
+    const url = document.createElement('input'); url.type = 'url'; url.id = 'skill-add-url'; url.className = 'ik-input'; url.placeholder = 'https://example.com/skills.json'; url.spellcheck = false;
+    field.appendChild(lab); field.appendChild(url);
+    const row = document.createElement('div'); row.className = 'row';
+    const addLink = document.createElement('button'); addLink.type = 'button'; addLink.className = 'ik-btn ik-btn--primary'; addLink.textContent = 'Add address';
+    addLink.addEventListener('click', () => { if (url.value.trim()) vscode.postMessage({ type: 'skillAddLink', url: url.value.trim() }); });
+    const file = document.createElement('button'); file.type = 'button'; file.className = 'ik-btn ik-btn--secondary'; file.textContent = 'Choose a file…';
+    file.addEventListener('click', () => vscode.postMessage({ type: 'skillAddFile' }));
+    row.appendChild(addLink); row.appendChild(file);
+    card.appendChild(title); card.appendChild(sub); card.appendChild(field); card.appendChild(row);
+    return card;
   }
   /** Success notes use the green style; everything else keeps the warning style. */
   function say(text, ok) { const b = $('banner'); b.textContent = text; b.classList.toggle('ik-note--success', !!ok); b.classList.toggle('ik-note--warning', !ok); }
@@ -904,13 +1338,92 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     box.appendChild(grid);
   }
 
+  $('prune-chats').addEventListener('click', () => { vscode.postMessage({ type: 'pruneChats' }); setTimeout(() => vscode.postMessage({ type: 'loadCleanup' }), 1500); });
+
+  /** What Forge finds for each cloud-account provider: a word first (never colour alone), then what is set or missing. */
+  function renderCloudStatus(providers, saved, awsFields) {
+    const box = $('cloud-status'); box.textContent = '';
+    providers.forEach((p) => {
+      const item = document.createElement('div'); item.className = 'item';
+      const main = document.createElement('div'); main.className = 'main';
+      const name = document.createElement('div'); name.className = 'name'; name.textContent = p.provider + ' ';
+      const tone = p.tone === 'ok' ? 'ik-badge--success' : p.tone === 'bad' ? 'ik-badge--danger' : 'ik-badge--outline';
+      const badge = document.createElement('span'); badge.className = 'ik-badge ' + tone; badge.textContent = p.tone === 'ok' ? 'Ready' : p.tone === 'bad' ? 'Problem' : 'Note';
+      name.appendChild(badge);
+      const sub = document.createElement('div'); sub.className = 'sub'; sub.style.whiteSpace = 'normal'; sub.textContent = p.text;
+      main.appendChild(name); main.appendChild(sub); item.appendChild(main);
+      if (p.provider === 'AWS Bedrock' && awsFields && awsFields.length) {
+        const acts = document.createElement('span'); acts.className = 'row';
+        const enter = document.createElement('button'); enter.type = 'button'; enter.className = 'ik-btn ik-btn--secondary'; enter.textContent = 'Enter access keys';
+        enter.addEventListener('click', () => openKeyDialog({ title: 'AWS access keys', prefix: 'aws', fields: awsFields, submitLabel: 'Save keys', note: "Saved in your editor's secret storage and used only when a run starts. It is never written to a settings file.", submit: (values) => vscode.postMessage({ type: 'cloudCredentialSet', values }) }, enter));
+        acts.appendChild(enter);
+        if (saved && saved.length) {
+          const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--ghost'; rm.textContent = 'Remove saved access keys';
+          rm.addEventListener('click', () => vscode.postMessage({ type: 'cloudCredentialClear' }));
+          acts.appendChild(rm);
+        }
+        item.appendChild(acts);
+      }
+      box.appendChild(item);
+    });
+  }
+
+  /** What the code index is doing, in the same words as the status bar item. */
+  function renderIndexStatus(msg) {
+    const line = FS.indexStatusLine(msg.enabled, msg.status);
+    $('index-status-text').textContent = line.text;
+    $('index-delete').hidden = !(msg.status && (msg.status.phase === 'ready' || msg.status.phase === 'error'));
+  }
+  $('index-delete').addEventListener('click', () => vscode.postMessage({ type: 'deleteIndex' }));
+
+  /** The instruction files Forge reads from the workspace root: what each is doing, and a way to open or start it. */
+  function renderInstructions(msg) {
+    const box = $('row-instructions'); box.textContent = '';
+    const note = (text, tone) => { const p = document.createElement('p'); p.className = 'ik-note' + (tone ? ' ik-note--' + tone : ''); p.textContent = text; box.appendChild(p); };
+    if (!msg.folder) { note('Open a folder to use instruction files.', 'warning'); return; }
+    if (!msg.trusted) note('This workspace is not trusted, so Forge does not read these files. Trust the workspace to use them.', 'warning');
+    const list = document.createElement('div'); list.className = 'ik-card list';
+    msg.files.forEach((f) => {
+      const item = document.createElement('div'); item.className = 'item';
+      const main = document.createElement('div'); main.className = 'main';
+      const name = document.createElement('div'); name.className = 'name ik-mono'; name.textContent = f.name;
+      const tone = f.cut ? 'ik-badge--warning' : f.state === 'used' ? 'ik-badge--success' : 'ik-badge--outline';
+      const badge = document.createElement('span'); badge.className = 'ik-badge ' + tone;
+      badge.textContent = f.cut ? 'Cut off' : f.state === 'used' ? 'Used' : f.state === 'empty' ? 'Empty' : 'Not created';
+      name.appendChild(document.createTextNode(' ')); name.appendChild(badge);
+      const sub = document.createElement('div'); sub.className = 'sub';
+      sub.textContent = f.cut ? 'Only the start of this file is read.' : f.state === 'used' ? f.chars + ' characters.' : f.state === 'empty' ? 'There is nothing in it yet.' : 'Forge has no file of this name to read.';
+      main.appendChild(name); main.appendChild(sub); item.appendChild(main);
+      const acts = document.createElement('span'); acts.className = 'row';
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--secondary';
+      b.textContent = f.state === 'missing' ? 'Create' : 'Open';
+      b.setAttribute('aria-label', (f.state === 'missing' ? 'Create ' : 'Open ') + f.name);
+      b.addEventListener('click', () => vscode.postMessage({ type: f.state === 'missing' ? 'instructionCreate' : 'instructionOpen', name: f.name }));
+      acts.appendChild(b); item.appendChild(acts); list.appendChild(item);
+    });
+    box.appendChild(list);
+    const steer = document.createElement('div'); steer.className = 'setting';
+    const t = document.createElement('div'); t.className = 't'; t.textContent = 'Steering notes';
+    const d = document.createElement('div'); d.className = 'd'; d.textContent = (msg.steering ? msg.steering + (msg.steering === 1 ? ' note' : ' notes') + ' in this project. ' : 'None yet. ') + 'A steering note is a short Markdown file that Forge reads when it matches the files you are working on.';
+    const r = document.createElement('div'); r.className = 'row';
+    const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'ik-btn ik-btn--secondary'; nb.textContent = 'New steering note';
+    nb.addEventListener('click', () => vscode.postMessage({ type: 'steeringNew' }));
+    r.appendChild(nb); steer.appendChild(t); steer.appendChild(d); steer.appendChild(r); box.appendChild(steer);
+    const more = document.createElement('p'); more.className = 'ik-muted'; more.textContent = 'An AGENTS.md in a folder is also read the first time Forge reads a file there.'; box.appendChild(more);
+  }
+
+  // about
+  [['about-log', 'log'], ['about-issues', 'issues'], ['about-docs', 'docs']].forEach((p) => $(p[0]).addEventListener('click', () => vscode.postMessage({ type: 'aboutOpen', what: p[1] })));
+
   // backup
   $('export-btn').addEventListener('click', () => vscode.postMessage({ type: 'exportSettings' }));
+  $('reset-rows').addEventListener('click', () => vscode.postMessage({ type: 'resetRows' }));
   $('import-file').addEventListener('change', (e) => {
     const file = e.target.files[0];
     // Forget the pick, or choosing the same file again (after fixing it) fires no change event.
     e.target.value = '';
     if (!file) return;
+    if (file.size > 1048576) { $('banner').textContent = 'That file is too large to be a settings export (over 1 MB).'; return; }
     const reader = new FileReader();
     reader.onload = () => {
       try { vscode.postMessage({ type: 'importSettings', data: JSON.parse(reader.result) }); }
@@ -924,6 +1437,21 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     const msg = e.data;
     if (!FS) return;
     switch (msg.type) {
+      case 'cleanupLoaded':
+        $('cleanup-last').textContent = FS.cleanupLine(msg.last);
+        break;
+      case 'cloudStatusLoaded':
+        renderCloudStatus(msg.providers, msg.saved, msg.awsFields);
+        break;
+      case 'indexStatusLoaded':
+        renderIndexStatus(msg);
+        break;
+      case 'instructionsLoaded':
+        renderInstructions(msg);
+        break;
+      case 'aboutLoaded':
+        $('about-version').textContent = 'Version ' + msg.version;
+        break;
       case 'allowedCommandsListed':
         renderAllowedCommands(msg.commands);
         break;
@@ -934,6 +1462,8 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         renderProviders(msg);
         break;
       case 'rowSaved': {
+        if (msg.key === 'forge.semanticSearch') vscode.postMessage({ type: 'loadIndexStatus' });
+        if (msg.key.indexOf('forge.providers.') === 0) vscode.postMessage({ type: 'loadCloudStatus' });
         const status = document.getElementById('status-' + FS.rowId(msg.key));
         if (status) { status.textContent = 'Saved'; status.className = 'ik-muted'; }
         break;
@@ -947,6 +1477,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         vscode.postMessage({ type: 'loadAllowedCommands' });
         saved = FS.applyConfig(saved, msg.config);
         draft = FS.applyConfig(draft, msg.config);
+        aliases = msg.config.aliases || {};
         showEffective(msg.effective);
         effectiveProvider = msg.effective ? msg.effective.split('/')[0] : '';
         renderAll();
@@ -962,6 +1493,8 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         modelLists[msg.provider] = { models: msg.models, source: msg.source, error: msg.error };
         modelLoading[msg.provider] = false;
         renderModelOptions();
+        comboApis = comboApis.filter((c) => c.alive());
+        comboApis.forEach((c) => c.refresh());
         break;
       case 'saved':
         saved = FS.applyConfig(saved, msg.config);
@@ -1002,14 +1535,19 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       case 'keyDeleted':
         vscode.postMessage({ type: 'loadKeys' });
         break;
+      case 'mcpAddPreviewed':
+        showAddPreview(msg);
+        break;
       case 'mcpListed':
         renderMcp(msg);
+        if (addPreviewTarget && addPreviewTarget.isConnected) { addPreviewTarget.textContent = ''; if (addTextBox) addTextBox.value = ''; vscode.postMessage({ type: 'mcpCatalog' }); }
         break;
       case 'mcpCatalogListed':
         renderMcpCatalog(msg);
         break;
       case 'skillsListed':
         renderSkills(msg.skills);
+        if (msg.note) say(msg.note, true);
         break;
       case 'skillCatalogListed':
         renderSkillCatalog(msg.entries, msg.error);
@@ -1030,7 +1568,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         vscode.postMessage({ type: 'loadSandbox', cwd: '' });
         break;
       case 'notice':
-        say(msg.message, /^(Exported|Saved|Settings imported)/.test(msg.message));
+        say(msg.message, /^(Exported|Saved|Settings imported|Deleted)/.test(msg.message));
         break;
       case 'error':
         $('banner').textContent = 'Could not save: ' + msg.message;
@@ -1081,7 +1619,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
 
   // forge.* settings: one row each, saved the moment a value changes.
   function renderRows(rows) {
-    ['context', 'safety', 'tools', 'git', 'advanced'].forEach((s) => { const box = $('rows-' + s); if (box) box.textContent = ''; });
+    ['context', 'safety', 'notifications', 'tools', 'git', 'advanced'].forEach((s) => { const box = $('rows-' + s); if (box) box.textContent = ''; });
     const bySection = {};
     rows.forEach((r) => { (bySection[r.section] = bySection[r.section] || []).push(r); });
     Object.keys(bySection).forEach((section) => {
@@ -1097,6 +1635,80 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
 
   function sameValue(a, b) { return a === b || JSON.stringify(a) === JSON.stringify(b); }
 
+  /**
+   * A list (one text per line) or a map (a name and what it points to) as rows you can add to and remove from.
+   * It saves the whole value after every change, through send, like every other row. Buttons name the item: "Add host".
+   */
+  function listEditor(r, send) {
+    const isMap = r.kind === 'map';
+    const item = r.item || 'item';
+    const valueItem = r.valueItem || 'value';
+    let entries = isMap
+      ? Object.keys(r.value && typeof r.value === "object" ? r.value : {}).map((k) => [k, r.value[k]])
+      : (Array.isArray(r.value) ? r.value : []).map((v) => [v, '']);
+    const box = document.createElement('div'); box.className = 'listed'; box.setAttribute('role', 'group'); box.setAttribute('aria-label', r.label);
+    const list = document.createElement('div'); list.className = 'listed-items';
+    const value = () => {
+      if (!isMap) return entries.map((e) => e[0]);
+      const out = {};
+      entries.forEach((e) => { out[e[0]] = e[1]; });
+      return out;
+    };
+    const field = (text, label, mono) => {
+      const input = document.createElement('input'); input.type = 'text'; input.className = 'ik-input' + (mono ? ' ik-input--mono' : ''); input.value = text; input.spellcheck = false; input.autocomplete = 'off';
+      input.setAttribute("aria-label", label);
+      return input;
+    };
+    const draw = () => {
+      list.textContent = '';
+      entries.forEach((e, i) => {
+        const line = document.createElement('div'); line.className = 'listed-row';
+        const first = field(e[0], (isMap ? 'Name of ' : '') + item + ' ' + (i + 1), !isMap);
+        line.appendChild(first);
+        let second = null;
+        if (isMap) { second = field(e[1], 'Value of ' + item + ' ' + e[0], true); line.appendChild(second); }
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--ghost'; rm.textContent = 'Remove';
+        rm.setAttribute('aria-label', 'Remove ' + item + ' ' + (e[0] || (i + 1)));
+        rm.addEventListener("click", () => { entries.splice(i, 1); draw(); send(value()); });
+        const change = () => {
+          const name = first.value.trim();
+          if (name === "") { entries.splice(i, 1); draw(); send(value()); return; }
+          entries[i] = [name, second ? second.value : ""]; send(value());
+        };
+        first.addEventListener('change', change);
+        if (second) second.addEventListener('change', change);
+        line.appendChild(rm);
+        list.appendChild(line);
+      });
+    };
+    const addRow = document.createElement('div'); addRow.className = 'listed-row listed-add';
+    const newName = field('', (isMap ? 'Name of new ' : 'New ') + item, !isMap);
+    newName.placeholder = isMap ? item : '';
+    const newValue = isMap ? field('', 'Value of new ' + item, true) : null;
+    if (newValue) newValue.placeholder = valueItem;
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'ik-btn ik-btn--secondary'; add.textContent = 'Add ' + item;
+    const addNow = () => {
+      const name = newName.value.trim();
+      if (name === "") { newName.focus(); return; }
+      const at = entries.findIndex((e) => e[0] === name);
+      const val = newValue ? newValue.value : "";
+      if (at >= 0) { if (isMap) entries[at][1] = val; } else entries.push([name, val]);
+      newName.value = ""; if (newValue) newValue.value = "";
+      draw(); send(value()); newName.focus();
+    };
+    add.addEventListener('click', addNow);
+    [newName, newValue].forEach((inp) => { if (inp) inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); addNow(); } }); });
+    addRow.appendChild(newName); if (newValue) addRow.appendChild(newValue); addRow.appendChild(add);
+    box.appendChild(list); box.appendChild(addRow);
+    draw();
+    return {
+      el: box,
+      set: (v) => {
+        entries = isMap ? Object.keys(v && typeof v === 'object' ? v : {}).map((k) => [k, v[k]]) : (Array.isArray(v) ? v : []).map((x) => [x, '']);
+        draw();
+      },
+    };
+  }
   function renderRow(box, r) {
     const id = FS.rowId(r.key);
     const wrap = document.createElement('div'); wrap.className = 'setting'; wrap.id = id;
@@ -1110,9 +1722,20 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     const refreshReset = () => { if (reset) reset.hidden = sameValue(current, r.default); };
     const send = (value) => { current = value; refreshReset(); status.textContent = ''; vscode.postMessage({ type: 'setRow', key: r.key, value: value }); };
     let control;
-    if (r.kind === 'boolean') {
+    let mount = null;
+    let stateRefresh = null;
+    let unknownNote = null;
+    let noteRefresh = null;
+    let editor = null;
+    if (r.kind === 'list' || r.kind === 'map') {
+      editor = listEditor(r, send);
+      mount = editor.el; control = editor.el;
+    } else if (r.kind === 'boolean') {
       control = document.createElement('input'); control.type = 'checkbox'; control.checked = r.value === true;
-      control.addEventListener('change', () => send(control.checked));
+      const stateText = document.createElement('span');
+      stateRefresh = () => { stateText.textContent = control.checked ? 'On' : 'Off'; };
+      mount = document.createElement('label'); mount.className = 'ik-check'; mount.appendChild(control); mount.appendChild(stateText); stateRefresh();
+      control.addEventListener('change', () => { stateRefresh(); send(control.checked); });
     } else if (r.kind === 'enum') {
       control = selectEl();
       (r.enum || []).forEach((v) => { const o = document.createElement('option'); o.value = v; o.textContent = FS.enumLabel(r.key, v); control.appendChild(o); });
@@ -1124,19 +1747,44 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       if (r.max !== undefined) control.max = String(r.max);
       control.value = r.value === undefined || r.value === null ? '' : String(r.value);
       control.addEventListener('change', () => { if (control.value.trim() !== '') send(Number(control.value)); });
+    } else if (r.choices === 'voiceLanguages') {
+      control = selectEl();
+      control.appendChild(new Option('Browser default', ''));
+      FS.VOICE_LANGUAGES.forEach((g) => {
+        const og = document.createElement('optgroup'); og.label = g.label;
+        g.options.forEach((o) => { const opt = new Option(o.label, o.value); opt.title = o.value; og.appendChild(opt); });
+        control.appendChild(og);
+      });
+      const savedValue = typeof r.value === 'string' ? r.value : '';
+      if (savedValue && !FS.isKnownValue(FS.VOICE_LANGUAGES, savedValue)) control.appendChild(new Option(savedValue + ' (not in the list)', savedValue));
+      control.value = savedValue;
+      control.addEventListener('change', () => send(control.value));
+    } else if (r.choices) {
+      mount = buildCombo(r.label, '', typeof r.value === 'string' ? r.value : '');
+      control = mount.querySelector('input');
+      if (r.choices === 'awsRegions' || r.choices === 'vertexLocations') {
+        unknownNote = document.createElement('div'); unknownNote.className = 'ik-note ik-note--warning'; unknownNote.setAttribute('role', 'status');
+        unknownNote.textContent = 'Not in the list. Forge keeps it as typed.';
+        noteRefresh = () => { unknownNote.hidden = !control.value.trim() || FS.isKnownValue(comboGroups(r.choices), control.value.trim()); };
+        control.addEventListener('input', noteRefresh); noteRefresh();
+      }
+      comboApis.push(makeCombo(mount, r.choices, { live: false, set: (v) => { control.value = v; if (noteRefresh) noteRefresh(); send(v); } }));
     } else {
       control = document.createElement('input'); control.type = 'text'; control.className = 'ik-input ik-input--mono'; control.value = typeof r.value === 'string' ? r.value : '';
       control.addEventListener('change', () => send(control.value));
     }
     control.setAttribute('aria-label', r.label);
-    row.appendChild(control);
+    row.appendChild(mount || control);
     if (parts.hint) { const hint = document.createElement('span'); hint.className = 'ik-muted'; hint.textContent = parts.hint; row.appendChild(hint); }
     if (r.default !== undefined) {
       reset = document.createElement('button'); reset.type = 'button'; reset.className = 'ik-btn ik-btn--link'; reset.textContent = 'Reset';
       reset.title = 'Back to the default';
       reset.addEventListener('click', () => {
-        if (r.kind === 'boolean') control.checked = r.default === true;
+        if (editor) editor.set(r.default);
+        else if (r.kind === 'boolean') control.checked = r.default === true;
         else control.value = r.default === undefined || r.default === null ? '' : String(r.default);
+        if (noteRefresh) noteRefresh();
+        if (stateRefresh) stateRefresh();
         send(r.default);
       });
       refreshReset();
@@ -1144,11 +1792,13 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     }
     row.appendChild(status);
     wrap.appendChild(title); wrap.appendChild(help); wrap.appendChild(row);
+    if (unknownNote) wrap.appendChild(unknownNote);
     box.appendChild(wrap);
   }
 
   showSection('model');
   vscode.postMessage({ type: 'loadRows' });
+  vscode.postMessage({ type: 'loadAbout' });
   vscode.postMessage({ type: 'loadProviders' });
   vscode.postMessage({ type: 'load' });
   vscode.postMessage({ type: 'loadAgents' });

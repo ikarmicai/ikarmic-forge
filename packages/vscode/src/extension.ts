@@ -5,6 +5,7 @@ import { McpManager, defaultSessionDir, getOrgPolicy, installProxy, loadForgeCon
 import { readConfig, resolveModel } from './config.js';
 import { ModelLister } from './model-lister.js';
 import { createSecretStorageCredentialStore } from './credential-store.js';
+import { createMcpSecretStore } from './mcp/mcp-secrets.js';
 import { ForgeChatViewProvider } from './chat/chat-view.js';
 import { PROPOSED_SCHEME, ProposedContentProvider } from './chat/proposed-content-provider.js';
 import { registerAgents } from './agents/agents-commands.js';
@@ -16,6 +17,9 @@ import { registerImportClaude } from './import-claude.js';
 import { registerOnboarding } from './onboarding.js';
 import { registerSkills } from './skills/skills-commands.js';
 import { registerSpecs } from './specs/spec-commands.js';
+import { recordCleanup } from './settings/cleanup-record.js';
+import { createCloudCredentialStore } from './settings/cloud-credentials.js';
+import { setCloudCredentialStore } from './runtime-config.js';
 import { registerSteering } from './steering/steering-commands.js';
 import { CommandRegistry } from './commands.js';
 import { ForgeInlineCompletionProvider } from './completion.js';
@@ -29,6 +33,7 @@ import {
   TELEMETRY_PARTIAL_COMMAND,
   TELEMETRY_REJECT_COMMAND,
 } from './telemetry.js';
+import { ignoredInWorkspaceFile, ignoredWorkspaceNotice, ignoredWorkspaceSettings } from './ignored-workspace-settings.js';
 import { setLanguage, t } from './l10n.js';
 import { parseSwitchLink } from './switch-link.js';
 
@@ -74,10 +79,11 @@ async function setupNetworkAndPolicy(): Promise<void> {
 }
 
 /** Housekeeping from `sessionRetentionDays` in ~/.forge/config.json; unset keeps every session. Never blocks activation. */
-async function pruneOldSessions(): Promise<void> {
+async function pruneOldSessions(state: vscode.Memento): Promise<void> {
   try {
     const { config } = await loadForgeConfigFile();
-    await pruneByRetention(defaultSessionDir(), config.sessionRetentionDays);
+    const result = await pruneByRetention(defaultSessionDir(), config.sessionRetentionDays);
+    if (result) await recordCleanup(state, result.deleted.length);
   } catch {
     // Pruning is best effort.
   }
@@ -86,17 +92,28 @@ async function pruneOldSessions(): Promise<void> {
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   setLanguage(context.extensionUri.fsPath);
   await setupNetworkAndPolicy();
-  void pruneOldSessions();
+  void pruneOldSessions(context.globalState);
   const statusBar = new StatusBar();
   const telemetry = new CompletionTelemetry();
   const credentialStore = createSecretStorageCredentialStore(context.secrets);
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const hooks = await activateHooks(workspaceRoot, credentialStore);
   const proposed = new ProposedContentProvider();
+  const mcpSecrets = createMcpSecretStore(context.secrets);
+  const cloudCredentials = createCloudCredentialStore(context.secrets);
+  setCloudCredentialStore(cloudCredentials);
+  // A server's tools or prompts changed: every chat view shows its slash menu again.
+  const mcpChanged = new vscode.EventEmitter<void>();
+  context.subscriptions.push(mcpChanged);
   const mcp = workspaceRoot
     ? new McpManager({
         cwd: workspaceRoot,
         includeProject: vscode.workspace.isTrusted,
+        onChange: () => mcpChanged.fire(),
+        // Secrets entered on a server card fill the input placeholders of a server the person defined (never a project file).
+        secrets: (server, id) => mcpSecrets.get(server, id),
+        // Servers the person keeps duplicates of Forge's own tools on for (user config only).
+        showDuplicates: async () => new Set((await loadForgeConfigFile()).config.mcpShowDuplicates ?? []),
         // OAuth sign-in for MCP servers that need it: always asked for by the user, and the page is shown only after they agree.
         oauth: {
           openUrl: async (url: string) => {
@@ -120,11 +137,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Output > Forge: why a completion request or a /cmd ended (completion logs at debug level: set the channel to Debug to see them).
   const forgeLog = vscode.window.createOutputChannel('Forge', { log: true });
   context.subscriptions.push(forgeLog);
+  // A project's own value for a machine-scoped setting is ignored by VS Code: say so once, so it does not look like a bug (RB-12).
+  // The file is read directly: inspect() hides a machine-scoped key that sits in the workspace.
+  void (async () => {
+    const labels = new Set<string>();
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      try {
+        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder.uri, '.vscode', 'settings.json'));
+        for (const label of ignoredWorkspaceSettings(Buffer.from(bytes).toString('utf8'))) labels.add(label);
+      } catch {
+        // No settings file in this folder: nothing to say.
+      }
+    }
+    // A multi-root workspace keeps its own settings in the .code-workspace file.
+    const workspaceFile = vscode.workspace.workspaceFile;
+    if (workspaceFile?.scheme === 'file') {
+      try {
+        const bytes = await vscode.workspace.fs.readFile(workspaceFile);
+        for (const label of ignoredInWorkspaceFile(Buffer.from(bytes).toString('utf8'))) labels.add(label);
+      } catch {
+        // Unreadable: nothing to say.
+      }
+    }
+    const ignoredHere = [...labels];
+    const ignoredNotice = ignoredWorkspaceNotice(ignoredHere);
+    if (!ignoredNotice) return;
+    forgeLog.warn(ignoredNotice);
+    const shown = context.workspaceState.get<string>('forge.ignoredSettingsShown');
+    if (shown === ignoredHere.join('|')) return;
+    await context.workspaceState.update('forge.ignoredSettingsShown', ignoredHere.join('|'));
+    void vscode.window.showWarningMessage(ignoredNotice);
+  })();
   // The code index: the question before code goes to a remote embedder, its status item, and the command that deletes it (F12).
   const semanticUi = new SemanticUi(context, forgeLog);
   context.subscriptions.push(semanticUi, vscode.commands.registerCommand(DELETE_INDEX_COMMAND, () => semanticUi.deleteIndex()));
-  const chatProvider = new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog);
-  const makeChatProvider = (): ForgeChatViewProvider => new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog);
+  const chatProvider = new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog, mcpChanged.event);
+  const makeChatProvider = (): ForgeChatViewProvider => new ForgeChatViewProvider(context, hooks?.bus, credentialStore, proposed, mcp, models, forgeLog, mcpChanged.event);
   const openTab = (): void => {
     openChatInTab(context, makeChatProvider);
   };
@@ -203,7 +251,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     extensionUri: context.extensionUri,
     models,
     ...(mcp ? { mcp } : {}),
+    mcpSecrets,
     ...(workspaceRoot ? { workspaceRoot } : {}),
+    cleanupState: context.globalState,
+    cloudCredentials,
+    about: {
+      version: String(context.extension.packageJSON.version),
+      showLog: () => forgeLog.show(true),
+      docsUrl: String(context.extension.packageJSON.homepage ?? ''),
+      issuesUrl: String(context.extension.packageJSON.bugs?.url ?? ''),
+    },
   });
   commands.register(context);
   registerSpecs(context, chatProvider);

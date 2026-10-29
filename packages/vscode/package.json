@@ -2,7 +2,7 @@
   "name": "ikarmic-forge",
   "displayName": "IKarmic AI Forge",
   "description": "Open-source AI coding agent for VS Code. Agentic chat, inline autocomplete, MCP servers, skills and hooks, on any model: OpenAI, Anthropic, Google, Ollama.",
-  "version": "5.4.1",
+  "version": "5.5.0",
   "publisher": "ikarmic",
   "license": "AGPL-3.0-only",
   "icon": "resources/icon.png",
@@ -620,29 +620,40 @@
           "default": "",
           "description": "%config.forge.providers.vertexLocation.description%"
         },
+        "forge.providers.googleCredentialsFile": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "%config.forge.providers.googleCredentialsFile.description%"
+        },
         "forge.providers.azureResourceName": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.providers.azureResourceName.description%"
         },
         "forge.providers.azureBaseUrl": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.providers.azureBaseUrl.description%"
         },
         "forge.providers.openaiCompatibleBaseUrl": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.providers.openaiCompatibleBaseUrl.description%"
         },
         "forge.providers.lmstudioBaseUrl": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.providers.lmstudioBaseUrl.description%"
         },
         "forge.providers.ollamaBaseUrl": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.providers.ollamaBaseUrl.description%"
         },
         "forge.compaction.enabled": {
@@ -842,6 +853,7 @@
             "type": "string"
           },
           "default": {},
+          "scope": "machine",
           "description": "%config.forge.autoLint.commands.description%"
         },
         "forge.autoFormat.commands": {
@@ -903,6 +915,7 @@
             "type": "string"
           },
           "default": [],
+          "scope": "machine",
           "description": "%config.forge.verify.commands.description%"
         },
         "forge.language": {
@@ -951,11 +964,13 @@
         "forge.semantic.baseUrl": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.semantic.baseUrl.description%"
         },
         "forge.semantic.apiKeyEnv": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.semantic.apiKeyEnv.description%"
         },
         "forge.semantic.batchSize": {
@@ -1018,6 +1033,7 @@
         "forge.webSearch.searxngUrl": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "%config.forge.webSearch.searxngUrl.description%"
         },
         "forge.docs": {
@@ -1231,7 +1247,7 @@
     "@ai-sdk/anthropic": "^4.0.0",
     "@ai-sdk/google": "^4.0.0",
     "@ai-sdk/openai": "^4.0.0",
-    "@ikarmic/forge-core": "^5.4.1",
+    "@ikarmic/forge-core": "^5.5.0",
     "ai": "^7.0.0"
   },
   "devDependencies": {

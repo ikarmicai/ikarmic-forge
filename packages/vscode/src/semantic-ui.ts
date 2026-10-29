@@ -18,6 +18,11 @@ export class SemanticUi implements vscode.Disposable {
 
   readonly consent: SemanticConsent;
   private readonly item: vscode.StatusBarItem;
+  private readonly changed = new vscode.EventEmitter<SemanticStatus | undefined>();
+  /** What the index last said, for the Settings page; undefined before the first run and after a delete. */
+  status: SemanticStatus | undefined;
+  /** Fires when the index reports something new, or is deleted. */
+  readonly onDidChangeStatus = this.changed.event;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -44,6 +49,8 @@ export class SemanticUi implements vscode.Disposable {
 
   /** Passed to the agent: updates the status item and writes a problem to Output > Forge (RB-18). */
   readonly onStatus = (s: SemanticStatus): void => {
+    this.status = s;
+    this.changed.fire(s);
     const { text, tooltip } = statusItemFor(s);
     this.item.text = text;
     this.item.tooltip = tooltip;
@@ -65,11 +72,14 @@ export class SemanticUi implements vscode.Disposable {
     await this.consent.withdraw();
     if (root) await deleteSemanticIndex(root).catch(() => false);
     this.item.hide();
+    this.status = undefined;
+    this.changed.fire(undefined);
     void vscode.window.showInformationMessage(t('The code index is deleted and your choices are forgotten.'));
   }
 
   dispose(): void {
     this.item.dispose();
+    this.changed.dispose();
     if (SemanticUi.current === this) SemanticUi.current = undefined;
   }
 }

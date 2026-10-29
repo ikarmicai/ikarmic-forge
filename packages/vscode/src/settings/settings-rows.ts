@@ -5,22 +5,31 @@
  * EXCLUDED_KEYS saying where it is edited instead).
  */
 
-export type RowSection = 'context' | 'safety' | 'tools' | 'git' | 'advanced';
+/** `models`: alias, bare id or provider:model. `modelIds`: a plain id of the main provider only. */
+export type RowChoices = 'models' | 'modelIds' | 'awsRegions' | 'vertexLocations' | 'voiceLanguages';
+
+export type RowSection = 'context' | 'safety' | 'notifications' | 'tools' | 'git' | 'advanced';
 
 export interface SettingRow {
   key: string;
   section: RowSection;
-  kind: 'boolean' | 'number' | 'enum' | 'string';
+  kind: 'boolean' | 'number' | 'enum' | 'string' | 'list' | 'map';
   label: string;
   enum?: string[];
   min?: number;
   max?: number;
   integer?: boolean;
+  /** A string row that suggests values from a list but accepts any text: which list the page offers. */
+  choices?: RowChoices;
+  /** A list or map row: one item in words ("host"), so a button can say "Add host". For a map this is the name; valueItem is what it points to. */
+  item?: string;
+  valueItem?: string;
 }
 
 export const SECTION_LABELS: Record<RowSection, string> = {
   context: 'Context and memory',
   safety: 'Safety and cost',
+  notifications: 'Notifications',
   tools: 'Tools and web',
   git: 'Git and quality',
   advanced: 'Advanced',
@@ -28,8 +37,11 @@ export const SECTION_LABELS: Record<RowSection, string> = {
 
 const b = (key: string, section: RowSection, label: string): SettingRow => ({ key, section, kind: 'boolean', label });
 const s = (key: string, section: RowSection, label: string): SettingRow => ({ key, section, kind: 'string', label });
+const c = (key: string, section: RowSection, label: string, choices: RowChoices): SettingRow => ({ key, section, kind: 'string', label, choices });
 const n = (key: string, section: RowSection, label: string, extra: Partial<SettingRow> = {}): SettingRow => ({ key, section, kind: 'number', label, ...extra });
 const e = (key: string, section: RowSection, label: string, values: string[]): SettingRow => ({ key, section, kind: 'enum', label, enum: values });
+const l = (key: string, section: RowSection, label: string, item: string): SettingRow => ({ key, section, kind: 'list', label, item });
+const m = (key: string, section: RowSection, label: string, item: string, valueItem: string): SettingRow => ({ key, section, kind: 'map', label, item, valueItem });
 
 export const SETTING_ROWS: readonly SettingRow[] = [
   // Context and memory
@@ -54,15 +66,22 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   n('forge.loopGuardThreshold', 'safety', 'Stop after identical calls', { min: 0 }),
   n('forge.maxSteps', 'safety', 'Most steps in one run', { min: 0, integer: true }),
   e('forge.commandSandbox', 'safety', 'Run commands in an OS sandbox', ['off', 'on', 'on-network']),
+  l('forge.commandSandbox.allowedHosts', 'safety', 'Hosts a sandboxed command may reach', 'host'),
+  l('forge.verify.commands', 'git', 'Commands that check a run', 'command'),
+  l('forge.agentManager.copyFiles', 'git', 'Files copied into each Agent Manager worktree', 'file pattern'),
+  m('forge.autoLint.commands', 'git', 'Lint command for each file type', 'file type', 'command'),
+  m('forge.autoFormat.commands', 'git', 'Format command for each file type', 'file type', 'command'),
+  m('forge.docs', 'tools', 'Documentation the model can look up', 'name', 'address'),
+  l('forge.caCertificates', 'advanced', 'Certificate files for a proxy', 'certificate file'),
   n('forge.goalMaxTurns', 'safety', 'Most turns in one /goal', { min: 1, integer: true }),
-  b('forge.notifications.enabled', 'safety', 'Notify when a run ends'),
+  b('forge.notifications.enabled', 'notifications', 'Notify when a run ends'),
   e('forge.language', 'safety', 'Language', ['auto', 'en', 'es', 'zh-cn']),
   b('forge.keepAwake', 'safety', 'Keep the computer awake during a run'),
-  b('forge.notifications.sound', 'safety', 'Play a sound when a run ends'),
-  b('forge.notifications.osToast', 'safety', 'Show a desktop notification when a run ends'),
-  n('forge.notifications.minSeconds', 'safety', 'Only for runs longer than (seconds)', { min: 0 }),
+  b('forge.notifications.sound', 'notifications', 'Play a sound when a run ends'),
+  b('forge.notifications.osToast', 'notifications', 'Show a desktop notification when a run ends'),
+  n('forge.notifications.minSeconds', 'notifications', 'Only for runs longer than (seconds)', { min: 0 }),
   b('forge.audit.enabled', 'safety', 'Audit log'),
-  s('forge.router.cheapModel', 'safety', 'Cheaper model for exploring'),
+  c('forge.router.cheapModel', 'safety', 'Cheaper model for exploring', 'models'),
   s('forge.commitMessage.prompt', 'git', 'Commit message instructions'),
   s('forge.commitMessage.language', 'git', 'Commit message language'),
   s('forge.enhancePrompt.instruction', 'advanced', 'Enhance prompt instructions'),
@@ -95,12 +114,12 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.autoLint.enabled', 'git', 'Check files after writing'),
   s('forge.agentManager.setupScript', 'git', 'Command to run in each new Agent Manager worktree'),
   b('forge.architect.enabled', 'git', 'Plan with one model, edit with another'),
-  s('forge.architect.editorModel', 'git', 'Editor model'),
+  c('forge.architect.editorModel', 'git', 'Editor model', 'models'),
   e('forge.verify.auto', 'git', 'Run project checks after edits', ['ask', 'on', 'off']),
   b('forge.verify.lsp', 'git', 'Include editor problems in checks'),
 
   // Advanced
-  s('forge.completionModel', 'advanced', 'Inline completion model'),
+  c('forge.completionModel', 'advanced', 'Inline completion model', 'modelIds'),
   n('forge.completionDebounceMs', 'advanced', 'Completion delay (ms)', { min: 0, max: 3000 }),
   n('forge.completionMaxTokens', 'advanced', 'Completion length (tokens)', { min: 32, max: 2048 }),
   b('forge.completionTelemetry', 'advanced', 'Count completion accepts'),
@@ -112,13 +131,14 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.chat.showSpeed', 'advanced', 'Show reply speed'),
   b('forge.chatViewEnabled', 'advanced', 'Show Forge in the sidebar'),
   b('forge.voice.enabled', 'advanced', 'Voice input'),
-  s('forge.voice.language', 'advanced', 'Voice language'),
+  c('forge.voice.language', 'advanced', 'Voice language', 'voiceLanguages'),
   b('forge.voice.autoSubmit', 'advanced', 'Send voice input automatically'),
   b('forge.voice.continuous', 'advanced', 'Keep listening'),
   b('forge.voice.interimResults', 'advanced', 'Show words as you speak'),
-  s('forge.providers.awsRegion', 'advanced', 'AWS region (Bedrock)'),
+  c('forge.providers.awsRegion', 'advanced', 'AWS region (Bedrock)', 'awsRegions'),
   s('forge.providers.vertexProject', 'advanced', 'Vertex project'),
-  s('forge.providers.vertexLocation', 'advanced', 'Vertex location'),
+  c('forge.providers.vertexLocation', 'advanced', 'Vertex location', 'vertexLocations'),
+  s('forge.providers.googleCredentialsFile', 'advanced', 'Google credentials file (Vertex)'),
   s('forge.providers.azureResourceName', 'advanced', 'Azure resource name'),
   s('forge.providers.azureBaseUrl', 'advanced', 'Azure base URL'),
   s('forge.providers.openaiCompatibleBaseUrl', 'advanced', 'OpenAI-compatible base URL'),
@@ -133,18 +153,16 @@ export const EXCLUDED_KEYS: readonly string[] = [
   'forge.apiKeys.openai', // legacy: keys live in secret storage (API keys section)
   'forge.apiKeys.anthropic',
   'forge.apiKeys.google',
-  'forge.docs', // a name → URL map
-  'forge.autoLint.commands', // an extension → command map
-  'forge.autoFormat.commands', // an extension → command map
-  'forge.agentManager.copyFiles', // a list of file patterns
-  'forge.commandSandbox.allowedHosts', // a list of host names
-  'forge.verify.commands', // a list of commands
-  'forge.caCertificates', // a list of file paths (or caCertificates in ~/.forge/config.json)
 ];
 
 export type Coerced = { ok: true; value: unknown } | { ok: false; message: string };
 
 /** Check a value from the page against the row's rules; the host saves only what passes. */
+/** More than this in a list is a paste gone wrong, not a setting. */
+const MAX_LIST = 200;
+/** Names that, written into a plain object, change what every object inherits. */
+const UNSAFE_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function coerceRow(row: SettingRow, raw: unknown): Coerced {
   switch (row.kind) {
     case 'boolean':
@@ -153,6 +171,26 @@ export function coerceRow(row: SettingRow, raw: unknown): Coerced {
       return typeof raw === 'string' && row.enum?.includes(raw) ? { ok: true, value: raw } : { ok: false, message: `Choose one of: ${row.enum?.join(', ')}.` };
     case 'string':
       return typeof raw === 'string' ? { ok: true, value: raw.trim() } : { ok: false, message: 'Enter text.' };
+    case 'list': {
+      if (!Array.isArray(raw) || raw.some((x) => typeof x !== 'string')) return { ok: false, message: 'Enter a list of text.' };
+      if (raw.length > MAX_LIST) return { ok: false, message: `Keep it to ${MAX_LIST} items or fewer.` };
+      const items = (raw as string[]).map((x) => x.trim()).filter((x, i, all) => x !== '' && all.indexOf(x) === i);
+      return { ok: true, value: items };
+    }
+    case 'map': {
+      if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, message: 'Enter a name and a value for each row.' };
+      const entries = Object.entries(raw as Record<string, unknown>);
+      if (entries.length > MAX_LIST) return { ok: false, message: `Keep it to ${MAX_LIST} rows or fewer.` };
+      const out: Record<string, string> = {};
+      for (const [name, value] of entries) {
+        if (typeof value !== 'string') return { ok: false, message: 'Every value must be text.' };
+        const key = name.trim();
+        if (key === '') continue;
+        if (UNSAFE_NAMES.has(key)) return { ok: false, message: `"${key}" cannot be used as a name.` };
+        out[key] = value;
+      }
+      return { ok: true, value: out };
+    }
     case 'number': {
       if (typeof raw !== 'number' || !Number.isFinite(raw)) return { ok: false, message: 'Enter a number.' };
       if (row.integer && !Number.isInteger(raw)) return { ok: false, message: 'Enter a whole number.' };
@@ -170,6 +208,11 @@ export function rowId(key: string): string {
 
 /** A shorter help line for a row whose package.json description is longer than two sentences (the native Settings editor keeps the long one). */
 export const SHORT_HELP: Record<string, string> = {
+  "forge.commandSandbox.allowedHosts": "Hosts Forge's own tools may still reach when the command sandbox has the network off, such as docs.example.com or *.example.com.",
+  "forge.agentManager.copyFiles": "Files copied into each new Agent Manager worktree, such as .env. A name matches at any depth; config/*.json is a path.",
+  "forge.autoLint.commands": "A linter for each file type, run on each file the agent writes with its path added. Use * for any other file.",
+  "forge.autoFormat.commands": "A formatter for each file type, run before the check; it must rewrite the file in place. Use * for any other file.",
+  "forge.docs": "Documentation the model can look up with @docs: a name and the address of the site. Its llms.txt is used when it has one.",
   "forge.agentManager.setupScript": "A command run in each new Agent Manager worktree before the agent starts, such as npm ci; if it fails, the session stops. Only your own settings are read.",
   "forge.context.budgetTokens": "Largest prompt Forge sends on each step; older turns are summarized past it. 0 uses only the model's own window.",
   "forge.memory.sessionDigest": "When a new chat starts, save a short summary of the last one into project memory. Off by default; turning it on is your consent.",
@@ -181,7 +224,7 @@ export const SHORT_HELP: Record<string, string> = {
   "forge.commitMessage.prompt": "Your own instructions for drafting commit messages (language, style, length). Replaces the built-in instruction; empty = conventional commits.",
   "forge.enhancePrompt.instruction": "Your own instructions for the Enhance prompt button, for example a numbered checklist. Replaces the built-in rewrite when set.",
   "forge.semantic.embedder": "Which embedder ranks code search results: env, hashing (offline), openai, ollama or custom. Custom uses the endpoint below.",
-  "forge.webSearch.provider": "Give the agent a web_search tool. 'auto' uses the first backend that has a key; queries go to that service.",
+  "forge.webSearch.provider": "Give the agent a web search tool. 'auto' uses the first backend that has a key; queries go to that service.",
   "forge.github.enabled": "Give the agent GitHub pull-request tools for this repository. Uses your VS Code GitHub sign-in or GITHUB_TOKEN; opening a PR always asks first.",
   "forge.autoCommit.enabled": "Commit what the agent changed after each completed run, with a message drafted from the diff. Forge commits are marked; off by default.",
   "forge.autoCommit.dirtyCommits": "With auto-commit on, commit your own uncommitted changes first, so the agent's commit holds only its own.",

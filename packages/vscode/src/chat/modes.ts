@@ -5,14 +5,12 @@
  * is unit-testable; `effectiveToolsFor` is injected for the same reason.
  *
  */
-import { DEFAULT_SYSTEM_PROMPT, resolveModelAlias, type ModelAliases, type ModelConfig, type SpecialistConfig, type ToolSandbox } from '@ikarmic/forge-core';
+import { DEFAULT_SYSTEM_PROMPT, NO_TOOLS_SENTINEL, resolveModelAlias, type ModelAliases, type ModelConfig, type SpecialistConfig, type ToolSandbox } from '@ikarmic/forge-core';
 import type { ModelMessage } from 'ai';
 
 import { humanize } from '../human-text.js';
 
 export const DEFAULT_MODE_ID = 'agent';
-
-const NO_TOOLS_SENTINEL = '__forge_no_tools__';
 
 /** Specialists that only make sense inside the orchestrator loop. */
 const EXCLUDED_IDS = new Set(['orchestrator']);

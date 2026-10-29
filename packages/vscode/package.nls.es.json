@@ -49,7 +49,7 @@
   "walkthrough.forge.getStarted.safety.description": "Los cambios esperan tu aprobación. Revísalos fragmento a fragmento y vuelve atrás con los puntos de control.",
   "walkthrough.forge.getStarted.safety.title": "Tú tienes el control",
   "walkthrough.forge.getStarted.title": "Empieza con Forge",
-  "config.forge.webSearch.provider.description": "Da al agente una herramienta web_search. \"auto\" usa el primer servicio con clave: TAVILY_API_KEY, BRAVE_API_KEY, o forge.webSearch.searxngUrl / SEARXNG_URL. Las búsquedas se envían a ese servicio.",
+  "config.forge.webSearch.provider.description": "Da al agente una herramienta de búsqueda web. \"auto\" usa el primer servicio con clave: TAVILY_API_KEY, BRAVE_API_KEY, o forge.webSearch.searxngUrl / SEARXNG_URL. Las búsquedas se envían a ese servicio.",
   "config.forge.webSearch.searxngUrl.description": "URL base de una instancia de SearXNG con salida JSON activada (por ejemplo http://localhost:8080), usada cuando forge.webSearch.provider es \"searxng\" o \"auto\".",
   "config.forge.docs.description": "Fuentes de documentación para las menciones @docs:<nombre>: nombre -> URL, p. ej. { \"vite\": \"https://vite.dev\" }. Se usa el /llms.txt del sitio cuando lo publica.",
   "command.forge.inlineEdit.title": "Forge: Editar con Forge",

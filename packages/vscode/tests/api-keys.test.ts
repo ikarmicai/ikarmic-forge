@@ -94,7 +94,7 @@ describe('new providers', () => {
 
 describe('applyProviderEnv', () => {
   const blank = {
-    awsRegion: '', vertexProject: '', vertexLocation: '', azureResourceName: '', azureBaseUrl: '',
+    awsRegion: '', vertexProject: '', vertexLocation: '', googleCredentialsFile: '', azureResourceName: '', azureBaseUrl: '',
     openaiCompatibleBaseUrl: '', lmstudioBaseUrl: '', ollamaBaseUrl: '',
   };
 

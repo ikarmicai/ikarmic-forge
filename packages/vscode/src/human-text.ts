@@ -21,9 +21,24 @@ export function humanize(id: string): string {
   return words.join(' ');
 }
 
+/** Tools whose name does not read well once its underscores are gone ("Bg start"). */
+const TOOL_LABELS: Record<string, string> = {
+  bg_start: 'Start background command',
+  bg_read: 'Read background output',
+  bg_stop: 'Stop background command',
+  todo_write: 'Update task list',
+  todo_read: 'Read task list',
+  memory_read: 'Read memory',
+  memory_write: 'Save memory',
+  memory_forget: 'Forget memory',
+  sub_agent: 'Helper agent',
+  sub_agent_wait: 'Wait for helper agent',
+  repo_clone: 'Clone repository',
+};
+
 /** The name of a tool as a person would say it. */
 export function toolLabel(name: string): string {
-  return humanize(name);
+  return TOOL_LABELS[name] ?? humanize(name);
 }
 
 // A Record over the reason type: a new way for a run to end is a compile error until it has words here.

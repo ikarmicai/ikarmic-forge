@@ -26,7 +26,7 @@ describe('M3: forced colours keep structure and selection', () => {
 
 describe('M4: long Settings pages have subheadings and a way back to the default', () => {
   it('groups rows by the setting family, keeps every row once, and puts one-off settings under Other last', () => {
-    for (const section of ['context', 'safety', 'tools', 'git', 'advanced'] as const) {
+    for (const section of ['context', 'safety', 'notifications', 'tools', 'git', 'advanced'] as const) {
       const rows = SETTING_ROWS.filter((r) => r.section === section);
       const groups = groupRows(rows);
       expect(groups.flatMap((g) => g.rows.map((r) => r.key)).sort(), section).toEqual(rows.map((r) => r.key).sort());
@@ -67,7 +67,7 @@ describe('M6: narrow Settings uses a section picker, not a clipped strip', () =>
     const sel = html.match(/<select class="ik-select" id="section-picker"[^>]*>([\s\S]*?)<\/select>/);
     expect(sel).not.toBeNull();
     expect(html).toMatch(/<select class="ik-select" id="section-picker" aria-label="Settings section"/);
-    for (const s of ['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'perm', 'context', 'safety', 'tools', 'git', 'advanced', 'display', 'backup']) {
+    for (const s of ['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'instructions', 'perm', 'context', 'safety', 'notifications', 'tools', 'git', 'advanced', 'display', 'backup']) {
       expect(sel![1], s).toContain(`value="${s}"`);
     }
     expect(html).toMatch(/#section-picker \{ display: none;/);

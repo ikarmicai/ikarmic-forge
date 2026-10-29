@@ -18,8 +18,8 @@ describe('mcp model', () => {
   });
 
   it('shows the exact command a catalog entry will run', () => {
-    const fs = BUILTIN_MCP_CATALOG.find((e) => e.name === 'filesystem')!;
-    expect(commandPreview(fs)).toBe('npx -y @modelcontextprotocol/server-filesystem ${workspaceFolder}');
+    const memory = BUILTIN_MCP_CATALOG.find((e) => e.name === 'memory')!;
+    expect(commandPreview(memory)).toBe('npx -y @modelcontextprotocol/server-memory');
     expect(commandPreview({ name: 'x', displayName: 'X', description: '', github: 'o/r' })).toBe('git clone o/r');
   });
 
@@ -27,7 +27,7 @@ describe('mcp model', () => {
     const items = catalogPickItems(BUILTIN_MCP_CATALOG, new Set(['memory']));
     expect(items.find((i) => i.entry.name === 'memory')).toMatchObject({ installed: true });
     expect(items.find((i) => i.entry.name === 'memory')!.label).toContain('$(check)');
-    expect(items.find((i) => i.entry.name === 'git')!.detail).toContain('runs: uvx mcp-server-git');
+    expect(items.find((i) => i.entry.name === 'context7')!.detail).toContain('runs: npx -y @upstash/context7-mcp');
   });
 });
 

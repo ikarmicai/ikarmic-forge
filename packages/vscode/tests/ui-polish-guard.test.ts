@@ -209,7 +209,8 @@ describe('Edges, depth and selection (RB-8, tokens in the design-system test)', 
 
   it('settings: rows have separators, the nav marks the current section, and cards are design-system cards', () => {
     const html = getSettingsHtml();
-    expect(html).toMatch(/\.setting \{[^}]*border-bottom: var\(--border-hairline\) solid var\(--line-subtle\)/);
+    // The separator is a line on the row's own edge, not a border, so it stops at the page gutter like the heading does.
+    expect(html).toMatch(/\.setting::after \{[^}]*bottom: 0; height: var\(--border-hairline\); background: var\(--line-subtle\)/);
     expect(html).toContain('class="ik-navitem" data-section="model"');
     expect(html).toContain("'ik-card card'");
   });

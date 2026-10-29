@@ -10,6 +10,7 @@ export const COMPONENTS_CSS = `
 body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); background: var(--bg-canvas); }
 .ik-root, .ik-root * { box-sizing: border-box; }
 .ik-root :focus-visible { outline: var(--border-strong) solid var(--focus-ring); outline-offset: 2px; }
+.ik-root [hidden] { display: none !important; }
 .ik-muted { color: var(--ink-muted); }
 .ik-mono { font: var(--text-data); font-variant-numeric: tabular-nums; }
 .ik-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -60,6 +61,17 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 .ik-root .ik-input:focus-visible, .ik-root .ik-textarea:focus-visible, .ik-root .ik-select:focus-visible { outline: none; border-color: var(--ion); box-shadow: 0 0 0 1px var(--ion), 0 0 0 4px var(--ion-tint); }
 .ik-input[aria-invalid="true"], .ik-textarea[aria-invalid="true"] { border-color: var(--danger); }
 .ik-input:disabled, .ik-textarea:disabled, .ik-select:disabled { color: var(--ink-disabled); background: var(--bg-overlay); cursor: not-allowed; }
+.ik-combo { position: relative; min-width: 0; }
+.ik-combo .ik-input { padding-right: calc(var(--control) + var(--space-xs)); }
+.ik-combo__toggle { position: absolute; top: 0; right: 0; width: var(--control); height: var(--control); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); cursor: pointer; }
+.ik-combo__toggle:hover { background: var(--bg-overlay); color: var(--ink-strong); }
+.ik-combo__list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + var(--space-2xs)); max-height: 280px; overflow-y: auto; padding: var(--space-2xs); background: var(--bg-overlay); border: var(--border-hairline) solid var(--line-control); border-radius: var(--radius-md); box-shadow: var(--elev-2); }
+.ik-combo__list--up { top: auto; bottom: calc(100% + var(--space-2xs)); }
+.ik-combo__group { padding: var(--space-xs) var(--space-xs) var(--space-2xs); color: var(--ink-muted); font: var(--text-caption); letter-spacing: 0.06em; text-transform: uppercase; }
+.ik-combo__option { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-xs); min-height: var(--control); padding: var(--space-2xs) var(--space-xs); border-radius: var(--radius-sm); color: var(--ink-body); cursor: pointer; }
+.ik-combo__option:hover, .ik-combo__option--active, .ik-combo__option[aria-selected="true"] { background: var(--ion-tint); color: var(--ion-text); }
+.ik-combo__id { font: var(--text-data); color: var(--ink-muted); overflow-wrap: anywhere; text-align: right; }
+.ik-combo__custom { border-top: var(--border-hairline) solid var(--line-subtle); margin-top: var(--space-2xs); }
 .ik-check { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: var(--control); cursor: pointer; }
 .ik-check input { accent-color: var(--ion); margin: 0; }
 
@@ -92,11 +104,11 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 .ik-code { margin: 0; padding: var(--space-xs) var(--space-sm); background: var(--code-bg); color: var(--code-ink); border-radius: var(--radius-xs); font: var(--text-code); overflow-wrap: anywhere; white-space: pre-wrap; }
 
 /* Note: a sentence the person must not miss. Icon, then words; the tint and edge repeat the role. */
-.ik-note { display: flex; align-items: flex-start; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); border-left: 3px solid var(--pulse); border-radius: var(--radius-xs); background: var(--pulse-tint); color: var(--ink-body); font: var(--text-caption); line-height: 1.5; }
+.ik-note { display: flex; align-items: flex-start; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); border: var(--border-hairline) solid color-mix(in srgb, var(--pulse) 45%, transparent); border-radius: var(--radius-sm); background: var(--pulse-tint); color: var(--ink-body); font: var(--text-caption); line-height: 1.5; }
 .ik-note .ik-icon { margin-top: 2px; }
-.ik-note--warning { border-left-color: var(--warning); background: var(--warning-tint); }
-.ik-note--danger { border-left-color: var(--danger); background: var(--danger-tint); }
-.ik-note--success { border-left-color: var(--success); background: var(--success-tint); }
+.ik-note--warning { border-color: color-mix(in srgb, var(--warning) 45%, transparent); background: var(--warning-tint); }
+.ik-note--danger { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-tint); }
+.ik-note--success { border-color: color-mix(in srgb, var(--success) 45%, transparent); background: var(--success-tint); }
 
 /* Progress: indeterminate while a version works. */
 .ik-bar { height: 3px; border-radius: var(--radius-pill); background: var(--ion-tint); overflow: hidden; }
@@ -125,7 +137,7 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 @media (prefers-reduced-motion: reduce) { .ik-bar > span { animation: none; } }
 
 @media (forced-colors: active) {
-  .ik-btn, .ik-badge, .ik-input, .ik-textarea, .ik-select, .ik-seg, .ik-chip, .ik-card, .ik-inset, .ik-note, .ik-menu, .ik-drawer, .ik-dialog, .ik-code { border: var(--border-hairline) solid ButtonText; }
+  .ik-btn, .ik-badge, .ik-input, .ik-textarea, .ik-select, .ik-seg, .ik-chip, .ik-card, .ik-inset, .ik-note, .ik-menu, .ik-combo__list, .ik-drawer, .ik-dialog, .ik-code { border: var(--border-hairline) solid ButtonText; }
   .ik-seg input:checked + span, .ik-chip:has(input:checked), .ik-inset--selected, .ik-card--selected, .ik-navitem[aria-current="true"], .ik-tabs [role="tab"][aria-selected="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .ik-root :focus-visible { outline-color: Highlight; }
 }

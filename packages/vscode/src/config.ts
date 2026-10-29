@@ -232,6 +232,7 @@ export function readConfig(): ExtensionConfig {
       awsRegion: cfg.get<string>('providers.awsRegion') ?? '',
       vertexProject: cfg.get<string>('providers.vertexProject') ?? '',
       vertexLocation: cfg.get<string>('providers.vertexLocation') ?? '',
+      googleCredentialsFile: cfg.get<string>('providers.googleCredentialsFile') ?? '',
       azureResourceName: cfg.get<string>('providers.azureResourceName') ?? '',
       azureBaseUrl: cfg.get<string>('providers.azureBaseUrl') ?? '',
       openaiCompatibleBaseUrl: cfg.get<string>('providers.openaiCompatibleBaseUrl') ?? '',

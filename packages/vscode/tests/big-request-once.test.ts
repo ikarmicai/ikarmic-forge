@@ -33,4 +33,17 @@ describe('the big-request question is asked once (RB-88)', () => {
     expect(calls.length).toBeGreaterThanOrEqual(2);
     for (const call of calls) expect(call).toMatch(/planDeclined|, true\)/);
   });
+
+  it('Retry and Edit run a message the person already answered for with the question still answered', () => {
+    const src = readFileSync(join(__dirname, '../src/chat/chat-view.ts'), 'utf8');
+    // The turn remembers the answer...
+    expect(src).toMatch(/private lastTurn: \{[^}]*planDeclined: boolean/);
+    expect(src).toMatch(/this\.lastTurn = \{[^}]*planDeclined \}/);
+    // ...and Retry hands it back.
+    const start = src.indexOf("case 'retry_last'");
+    const handler = src.slice(start, src.indexOf("case '", start + 10));
+    const calls = handler.match(/this\.runChat\([^;]*\);/g) ?? [];
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain('last.planDeclined');
+  });
 });

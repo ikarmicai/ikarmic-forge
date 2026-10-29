@@ -23,7 +23,7 @@ describe('Settings rows cover every forge.* setting (guard against drift)', () =
     expect(new Set(SETTING_ROWS.map((r) => r.key)).size).toBe(SETTING_ROWS.length);
     for (const r of SETTING_ROWS) {
       const p = properties[r.key]!;
-      const expectKind = p.enum ? 'enum' : p.type === 'integer' ? 'number' : p.type;
+      const expectKind = p.enum ? 'enum' : p.type === 'integer' ? 'number' : p.type === 'array' ? 'list' : p.type === 'object' ? 'map' : p.type;
       expect(r.kind, r.key).toBe(expectKind);
       if (p.enum) expect(r.enum, r.key).toEqual(p.enum);
       if (p.minimum !== undefined) expect(r.min, r.key).toBe(p.minimum);
@@ -34,7 +34,7 @@ describe('Settings rows cover every forge.* setting (guard against drift)', () =
 
   it('puts every row in a known section and gives it a label', () => {
     for (const r of SETTING_ROWS) {
-      expect(['context', 'safety', 'tools', 'git', 'advanced'], r.key).toContain(r.section);
+      expect(['context', 'safety', 'notifications', 'tools', 'git', 'advanced'], r.key).toContain(r.section);
       expect(r.label.length, r.key).toBeGreaterThan(0);
     }
   });
@@ -103,5 +103,35 @@ describe('loadRows / setRow messages', () => {
     expect(await handleSettingsMessage({ type: 'setRow', key: 'forge.maxCostUsd', value: -1 }, d)).toMatchObject({ type: 'rowError', key: 'forge.maxCostUsd' });
     expect(await handleSettingsMessage({ type: 'setRow', key: 'forge.apiKeys.openai', value: 'sk-x' }, d)).toMatchObject({ type: 'error' });
     expect(updates).toEqual([]);
+  });
+});
+
+describe('rows backed by a list of suggestions (the list never validates)', () => {
+  const expected: Record<string, string> = {
+    'forge.router.cheapModel': 'models',
+    'forge.architect.editorModel': 'models',
+    'forge.completionModel': 'modelIds',
+    'forge.providers.awsRegion': 'awsRegions',
+    'forge.providers.vertexLocation': 'vertexLocations',
+    'forge.voice.language': 'voiceLanguages',
+  };
+
+  it('names the list for exactly the six rows, and no other row has one', () => {
+    const withChoices = Object.fromEntries(SETTING_ROWS.filter((r) => r.choices).map((r) => [r.key, r.choices]));
+    expect(withChoices).toEqual(expected);
+  });
+
+  it('keeps every such row a free string in package.json, with no enum', () => {
+    for (const r of SETTING_ROWS.filter((x) => x.choices)) {
+      expect(r.kind, r.key).toBe('string');
+      expect(properties[r.key]!.type, r.key).toBe('string');
+      expect(properties[r.key]!.enum, r.key).toBeUndefined();
+    }
+  });
+
+  it('saves a typed value that is in no list unchanged (trimmed only)', () => {
+    expect(coerceRow(row('forge.providers.awsRegion'), '  eu-south-3 ')).toEqual({ ok: true, value: 'eu-south-3' });
+    expect(coerceRow(row('forge.router.cheapModel'), 'my-gateway:custom-model')).toEqual({ ok: true, value: 'my-gateway:custom-model' });
+    expect(coerceRow(row('forge.voice.language'), 'en-ZA')).toEqual({ ok: true, value: 'en-ZA' });
   });
 });

@@ -4,12 +4,17 @@ import {
   closeAll,
   connectAll,
   createMcpResourceTools,
+  UnresolvedPlaceholderError,
   defaultUserMcpPath,
+  expandSpec,
+  hideDuplicateTools,
+  loadForgeConfigFile,
   loadPluginMcpServers,
   loadMcpConfig,
   mcpInstructionsBlock,
   type ConnectedMcpServer,
   type McpConfigFile,
+  type McpServerSpec,
   type ToolDefinition,
 } from '@ikarmic/forge-core';
 
@@ -81,14 +86,22 @@ export async function loadMcpTools(
   let connected: ConnectedMcpServer[] = [];
   try {
     // Saved sign-in tokens are used; a server without them is skipped with a hint (never a browser pop-up mid-run).
-    connected = await connectAll(merged, { oauth: { interactive: false, openUrl: () => undefined } });
+    connected = await connectAll(expandServers(merged, process.cwd(), process.env), { oauth: { interactive: false, openUrl: () => undefined } });
   } catch (err) {
     process.stderr.write(`forge: MCP connect failed: ${(err as Error).message}\n`);
     return { tools: [], cleanup: async () => {}, servers: [] };
   }
 
   // Resource tools only when there is a server to ask; the servers' own instructions go to the system prompt.
-  const tools = [...connected.flatMap((s) => s.tools), ...(connected.length > 0 ? createMcpResourceTools(() => connected) : [])];
+  // Tools that repeat a Forge tool (read a file, run a command...) are not offered, as in the editor: Forge's own tool has the
+  // approval and path rules. A server named in `mcpShowDuplicates` of ~/.forge/config.json keeps them.
+  const shown = new Set((await loadForgeConfigFile().catch(() => undefined))?.config.mcpShowDuplicates ?? []);
+  const offered = hideDuplicateTools(connected, shown);
+  for (const [server, n] of Object.entries(offered.hidden)) {
+    process.stderr.write(`forge: MCP server "${server}": ${n} tool${n === 1 ? '' : 's'} hidden because Forge already has ${n === 1 ? 'one' : 'them'}. To keep ${n === 1 ? 'it' : 'them'}, add "${server}" to mcpShowDuplicates in ~/.forge/config.json.
+`);
+  }
+  const tools = [...offered.tools, ...(connected.length > 0 ? createMcpResourceTools(() => connected) : [])];
   const instructions = mcpInstructionsBlock(connected);
   const cleanup = async () => {
     await closeAll(connected);
@@ -100,6 +113,29 @@ export async function loadMcpTools(
     );
   }
   return { tools, cleanup, servers: connected, ...(instructions ? { instructions } : {}) };
+}
+
+/**
+ * Fill the placeholders of every server (`${VAR}`, `${VAR:-default}`, `${workspaceFolder}`) before it is started. A server
+ * with a placeholder that cannot be filled is left out and says why: it must never start with `${...}` as plain text, which
+ * is what a token written that way would have become. Every server here was named by the person (their own registry or
+ * a file they passed), so none is treated as a project server; stored secrets (`${input:...}`) live in the editor only.
+ */
+export function expandServers(config: McpConfigFile, cwd: string, env: NodeJS.ProcessEnv): McpConfigFile {
+  const mcpServers: Record<string, McpServerSpec> = {};
+  for (const [name, spec] of Object.entries(config.mcpServers)) {
+    try {
+      mcpServers[name] = expandSpec(spec, cwd, { server: name, scope: 'user', env, secrets: {} });
+    } catch (err) {
+      const why =
+        err instanceof UnresolvedPlaceholderError && err.kind === 'secret'
+          ? `it uses a secret stored in the editor ("${err.placeholder}"), which only the VS Code extension can fill. Write the value as a variable instead, for example $` + `{NAME}.`
+          : (err as Error).message;
+      process.stderr.write(`forge: MCP server "${name}" not started: ${why}
+`);
+    }
+  }
+  return { mcpServers };
 }
 
 /**

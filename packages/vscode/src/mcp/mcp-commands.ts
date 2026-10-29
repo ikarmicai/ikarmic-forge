@@ -17,6 +17,7 @@ import {
 } from '@ikarmic/forge-core';
 
 import { installEntry, removeServer, toggleServer, type McpActionDeps } from './mcp-actions.js';
+import { createMcpSecretStore, userServerSecretIds } from './mcp-secrets.js';
 import { catalogPickItems, commandPreview } from './mcp-model.js';
 import { t } from '../l10n.js';
 
@@ -28,7 +29,16 @@ export function registerMcp(context: vscode.ExtensionContext, manager: McpManage
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'Reloading MCP servers' }, () => manager.reload());
     vscode.window.setStatusBarMessage(t('Forge: MCP servers reloaded.'), 3000);
   };
-  const actionDeps: McpActionDeps = { setMcpServerDisabled, uninstallMcpServer, registerMcpServer, installMcpServer, reload };
+  const secretStore = createMcpSecretStore(context.secrets);
+  const actionDeps: McpActionDeps = {
+    setMcpServerDisabled,
+    uninstallMcpServer,
+    registerMcpServer,
+    installMcpServer,
+    reload,
+    // Removing a server from the Command Palette forgets its stored secrets too (RB-106).
+    secrets: { idsOf: userServerSecretIds, set: secretStore.set },
+  };
 
   context.subscriptions.push(
     vscode.commands.registerCommand('forge.mcp.reload', reload),

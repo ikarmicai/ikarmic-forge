@@ -300,7 +300,7 @@ describe('handleSettingsMessage: keys, MCP and skills', () => {
 
   it('mcpCatalog marks installed entries and shows the command each would run', async () => {
     const r = await handleSettingsMessage({ type: 'mcpCatalog' }, baseDeps({ mcp: mcpDeps() }));
-    expect(r).toEqual({ type: 'mcpCatalogListed', entries: [{ name: 'memory', displayName: 'Memory', description: 'Remember things', command: 'npx -y mem', installed: false }] });
+    expect(r).toEqual({ type: 'mcpCatalogListed', entries: [{ name: 'memory', displayName: 'Memory', description: 'Remember things', command: 'npx -y mem', installed: false, vertical: 'Other', remote: false, secrets: [] }] });
   });
 
   it('mcpInstall confirms with the exact command, then installs', async () => {
@@ -315,8 +315,9 @@ describe('handleSettingsMessage: keys, MCP and skills', () => {
       list: vi.fn().mockResolvedValue([{ name: 'release-notes', description: 'Writes notes', source: { kind: 'project', path: '/w/.forge/skills/release-notes.md' } }]),
       open: vi.fn(), catalog: vi.fn(), install: vi.fn(),
     };
-    expect(await handleSettingsMessage({ type: 'skillsList' }, baseDeps({ skills }))).toEqual({
-      type: 'skillsListed', skills: [{ name: 'release-notes', description: 'Writes notes', scope: 'project', path: '/w/.forge/skills/release-notes.md' }],
+    const loadForgeConfigFile = vi.fn().mockResolvedValue({ config: {}, warnings: [] });
+    expect(await handleSettingsMessage({ type: 'skillsList' }, baseDeps({ skills, loadForgeConfigFile }))).toEqual({
+      type: 'skillsListed', skills: [{ name: 'release-notes', description: 'Writes notes', scope: 'project', path: '/w/.forge/skills/release-notes.md', enabled: true }],
     });
   });
 

@@ -4,6 +4,25 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.5.0] - 2026-10-29
+
+### Added
+- **A catalog of 44 MCP servers** in Settings, with the key or token a server needs entered in a dialog and kept in your editor's secret storage. Add your own server from a command, a link or JSON.
+- **MCP prompts as slash commands,** and a server's tools refresh when it says they changed.
+- **Settings:** lists and name-to-value settings (sandbox hosts, project check commands, lint and format commands, documentation sources) are edited on the page; Notifications, Instructions and About pages; Reset all settings; a status for the code index and for the AWS, Google and Azure accounts; AWS access keys entered in Settings; a Reset, config and reload bar on every page; icons in the sidebar.
+- **Delete old chats now,** and when they were last deleted.
+- Two bundled skills, and any skill can be switched off.
+
+### Changed
+- A variable in an MCP server's settings is filled, or the server is not started. `--no-project-instructions` also turns off a folder's `AGENTS.md`.
+
+### Security
+- **A project can no longer set a command or a server address:** ten settings that name one are read only from your own settings.
+- **A workspace you have not trusted cannot feed Forge instructions:** its `AGENTS.md`, skills and steering notes are ignored, in child agents too, and the chat says so once.
+
+### Fixed
+- Hook agents keep your limits; the orchestrator's planning step has no tools; a failed chat run is written to the log; Retry does not ask the "Big request" question twice; removing an MCP server forgets its stored secrets; the MCP and Skills pages no longer scroll sideways in a narrow window.
+
 ## [5.4.1] - 2026-10-28
 
 ### Fixed

@@ -49,6 +49,8 @@ import {
   loadSession,
   BackgroundAgents,
   backgroundResultsBlock,
+  existingProjectInstructionFiles,
+  isProjectControlled,
   loadSkillsRegistryAsync,
   loadSpecialistsFromConfig,
   loadSteering,
@@ -115,6 +117,8 @@ import { createMentionResolvers, findMentionFiles } from './mention-resolvers.js
 import { mentionSuggestions, resolveMentions, stripContextBlocks } from './mentions.js';
 import { startAutoCommit, describeCommit } from './auto-commit.js';
 import { GoalController } from './goal-controller.js';
+import { restrictedIgnoredList } from '../restricted-notice.js';
+import { mcpSlashEntries, planMcpPrompt } from './mcp-prompt-plan.js';
 import { BUILTIN_SLASH, expandSkillCommand, parseSlash, type SlashEntry } from './slash-commands.js';
 import { agentDirs } from '../agent-dirs.js';
 import type { SwitchLink } from '../switch-link.js';
@@ -128,6 +132,7 @@ import { buildReviewPrompt, parseReviewScope, reviewDiffArgs, reviewScopeLabel }
 import { runSlash } from './slash-run.js';
 import { cmdEntriesMarkdown, cmdKey, insertPlan, mergeCmdEntries, type CmdEntry } from './cmd-entries.js';
 import { effortLabel, nextEffort } from './variant.js';
+import { runErrorLogLine } from './run-error-log.js';
 import { aliasProblem, autonomyFlags, buildRunExtras, chatRunLimits, permissionExtras, runnerShellOf, verifyNeedsAsking } from './run-extras.js';
 import { notifyChannels, notifyKind } from './notify.js';
 import { KeepAwake } from './keep-awake.js';
@@ -231,7 +236,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   /** The last plan the Plan agent wrote and the host saved, for "Implement this plan". */
   private lastPlanFile: string | undefined;
   /** The last chat message as typed (with its files), and the history before it: what Retry and Edit replace. */
-  private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined; transcriptBefore: ChatHistory } | undefined;
+  private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined; transcriptBefore: ChatHistory; planDeclined: boolean } | undefined;
   /** Files pasted, dropped or picked for the next message. */
   private readonly attachments = new PendingAttachments();
   /** The newest run that changed files; the only one "Revert this run" can undo. */
@@ -263,10 +268,33 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     private readonly mcp?: McpManager,
     private readonly models?: ModelLister,
     /** Output > Forge: why a `/cmd` gave up. */
-    private readonly log?: Pick<vscode.LogOutputChannel, 'info' | 'warn'>
+    private readonly log?: Pick<vscode.LogOutputChannel, 'info' | 'warn'>,
+    /** Fires when an MCP server's tools or prompts changed: the slash menu is shown again with the new prompts. */
+    onMcpChanged?: vscode.Event<void>
   ) {
     this.modeId = context.workspaceState.get<string>(MODE_STATE_KEY) ?? DEFAULT_MODE_ID;
     this.background.onChange(() => this.postBackground());
+    if (onMcpChanged) this.mcpChangedSubscription = onMcpChanged(() => void this.postSlashCommands().catch(() => undefined));
+  }
+
+  /** The slash menu was shown again after the MCP servers connected (once per chat view). */
+  private mcpOffered = false;
+
+  /** One chat view exists per tab and per Agent Manager session: each lets go of this when it is disposed. */
+  private mcpChangedSubscription: vscode.Disposable | undefined;
+
+  /** The sentence about what a workspace that is not trusted had left out was shown (once per chat view). */
+  private restrictedNoticePosted = false;
+
+  /** Say, once, what the repository supplied that Forge left out because the workspace is not trusted. Nothing when trusted. */
+  private async postRestrictedNotice(root: string): Promise<void> {
+    if (vscode.workspace.isTrusted || this.restrictedNoticePosted) return;
+    this.restrictedNoticePosted = true;
+    const instructionFiles = await existingProjectInstructionFiles(root).catch(() => [] as string[]);
+    const all = await loadSkillsRegistryAsync(root, [], { includeProject: true }).then((r) => r.list()).catch(() => []);
+    const owned = await Promise.all(all.map((s) => isProjectControlled(s, root)));
+    const list = restrictedIgnoredList({ instructionFiles, skills: owned.filter(Boolean).length });
+    if (list) this.post({ type: 'warning', message: t('This workspace is not trusted, so Forge ignored its {0}. Trust the workspace to use them.', list) });
   }
 
   /** Send the strip's content to the page; while something runs, keep the elapsed times moving. */
@@ -282,6 +310,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   dispose(): void {
+    this.mcpChangedSubscription?.dispose();
     if (chatFocus.last() === this) void vscode.commands.executeCommand('setContext', 'forge.chatFocused', false);
     chatFocus.forget(this);
     this.follower?.stop();
@@ -660,13 +689,17 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const custom = await loadCustomCommands(this.workspaceRoot()).catch(() => new Map());
     const taken = new Set([...BUILTIN_SLASH.map((e) => e.name), ...custom.keys()]);
     const skills = (await this.skillsFor().catch(() => undefined))?.list() ?? [];
+    // A skill whose name is a built-in or a command of yours is still reachable by the model; the slash name is taken.
+    const skillEntries = skills
+      .filter((s) => /^[A-Za-z][\w-]*$/.test(s.name) && !taken.has(s.name.toLowerCase()))
+      .map((s): SlashEntry => ({ name: s.name.toLowerCase(), description: s.description, source: 'skill', takesArgs: true }));
+    // An MCP server's prompts: never shadowing a built-in, a command of yours or a skill.
+    const mcpEntries = mcpSlashEntries(this.mcp?.prompts() ?? [], new Set([...taken, ...skillEntries.map((e) => e.name)]), (server) => t('From {0}', server));
     return [
       ...BUILTIN_SLASH,
       ...[...custom.values()].map((c): SlashEntry => ({ name: c.name, description: c.description ?? t('Your command'), source: 'custom', takesArgs: true })),
-      // A skill whose name is a built-in or a command of yours is still reachable by the model; the slash name is taken.
-      ...skills
-        .filter((s) => /^[A-Za-z][\w-]*$/.test(s.name) && !taken.has(s.name.toLowerCase()))
-        .map((s): SlashEntry => ({ name: s.name.toLowerCase(), description: s.description, source: 'skill', takesArgs: true })),
+      ...skillEntries,
+      ...mcpEntries,
     ];
   }
 
@@ -716,7 +749,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   /** Skills visible from the workspace, with the folders of the `skillPaths` setting. */
   private async skillsFor() {
     const { config } = await loadMergedForgeConfig(this.workspaceRoot(), { trusted: vscode.workspace.isTrusted });
-    return loadSkillsRegistryAsync(this.workspaceRoot(), config.skillPaths ?? [], { onWarning: (w) => this.warnRemoteSkillOnce(w) });
+    // In a workspace that is not trusted the repository's own skills are left out (RB-112).
+    return loadSkillsRegistryAsync(this.workspaceRoot(), config.skillPaths ?? [], { includeProject: vscode.workspace.isTrusted, disabledSkills: config.disabledSkills ?? [], onWarning: (w) => this.warnRemoteSkillOnce(w) });
   }
 
   private async postSlashCommands(): Promise<void> {
@@ -1247,6 +1281,13 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         this.postAttachments();
         const mention = expandAgentMention(msg.text, this.agentDefs.map((a) => a.name));
         const plan: CommandRunPlan = mention ? { text: mention } : await this.planMessage(msg.text);
+        if (plan.blocked) {
+          // An MCP prompt that cannot be given: say why, run nothing, and give the files back.
+          this.attachments.restore(attachments);
+          this.postAttachments();
+          this.post({ type: 'warning', message: plan.blocked });
+          return;
+        }
         const typed = plan.text;
         const text = typed.trim() || (attachments.length > 0 ? t('Take a look at the attached files.') : typed);
         if (this.shouldSuggestSpec(msg.text, text)) {
@@ -1265,6 +1306,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           return;
         }
         const edited = msg.text?.trim() ? await this.planMessage(msg.text) : undefined;
+        if (edited?.blocked) {
+          this.post({ type: 'warning', message: edited.blocked });
+          return;
+        }
         const text = edited ? edited.text : last.text;
         // Drop the last turn: the conversation goes back to before it, on screen too.
         this.session.rewindTo(last.historyBefore, last.transcriptBefore);
@@ -1275,7 +1320,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         this.post({ type: 'user_message', text: msg.text?.trim() || last.text, retry: true });
         this.post({ type: 'notice', message: t('Retrying. Files the earlier attempt changed stay changed; use Revert this run or a checkpoint to undo them.') });
         // The files that went with the message go again.
-        await this.withOverrides(edited, () => this.runChat(text, approvalLevelOf(msg.level, msg.auto), last.attachments, edited?.modeId, last.historyBefore));
+        await this.withOverrides(edited, () => this.runChat(text, approvalLevelOf(msg.level, msg.auto), last.attachments, edited?.modeId, last.historyBefore, last.planDeclined));
         return;
       }
       case 'revert_run':
@@ -1344,6 +1389,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       case 'slash_list':
         await this.postSlashCommands();
+        // MCP servers are connected the first time the menu is opened (not when the chat opens: that would start every
+        // configured server for everyone); then the menu is shown again with the prompts they offer.
+        if (this.mcp && !this.mcpOffered && readConfig().mcp.enabled) {
+          this.mcpOffered = true;
+          void this.mcp.ensureConnected().then(() => this.postSlashCommands()).catch(() => undefined);
+        }
         return;
       case 'slash_run':
         // A /cmd request is a prompt the person may want back with the arrow keys.
@@ -1604,7 +1655,11 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     if (BUILTIN_SLASH.some((e) => e.name === name)) return { text };
     const skill = (await this.skillsFor().catch(() => undefined))?.list().find((s) => s.name.toLowerCase() === name);
-    return { text: skill ? expandSkillCommand(skill, m[2] ?? '') : text };
+    if (skill) return { text: expandSkillCommand(skill, m[2] ?? '') };
+    // An MCP server's prompt (a skill of the same name wins, as in the menu). A prompt that cannot be given is not run.
+    const mcp = this.mcp ? await planMcpPrompt(name, m[2] ?? '', this.mcp.prompts(), (server, prompt, args) => this.mcp!.getPromptText(server, prompt, args)) : undefined;
+    if (mcp) return 'problem' in mcp ? { text: '', blocked: t('Prompt /{0}: {1}', name, mcp.problem) } : { text: mcp.text };
+    return { text };
   }
 
   /** Run `work` with this effort for its duration only (a command's `variant`), then put the chat's own setting back. */
@@ -1634,7 +1689,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
 
   /** A chat message: resolve its @mentions, then run it with its attachments; remembered for Retry and Edit. */
   private async runChat(text: string, level: ApprovalLevel, attachments: Attachment[], modeId?: string, historyBefore = this.session.history, planDeclined = false): Promise<void> {
-    this.lastTurn = { text, attachments, historyBefore, transcriptBefore: this.session.transcript };
+    this.lastTurn = { text, attachments, historyBefore, transcriptBefore: this.session.transcript, planDeclined };
     this.lastLevel = level;
     // @mentions: attach the referenced files / diagnostics / git diff as context for this turn.
     const resolved = await resolveMentions(text, createMentionResolvers(this.workspaceRoot(), () => this.terminalLog, readConfig().docs, (ref) => this.readChatMention(ref)));
@@ -1879,10 +1934,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         }
       }
     }
-    const skillsRegistry = generating ? undefined : await loadSkillsRegistryAsync(workspaceRoot, sharedConfig.skillPaths ?? [], { onWarning: (w) => this.warnRemoteSkillOnce(w) }).catch(() => undefined);
+    // Said once per chat view: in a workspace that is not trusted, what the repository supplies is left out (RB-112).
+    if (!generating) void this.postRestrictedNotice(workspaceRoot);
+    const skillsRegistry = generating ? undefined : await loadSkillsRegistryAsync(workspaceRoot, sharedConfig.skillPaths ?? [], { includeProject: vscode.workspace.isTrusted, disabledSkills: sharedConfig.disabledSkills ?? [], onWarning: (w) => this.warnRemoteSkillOnce(w) }).catch(() => undefined);
     const agentConfig: AgentConfig = {
       model: runModel,
       cwd: workspaceRoot,
+      // AGENTS.md, CLAUDE.md, CONVENTIONS.md and a folder's AGENTS.md are the repository's instructions to the model: not in
+      // a workspace the person has not trusted (RB-112).
+      disableProjectInstructions: !vscode.workspace.isTrusted,
       // Audit entries name the chat, and OpenAI routes its calls to one cache by it (RB-61).
       sessionId: session.id,
       ...autonomyFlags(auto),
@@ -1931,8 +1991,13 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             askUser: (q: { question: string; options?: string[]; allowCustom?: boolean }, signal?: AbortSignal) =>
               new Promise<string>((resolve) => {
                 const id = `q${++this.questionSeq}`;
-                this.pendingQuestions.set(id, resolve);
-                signal?.addEventListener('abort', () => this.closeQuestion(id, ''), { once: true });
+                // Named and removed on any answer: the run's signal outlives every question (RB-36).
+                const onAbort = (): void => this.closeQuestion(id, '');
+                this.pendingQuestions.set(id, (answer) => {
+                  signal?.removeEventListener('abort', onAbort);
+                  resolve(answer);
+                });
+                signal?.addEventListener('abort', onAbort, { once: true });
                 this.post({ type: 'question_request', id, question: q.question, options: q.options ?? [], allowCustom: q.allowCustom !== false });
               }),
           }
@@ -2129,6 +2194,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             });
             return;
           case 'error':
+            this.log?.warn(runErrorLogLine(event.error));
             this.post(errorPost(event.error));
             return;
           case 'done':
@@ -2216,6 +2282,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         if (commit) this.post({ type: 'notice', message: t('Committed {0}', describeCommit(commit)) });
       }
     } catch (err) {
+      this.log?.warn(runErrorLogLine((err as Error).message));
       this.post(errorPost((err as Error).message));
     } finally {
       releaseAwake?.();
