@@ -3,7 +3,7 @@
  * identifier that reaches a page goes through one of these. Pure, so both pages can bundle it.
  */
 
-import type { AgentRunReason } from '@ikarmic/forge-core';
+import type { AgentRunReason, SteeringSkip } from '@ikarmic/forge-core';
 
 const ACRONYMS: Record<string, string> = { mcp: 'MCP', api: 'API', url: 'URL', lsp: 'LSP', ai: 'AI', pr: 'PR', os: 'OS', devops: 'DevOps' };
 
@@ -58,6 +58,17 @@ const RUN_REASONS: Record<AgentRunReason, string> = {
 /** Why a run ended, for the line under a reply. */
 export function runReasonLabel(reason: string): string {
   return (RUN_REASONS as Record<string, string | undefined>)[reason] ?? humanize(reason);
+}
+
+// A Record over the reason type: a new reason to skip a steering document is a compile error until it has words here.
+const STEERING_SKIPS: Record<SteeringSkip['reason'], string> = {
+  budget: 'too large',
+  cap: 'document limit reached',
+};
+
+/** Why a steering document was left out, for the status line (RB-145). */
+export function steeringSkipLabel(reason: string): string {
+  return (STEERING_SKIPS as Record<string, string | undefined>)[reason] ?? humanize(reason);
 }
 
 const ENUM_LABELS: Record<string, Record<string, string>> = {

@@ -3209,7 +3209,7 @@ export function chatHtml(
         lastUserText = msg.retry ? msg.text : null;
         break;
       case 'steering_applied': {
-        const skipped = (msg.skipped || []).map((s) => s.name + ' (' + s.reason + ')').join(', ');
+        const skipped = (msg.skipped || []).map((s) => s.name + ' (' + (UI && UI.steeringSkipLabel ? UI.steeringSkipLabel(s.reason) : s.reason) + ')').join(', ');
         const where = msg.path ? ' (' + msg.path + ')' : '';
         appendStatusLine('Steering' + where + ': ' + (msg.applied.length ? msg.applied.join(', ') : 'none applied') + (skipped ? ' · skipped: ' + skipped : ''));
         break;

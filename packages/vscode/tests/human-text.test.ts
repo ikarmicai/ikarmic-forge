@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { approvalCopy, summarizeTool } from '../src/chat/tool-summary.js';
 import * as chatLib from '../src/chat/webview-lib.js';
-import { enumLabel, humanize, runReasonLabel, toolLabel } from '../src/human-text.js';
+import { enumLabel, humanize, runReasonLabel, steeringSkipLabel, toolLabel } from '../src/human-text.js';
 import * as settingsLib from '../src/settings/settings-lib.js';
 
 const IDENTIFIER = /[_]|[a-z][A-Z]|[a-z]-[a-z]/;
@@ -42,6 +42,11 @@ describe('labels carry no identifier', () => {
 
   it('a reason the table does not know is still made readable', () => {
     expect(runReasonLabel('some_new_reason')).toBe('Some new reason');
+  });
+
+  it('every reason a steering document is skipped (RB-145)', () => {
+    for (const r of ['budget', 'cap']) expect(steeringSkipLabel(r), r).not.toMatch(IDENTIFIER);
+    expect(steeringSkipLabel('budget')).toBe('too large');
   });
 
   it('every value of every enum setting that is written as an identifier', () => {
@@ -78,6 +83,7 @@ describe('the chat names an unknown tool in words', () => {
 describe('the pages can call the labels (RB-3)', () => {
   it('chat page', () => {
     expect(chatLib.runReasonLabel).toBe(runReasonLabel);
+    expect(chatLib.steeringSkipLabel).toBe(steeringSkipLabel);
   });
 
   it('settings page', () => {
@@ -93,6 +99,11 @@ describe('the pages use the labels', () => {
   it('the usage line shows a label, not the reason code', () => {
     expect(chat).toContain('UI.runReasonLabel(reason)');
     expect(chat).not.toContain("escapeHtml(reason)");
+  });
+
+  it('the steering status line shows why a document was skipped in words (RB-145)', () => {
+    expect(chat).toContain('UI.steeringSkipLabel(s.reason)');
+    expect(chat).not.toContain("' (' + s.reason + ')'");
   });
 
   it('Settings shows tool names and setting values as labels', () => {
@@ -120,6 +131,7 @@ describe('the webview twin equals the one in core (the terminal app uses core\'s
       expect(runReasonLabel(n), n).toBe(core.runReasonLabel(n));
     }
     for (const r of AGENT_RUN_REASONS) expect(runReasonLabel(r), r).toBe(core.runReasonLabel(r));
+    for (const r of ['budget', 'cap', 'some_new_reason']) expect(steeringSkipLabel(r), r).toBe(core.steeringSkipLabel(r));
   });
 });
 

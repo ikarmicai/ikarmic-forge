@@ -105,6 +105,11 @@ export function listModes(specialists: readonly SpecialistConfig[]): ModeOption[
   return out;
 }
 
+/** The name of a mode as the picker shows it; a message about a mode never shows its id (RB-145). */
+export function modeLabel(modeId: string, specialists: readonly SpecialistConfig[]): string {
+  return listModes(specialists).find((m) => m.id === modeId)?.label ?? humanize(modeId);
+}
+
 /**
  * Ids of the custom (non built-in) registrations in a `listSpecialists()`
  * snapshot, which lists built-ins first, then customs. Includes customs that

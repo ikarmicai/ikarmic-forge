@@ -6,6 +6,7 @@
 export type SessionStatus = 'starting' | 'running' | 'done' | 'stopped' | 'failed' | 'merged' | 'discarded';
 import type { PullRequestSummary } from '@ikarmic/forge-core';
 
+import { runReasonLabel } from '../human-text.js';
 import { prLine } from './manager-pr.js';
 
 export type SessionAction = 'open' | 'terminal' | 'pr' | 'open-pr' | 'stop' | 'merge' | 'discard' | 'remove';
@@ -90,12 +91,14 @@ export function newSessions(
 /** The session after its run ended, from the run's end reason. */
 export function finishSession(s: AgentSession, outcome: { reason: string; changedFiles?: string[]; error?: string }, now: number): AgentSession {
   const status: SessionStatus = outcome.reason === 'completed' ? 'done' : outcome.reason === 'error' ? 'failed' : 'stopped';
+  // A run the person did not stop (a step, time or cost limit, a loop) says why on its card, in words; "Stopped" alone reads as the person's own Stop (RB-145).
+  const error = outcome.error ?? (status === 'stopped' && outcome.reason !== 'aborted' ? runReasonLabel(outcome.reason) : undefined);
   return {
     ...s,
     status,
     endedAt: now,
     ...(outcome.changedFiles ? { changedFiles: outcome.changedFiles } : {}),
-    ...(outcome.error ? { error: outcome.error } : {}),
+    ...(error ? { error } : {}),
   };
 }
 

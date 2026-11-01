@@ -157,6 +157,7 @@ import {
   customSpecialistIds,
   listModes,
   modeCanWrite,
+  modeLabel,
   modeModelProblem,
   modeOverrides,
   readOnlySandbox,
@@ -1968,7 +1969,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const overrides: ModeOverrides = generating ? {} : modeOverrides(runModeId, modeCtx);
     const modeProblem = generating ? undefined : modeModelProblem(runModeId, modeCtx);
     if (modeProblem) {
-      this.post({ type: 'warning', message: t('The model set for the {0} mode (modeModels) cannot be used, so Forge uses the main model: {1}', runModeId, modeProblem) });
+      this.post({ type: 'warning', message: t('The model set for the {0} mode (modeModels) cannot be used, so Forge uses the main model: {1}', modeLabel(runModeId, modeCtx.specialists), modeProblem) });
     }
     const runSandbox = generating ? readOnlySandbox(toolSandbox, SPEC_READONLY_TOOLS) : overrides.toolSandbox;
     const runModel = overrides.model ?? model;

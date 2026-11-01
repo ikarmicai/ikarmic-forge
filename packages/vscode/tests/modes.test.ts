@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ModelConfig, SpecialistConfig } from '@ikarmic/forge-core';
 
-import { DEFAULT_MODE_ID, customSpecialistIds, listModes, modeModelProblem, modeOverrides, modeCanWrite, readOnlySandbox, resolveModeId, retargetSystemPrompt } from '../src/chat/modes.js';
+import { DEFAULT_MODE_ID, customSpecialistIds, listModes, modeLabel, modeModelProblem, modeOverrides, modeCanWrite, readOnlySandbox, resolveModeId, retargetSystemPrompt } from '../src/chat/modes.js';
 import { BUILTIN_SPECIALISTS, DEFAULT_SYSTEM_PROMPT, effectiveToolsFor } from '@ikarmic/forge-core';
 
 const ask: SpecialistConfig = {
@@ -189,6 +189,13 @@ describe('modeOverrides with modeModels', () => {
     expect(modeModelProblem('ask', ctx({ modeModels: { ask: '  ' } }))).toBeUndefined();
     expect(modeModelProblem('ask', ctx({}))).toBeUndefined();
     expect(modeModelProblem('ask', ctx({ modeModels: { code: 'a' }, aliases: loop }))).toBeUndefined();
+  });
+
+  it('modeLabel gives the picker name of a mode, never its id, for the modeModels warning (RB-145)', () => {
+    expect(modeLabel(DEFAULT_MODE_ID, [ask])).toBe('Agent');
+    expect(modeLabel('ask', [ask])).toBe('Ask');
+    expect(modeLabel('docs-writer', [{ ...ask, id: 'docs-writer' }])).toBe('Docs writer');
+    expect(modeLabel('some-unknown_mode', [])).toBe('Some unknown mode');
   });
 
   it('ignores entries for modes that are not selected, and for Agent mode', () => {

@@ -47,7 +47,9 @@ export function prLine(pr: PullRequestSummary): string {
   if (pr.checks === 'passing') parts.push('checks passing');
   else if (pr.checks === 'failing') parts.push('checks failing');
   else if (pr.checks === 'pending') parts.push('checks running');
-  if (pr.review !== 'none') parts.push(pr.review);
+  else if (pr.checks === 'unknown') parts.push('checks not known');
+  if (pr.review === 'unknown') parts.push('reviews not known');
+  else if (pr.review !== 'none') parts.push(pr.review);
   return parts.join(' · ');
 }
 

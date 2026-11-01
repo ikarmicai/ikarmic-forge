@@ -59,6 +59,8 @@ describe('prLine', () => {
     expect(prLine({ number: 3, url: 'u', state: 'open', draft: true, checks: 'failing', review: 'changes requested' })).toBe('Pull request #3 · draft · checks failing · changes requested');
     expect(prLine({ number: 4, url: 'u', state: 'merged', draft: false, checks: 'pending', review: 'none' })).toBe('Pull request #4 · merged · checks running');
     expect(prLine({ number: 5, url: 'u', state: 'closed', draft: false, checks: 'none', review: 'none' })).toBe('Pull request #5 · closed');
+    // A failed GitHub request is said, not shown as "no checks" (RB-144).
+    expect(prLine({ number: 6, url: 'u', state: 'open', draft: false, checks: 'unknown', review: 'unknown' })).toBe('Pull request #6 · open · checks not known · reviews not known');
   });
   it('uses no identifier', () => {
     expect(prLine({ number: 1, url: 'u', state: 'open', draft: false, checks: 'pending', review: 'changes requested' })).not.toMatch(/\b[a-z]+_[a-z_]+\b|\b[a-z]+[A-Z][A-Za-z]+\b/);

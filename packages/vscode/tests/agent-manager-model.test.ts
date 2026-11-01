@@ -30,6 +30,14 @@ describe('finishSession', () => {
     expect(finishSession(base, { reason: 'error', error: 'boom' }, NOW)).toMatchObject({ status: 'failed', error: 'boom' });
     expect(finishSession(base, { reason: 'max_iterations' }, NOW).status).toBe('stopped');
   });
+
+  it('a run that ended at a limit says which, in words; one the person stopped says nothing more (RB-145)', () => {
+    expect(finishSession(base, { reason: 'max_iterations' }, NOW)).toMatchObject({ status: 'stopped', error: 'Step limit reached' });
+    expect(finishSession(base, { reason: 'budget_exceeded' }, NOW).error).toBe('Cost limit reached');
+    expect(finishSession(base, { reason: 'loop_detected' }, NOW).error).not.toMatch(/_/);
+    expect(finishSession(base, { reason: 'aborted' }, NOW).error).toBeUndefined();
+    expect(finishSession(base, { reason: 'completed' }, NOW).error).toBeUndefined();
+  });
 });
 
 describe('managerRows', () => {
