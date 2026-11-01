@@ -26,3 +26,35 @@ site/
 # Local Claude Code and Kilo state (settings, worktrees)
 /.claude/
 /.kilo/
+packages/bot/release/
+packages/bot/.pack-stage/
+
+# pnpm content store (a local cache, never source)
+.pnpm-store/
+
+# Scratch files and folders made by tools
+_tmp_*
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# Packaged and archived output
+*.tgz
+*.zip
+
+# Secrets and local env (keep .env.example)
+.env.*
+!.env.example
+
+# Test and tool output
+test-results/
+playwright-report/
+.nyc_output/
+graphify-out/
+.understand-anything/
+
+# OS and editor noise
+Thumbs.db
+desktop.ini
+*.swp

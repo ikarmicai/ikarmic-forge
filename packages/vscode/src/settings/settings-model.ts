@@ -72,7 +72,7 @@ export type SaveMessage =
   | { type: 'saveAgents'; agents: Record<string, unknown>[] };
 
 /** Mirrors READ_ONLY_TOOLS in core (this file is bundled into the page, so it cannot import core; a test keeps them equal). */
-export const DEFAULT_AUTO_APPROVE: readonly string[] = ['read_file', 'list_files', 'search_files', 'find_symbol', 'list_symbols', 'find_references', 'git_diff', 'codebase_search', 'memory_read', 'sub_agent_wait', 'skill', 'suggest_plan'];
+export const DEFAULT_AUTO_APPROVE: readonly string[] = ['read_file', 'list_files', 'search_files', 'find_symbol', 'list_symbols', 'find_references', 'git_diff', 'codebase_search', 'memory_read', 'sub_agent_wait', 'skill', 'suggest_plan', 'suggest_agent'];
 
 export function sortedTools(list: readonly string[]): string[] {
   return [...new Set(list)].sort();
@@ -255,20 +255,19 @@ export function markSaved(saved: SettingsDraft, draft: SettingsDraft, keys: read
 export interface IndexEntry { section: string; sectionLabel: string; rowId: string; label: string; description: string; keywords?: string }
 
 const RAW_INDEX: readonly IndexEntry[] = [
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-provider', label: 'Provider', description: 'The provider Forge uses for chat, specs and agents' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-model', label: 'Model', description: 'Model for the selected provider' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-effort', label: 'Reasoning effort', description: 'Only used by models that support reasoning' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-hidden', label: 'Providers', description: 'Turn a provider off to skip it in auto-detect and leave it out of the model pickers' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-mode-models', label: 'Model per mode', description: 'Give Ask, Debug, Plan and other built-in modes their own model; blank uses the main model' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-compaction-model', label: 'Compaction model', description: 'The model that summarises long chats; blank uses the main model' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-subagent-model', label: 'Sub-agent model', description: 'The model helper agents use; blank uses the chat model' },
-  { section: 'providers', sectionLabel: 'Providers', rowId: 'row-providers', label: 'Custom providers', description: 'Add an OpenAI-compatible service or start from a preset such as Groq or DeepSeek' },
-  { section: 'model', sectionLabel: 'Model', rowId: 'row-retention', label: 'Delete old chats', description: 'Delete saved chats not used for this many days when Forge starts' },
-  { section: 'keys', sectionLabel: 'API keys', rowId: 'row-keys', label: 'API keys', description: 'Stored in VS Code secret storage, never in settings files' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-provider', label: 'Provider', description: 'The provider Forge uses for chat, specs and agents' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-model', label: 'Model', description: 'Model for the selected provider' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-effort', label: 'Reasoning effort', description: 'Only used by models that support reasoning' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-mode-models', label: 'Model per mode', description: 'Give Ask, Debug, Plan and other built-in modes their own model; blank uses the main model' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-compaction-model', label: 'Compaction model', description: 'The model that summarises long chats; blank uses the main model' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-subagent-model', label: 'Sub-agent model', description: 'The model helper agents use; blank uses the chat model' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-providers', label: 'Custom providers', description: 'Add an OpenAI-compatible service or start from a preset such as Groq or DeepSeek' },
+  { section: 'context', sectionLabel: 'Context and memory', rowId: 'row-retention', label: 'Delete old chats', description: 'Delete saved chats not used for this many days when Forge starts' },
+  { section: 'model', sectionLabel: 'Models and providers', rowId: 'row-keys', label: 'API keys and providers', description: 'A key for each provider, stored in VS Code secret storage; untick a provider to skip it in auto-detect' },
   { section: 'agents', sectionLabel: 'Agents', rowId: 'row-agents', label: 'Custom agents', description: 'Agents in the chat mode menu and parallel runs' },
   { section: 'mcp', sectionLabel: 'MCP servers', rowId: 'row-mcp', label: 'MCP servers', description: 'Servers that give Forge extra tools; turn on or off, install from the catalog' },
   { section: 'skills', sectionLabel: 'Skills', rowId: 'row-skills', label: 'Skills', description: 'Markdown instructions loaded when a task matches; browse the catalog' },
-  { section: 'instructions', sectionLabel: 'Instructions', rowId: 'row-instructions', label: 'Instruction files', description: 'AGENTS.md, CLAUDE.md and CONVENTIONS.md: which Forge reads, which are cut off; start one' },
+  { section: 'instructions', sectionLabel: 'Instructions', rowId: 'row-instructions', label: 'Instruction files', description: 'FORGE.md and AGENTS.md: which Forge reads, which are cut off; start one' },
   { section: 'perm', sectionLabel: 'Permissions', rowId: 'row-tools', label: 'Tools: ask, allow or block', description: 'Per tool: confirm each call, run without asking, or hide it from Forge' },
   { section: 'perm', sectionLabel: 'Permissions', rowId: 'row-allow', label: 'Allowed tools', description: 'Only these tools are offered; empty allows all' },
   { section: 'perm', sectionLabel: 'Permissions', rowId: 'row-pattern-rules', label: 'Pattern rules', description: 'Ordered allow, ask or deny rules for reads, edits, shell commands and web access; the last match wins' },
@@ -285,13 +284,12 @@ const KEYWORDS: Record<string, string> = {
   'row-provider': 'openai anthropic claude gemini google minimax openrouter bedrock vertex azure ollama lm studio auto detect',
   'row-model': 'custom model id refresh list live gpt claude gemini minimax llm',
   'row-effort': 'thinking reasoning low medium high',
-  'row-hidden': 'hide show enable disable provider',
   'row-mode-models': 'agent mode cheap fast strong small subagent override',
   'row-compaction-model': 'summary summarise condense cheap small',
   'row-retention': 'history sessions prune cleanup days keep',
   'row-subagent-model': 'subagent sub-agent helper delegate cheap small',
   'row-providers': 'groq deepseek mistral xai cerebras together fireworks custom endpoint base url openai compatible proxy gateway preset',
-  'row-keys': 'openai anthropic claude gemini google minimax openrouter bedrock vertex azure ollama lm studio token secret password paste test key',
+  'row-keys': 'hide show enable disable turn off provider openai anthropic claude gemini google minimax openrouter bedrock vertex azure ollama lm studio token secret password paste test key',
   'row-agents': 'specialist mode plan code debug ask review prompt',
   'row-mcp': 'server tools install reload json model context protocol',
   'row-skills': 'catalog markdown instructions install rescan',

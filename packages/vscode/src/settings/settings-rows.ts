@@ -125,6 +125,7 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.completionTelemetry', 'advanced', 'Count completion accepts'),
   b('forge.completionEnabled', 'advanced', 'Inline completion'),
   b('forge.completionAutomatic', 'advanced', 'Suggest while typing'),
+  b('forge.autoPlan', 'advanced', 'Plan first for new apps and features'),
   b('forge.suggestSpec', 'advanced', 'Suggest a spec for big requests'),
   e('forge.approvalDefault', 'advanced', 'Starting approval level', ['unset', 'ask', 'edits', 'auto']),
   e('forge.chat.promptHistory', 'advanced', 'Prompt history', ['shared', 'perChat']),
@@ -150,7 +151,7 @@ export const SETTING_ROWS: readonly SettingRow[] = [
 export const EXCLUDED_KEYS: readonly string[] = [
   'forge.provider', // Model section
   'forge.model', // Model section
-  'forge.apiKeys.openai', // legacy: keys live in secret storage (API keys section)
+  'forge.apiKeys.openai', // legacy: keys live in secret storage (Models and providers page)
   'forge.apiKeys.anthropic',
   'forge.apiKeys.google',
 ];

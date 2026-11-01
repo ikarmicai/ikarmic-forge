@@ -12,7 +12,7 @@ describe('getSettingsHtml', () => {
   });
 
   it('has a nav entry and a section for every area', () => {
-    for (const s of ['model', 'keys', 'agents', 'mcp', 'skills', 'perm', 'display', 'backup']) {
+    for (const s of ['model', 'agents', 'mcp', 'skills', 'perm', 'display', 'backup']) {
       expect(html).toContain(`data-section="${s}"`);
       expect(html).toContain(`id="sec-${s}"`);
     }
@@ -52,7 +52,7 @@ describe('getSettingsHtml', () => {
   });
 
   it('saves an API key on Enter and lets the same settings file be imported again', () => {
-    expect(html).toContain("if (e.key === 'Enter' && !save.disabled) { e.preventDefault(); save.click(); }");
+    expect(html).toContain("document.createElement('form'); dlg.className = 'ik-dialog key-dialog'");
     expect(html).toMatch(/const file = e\.target\.files\[0\];\s*\/\/[^\n]*\n\s*e\.target\.value = '';/);
     expect(html).toContain('URL.revokeObjectURL(a.href)');
   });

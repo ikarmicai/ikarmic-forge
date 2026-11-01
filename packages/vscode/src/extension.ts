@@ -35,6 +35,7 @@ import {
 } from './telemetry.js';
 import { ignoredInWorkspaceFile, ignoredWorkspaceNotice, ignoredWorkspaceSettings } from './ignored-workspace-settings.js';
 import { setLanguage, t } from './l10n.js';
+import { firstFolderNotice } from './multi-root.js';
 import { parseSwitchLink } from './switch-link.js';
 
 /**
@@ -89,10 +90,19 @@ async function pruneOldSessions(state: vscode.Memento): Promise<void> {
   }
 }
 
+/** Forge works in one folder. With several open, say which, once per workspace (RB-126). */
+async function noteFirstFolderOnly(state: vscode.Memento): Promise<void> {
+  const message = firstFolderNotice((vscode.workspace.workspaceFolders ?? []).map((f) => f.name));
+  if (!message || state.get('forge.firstFolderNoted')) return;
+  await state.update('forge.firstFolderNoted', true);
+  void vscode.window.showInformationMessage(message);
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   setLanguage(context.extensionUri.fsPath);
   await setupNetworkAndPolicy();
   void pruneOldSessions(context.globalState);
+  void noteFirstFolderOnly(context.workspaceState);
   const statusBar = new StatusBar();
   const telemetry = new CompletionTelemetry();
   const credentialStore = createSecretStorageCredentialStore(context.secrets);

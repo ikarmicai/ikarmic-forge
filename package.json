@@ -26,12 +26,16 @@
   "pnpm": {
     "overrides": {
       "hono": ">=4.13.11",
+      "@hono/node-server": ">=2.1.3",
+      "@azure/msal-node": ">=7.1.0",
+      "serialize-javascript": ">=7.1.3",
       "jsondiffpatch": ">=0.7.6",
       "ip-address": ">=10.7.4",
       "katex": ">=0.18.2",
       "body-parser": ">=2.4.0",
       "fast-uri": ">=3.1.9",
-      "qs": ">=6.16.1"
+      "qs": ">=6.16.1",
+      "node-ical>uuid": "^11.1.1"
     }
   },
   "packageManager": "pnpm@10.33.2"

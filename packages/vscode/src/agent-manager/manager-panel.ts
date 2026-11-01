@@ -341,9 +341,10 @@ export class AgentManagerPanel {
     await this.releaseWorktree(session.id, session.worktree.path);
     const left = await discardWorktree(root, session.worktree).catch((err: unknown) => {
       void this.panel.webview.postMessage({ type: 'error', message: (err as Error).message });
-      return undefined;
+      return {} as { folder?: string; branch?: string };
     });
-    if (left) void this.panel.webview.postMessage({ type: 'error', message: folderLeftMessage(left) });
+    if (left.folder) void this.panel.webview.postMessage({ type: 'error', message: folderLeftMessage(left.folder) });
+    if (left.branch) void this.panel.webview.postMessage({ type: 'error', message: branchLeftMessage(left.branch) });
     this.update(session.id, (s) => ({ ...s, status: 'discarded' }));
   }
 
@@ -418,6 +419,7 @@ export class AgentManagerPanel {
           return;
         }
         if (merged.leftFolder) void this.panel.webview.postMessage({ type: 'error', message: folderLeftMessage(merged.leftFolder) });
+        if (merged.leftBranch) void this.panel.webview.postMessage({ type: 'error', message: branchLeftMessage(merged.leftBranch) });
         tab?.panel.dispose();
         this.update(id, (s) => ({ ...s, status: 'merged' }));
         return;
@@ -446,6 +448,10 @@ function terminalIsInside(term: vscode.Terminal, folder: string): boolean {
 }
 
 /** The merge or discard is done, but the worktree folder could not be deleted yet (RB-95). */
+function branchLeftMessage(branch: string): string {
+  return t('The branch {0} could not be deleted and is still in your repository.', branch);
+}
+
 function folderLeftMessage(folder: string): string {
   return t('The worktree folder is still in use and was not deleted: {0}. Close anything open in it, then use Check worktrees to delete it.', folder);
 }

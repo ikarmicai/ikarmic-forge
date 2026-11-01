@@ -321,6 +321,10 @@
       },
       "description": "Extra places to read skills from: folders (absolute, ~/..., or relative to the workspace) or http(s) URLs of a skill file or a skill index. User config only."
     },
+    "otherToolSkills": {
+      "type": "boolean",
+      "description": "Read the skills installed for Claude Code (~/.claude/skills) and Cursor (~/.cursor/skills). On unless false. User config only."
+    },
     "disabledSkills": {
       "type": "array",
       "items": {
@@ -359,7 +363,7 @@
     "sessionRetentionDays": {
       "type": "integer",
       "minimum": 1,
-      "description": "Delete saved chats not updated for this many days when the extension starts. Unset keeps everything. User config only."
+      "description": "Delete saved chats not updated for this many days when Forge starts. Unset keeps everything. User config only."
     },
     "display": {
       "type": "object",

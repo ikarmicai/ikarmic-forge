@@ -18,27 +18,26 @@ afterEach(async () => {
 const view = async () => Object.fromEntries((await scanInstructionFiles(root)).map((f) => [f.name, f]));
 
 describe('scanInstructionFiles', () => {
-  it('lists the three files Forge reads, in the order it reads them, each missing in an empty folder', async () => {
+  it('lists the two files Forge reads, in the order it reads them, each missing in an empty folder', async () => {
     const files = await scanInstructionFiles(root);
-    expect(files.map((f) => f.name)).toEqual(['AGENTS.md', 'CLAUDE.md', 'CONVENTIONS.md']);
+    expect(files.map((f) => f.name)).toEqual(['FORGE.md', 'AGENTS.md']);
     expect(files.every((f) => f.state === 'missing' && f.chars === 0 && !f.cut)).toBe(true);
   });
 
   it('says a file with text is used, with its length, and a file with only blank space is empty', async () => {
     await writeFile(path.join(root, 'AGENTS.md'), '  Run npm test before you finish.  \n');
-    await writeFile(path.join(root, 'CLAUDE.md'), ' \n\n ');
+    await writeFile(path.join(root, 'FORGE.md'), ' \n\n ');
     const v = await view();
     expect(v['AGENTS.md']).toMatchObject({ state: 'used', chars: 'Run npm test before you finish.'.length, cut: false });
-    expect(v['CLAUDE.md']).toMatchObject({ state: 'empty', chars: 0 });
-    expect(v['CONVENTIONS.md']).toMatchObject({ state: 'missing' });
+    expect(v['FORGE.md']).toMatchObject({ state: 'empty', chars: 0 });
   });
 
   it('says when a file is longer than Forge reads, so the person can shorten it', async () => {
     await writeFile(path.join(root, 'AGENTS.md'), 'x'.repeat(20_000));
-    await writeFile(path.join(root, 'CLAUDE.md'), 'y'.repeat(100));
+    await writeFile(path.join(root, 'FORGE.md'), 'y'.repeat(100));
     const v = await view();
     expect(v['AGENTS.md']).toMatchObject({ state: 'used', cut: true });
-    expect(v['CLAUDE.md']).toMatchObject({ state: 'used', cut: false });
+    expect(v['FORGE.md']).toMatchObject({ state: 'used', cut: false });
   });
 
   it('does not read a file far larger than any instruction file just to count it', async () => {

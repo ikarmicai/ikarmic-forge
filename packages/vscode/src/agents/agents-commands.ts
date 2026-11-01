@@ -156,7 +156,7 @@ export function registerAgents(
         void vscode.window.showErrorMessage(t('Forge: could not merge {0}. {1} Nothing was changed.', branch, res.message));
         return;
       }
-      await deleteBranch(repo, branch).catch(() => undefined);
+      await deleteBranch(repo, branch).catch(() => void vscode.window.showWarningMessage(t('Forge: merged {0}, but the branch could not be deleted.', branch)));
       update(node.run.id, (r) => setMergeState(r, branch, 'merged'));
       void vscode.window.showInformationMessage(t('Forge: merged {0}.', branch));
     }),

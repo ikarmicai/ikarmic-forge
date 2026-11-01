@@ -1362,6 +1362,9 @@ export function Repl({
                   },
                 ]);
                 break;
+              case 'input_redacted':
+                setMessages((prev) => [...prev, { kind: 'status', id: cryptoId(), text: `🔒 ${event.count} secret${event.count === 1 ? '' : 's'} hidden in your message before sending. Use --no-redact to send as typed.` }]);
+                break;
               case 'steering':
                 setMessages((prev) => [...prev, { kind: 'status', id: cryptoId(), text: formatSteeringLine(event) }]);
                 break;

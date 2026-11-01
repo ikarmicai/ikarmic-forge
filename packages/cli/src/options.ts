@@ -16,6 +16,7 @@ import {
   applyResolved,
   resolveAutoApprove,
   loadHooksConfig,
+  legacyInstructionFiles,
   loadSkillsRegistryAsync,
   loadSteering,
   loadToolSandboxConfig,
@@ -104,7 +105,7 @@ export interface CliOptions {
   notificationsCommand: string | null;
   /** `--ai-comments` (with `forge watch`): act on AI!/AI? comments in saved files. */
   aiComments: boolean;
-  /** `--no-project-instructions`: do not inject AGENTS.md / CLAUDE.md / CONVENTIONS.md. */
+  /** `--no-project-instructions`: do not inject FORGE.md / AGENTS.md. */
   noProjectInstructions: boolean;
   /** `--semantic-search`: add the `codebase_search` tool (embedder from FORGE_EMBED_PROVIDER). */
   semanticSearch: boolean;
@@ -208,12 +209,15 @@ export function buildProgram(): Command {
     .option('--sandbox-allow-host <host>', 'with --sandbox: a host fetch_url, repo_clone, the browser and GitHub may still reach (repeatable; *.example.com or *)', (v: string, prev: string[] = []) => [...prev, v])
     .option('--sandbox [network]', 'run commands in an OS sandbox (bubblewrap / sandbox-exec; not Windows); "network" keeps internet access')
     .option('--verify <cmd>', 'run this check after edits and self-fix on failure (repeatable)', (v: string, prev: string[] = []) => [...prev, v])
-    .option('--force', 'with `plugin install`: replace an installed plugin of the same name', false)
+    .option('--force', 'with `plugin install`: replace an installed plugin of the same name; with `skill update`: replace a copy you edited', false)
+    .option('--skill <names>', 'with `skill install`: install only these skills (comma-separated names)')
+    .option('--all', 'with `skill install`: install every skill the link holds', false)
+    .option('--list', 'with `skill install`: show the skills the link holds and install nothing', false)
     .option('--project', 'with `plugin install|remove`: use the project (.forge/plugins) instead of ~/.forge/plugins', false)
     .option('--global', 'with `memory forget`: edit ~/.forge/MEMORY.md instead of the project memory', false)
     .option('--confirm-reads', 'ask before read-only tools too (by default read, list and search run without a prompt)', false)
     .option('--verify-lsp', 'after edits, check the changed files with their language server and self-fix on errors', false)
-    .option('--no-project-instructions', 'do not load AGENTS.md / CLAUDE.md / CONVENTIONS.md into the system prompt')
+    .option('--no-project-instructions', 'do not load FORGE.md / AGENTS.md into the system prompt')
     .option('--dry-run', 'read-only run: the agent can read and search but cannot edit files, run commands or write memory; it describes what it would change', false)
     .option('--notifications', 'send a desktop notification when a run finishes', false)
     .option('--notifications-command <cmd>', 'run this command instead of the OS notifier (message in $FORGE_NOTIFY_MESSAGE); implies --notifications')
@@ -736,7 +740,12 @@ export interface ParsedSessionCommand {
 export interface ParsedSkillCommand {
   list?: true;
   show?: { name: string };
-  install?: { url: string; overwrite: boolean };
+  /** `only`: the skills chosen with `--skill a,b`; `all`: `--all`; `list`: `--list` (show what the link holds, install nothing). */
+  install?: { url: string; overwrite: boolean; only: string[]; all: boolean; list: boolean };
+  /** `forge skill update [names…] [--force]`: re-read the source of what Forge installed. */
+  update?: { names: string[]; force: boolean };
+  /** `forge skill remove <name> --yes`. */
+  remove?: { name: string; yes: boolean };
   search?: { query: string; limit: number | null };
   browse?: true;
 }
@@ -927,7 +936,7 @@ function parseResumeFlag(raw: unknown): ResumeFlag {
 }
 
 /**
- * Soft-prefix parser for `forge skill list|show|install|search|browse`.
+ * Soft-prefix parser for `forge skill list|show|install|update|remove|search|browse`.
  * `forge skill install <source>`: `<source>` is a skill name (looked
  * up in the marketplace catalog), a GitHub URL, or `owner/repo[#subdir]`
  * shorthand.
@@ -946,9 +955,14 @@ function extractSkillCommand(
       install: {
         url: args[2],
         overwrite: opts.force === true || opts.overwrite === true,
+        only: typeof opts.skill === 'string' ? opts.skill.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        all: opts.all === true,
+        list: opts.list === true,
       },
     };
   }
+  if (sub === 'update') return { update: { names: args.slice(2), force: opts.force === true } };
+  if ((sub === 'remove' || sub === 'rm') && args[2]) return { remove: { name: args[2], yes: opts.yes === true } };
   if (sub === 'search') {
     const query = args.slice(2).join(' ').trim();
     if (!query) return {};
@@ -1178,6 +1192,7 @@ export async function toAgentConfig(
   const sharedConfig = await loadForgeConfigFile();
   const [skillsRegistry, hooksConfig, sandboxFromFile, steering] = await Promise.all([
     loadSkillsRegistryAsync(cwd, sharedConfig.config.skillPaths ?? [], {
+      otherToolSkills: sharedConfig.config.otherToolSkills !== false,
       disabledSkills: sharedConfig.config.disabledSkills ?? [],
       onWarning: (w) => process.stderr.write(`forge: skills: ${w}\n`),
     }),
@@ -1188,6 +1203,10 @@ export async function toAgentConfig(
     loadSteering(cwd),
   ]);
   for (const w of steering.warnings) process.stderr.write(`forge: ${w}\n`);
+  if (!options.noProjectInstructions) {
+    const old = await legacyInstructionFiles(cwd).catch(() => [] as string[]);
+    if (old.length) process.stderr.write(`forge: ${old.join(' and ')} is no longer read. Rename it to FORGE.md (or AGENTS.md) so Forge uses it.\n`);
+  }
 
   const cliSandbox = buildSandbox(options) ?? {};
   const sandbox = mergeToolSandbox(sandboxFromFile.sandbox, cliSandbox);

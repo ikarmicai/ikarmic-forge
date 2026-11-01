@@ -139,6 +139,9 @@ export function App({ task, baseConfig, model, display = {}, onResult, onError }
             setCacheHits(event.hits);
             setCacheMisses(event.misses);
             break;
+          case 'input_redacted':
+            setRedactedCount((c) => c + event.count);
+            break;
           case 'steering':
             setSteeringLine(formatSteeringLine(event));
             break;

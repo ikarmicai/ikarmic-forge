@@ -19,7 +19,7 @@ const EXCLUDED_IDS = new Set(['orchestrator']);
  * Tools every chat mode keeps unless the agent forbids them: they write nothing, and without
  * `todo_write` a mode left the todo chip frozen at whatever the last Agent-mode turn set.
  */
-const BOOKKEEPING_TOOLS = ['todo_write', 'todo_read', 'ask_user'];
+const BOOKKEEPING_TOOLS = ['todo_write', 'todo_read', 'ask_user', 'suggest_agent'];
 
 export interface ModeOption {
   id: string;
@@ -32,6 +32,9 @@ export interface ModeOverrides {
   maxIterations?: number;
   toolSandbox?: ToolSandbox;
   model?: ModelConfig;
+  /** The agent's own limits (RB-120): they travel with the mode, or the chat would drop what the orchestrator keeps. */
+  permission?: SpecialistConfig['permission'];
+  editOnly?: SpecialistConfig['editOnly'];
 }
 
 export interface ModeContext {
@@ -136,6 +139,8 @@ export function modeOverrides(modeId: string, ctx: ModeContext): ModeOverrides {
   const out: ModeOverrides = {
     systemPrompt: spec.systemPrompt,
     toolSandbox: { ...(ctx.baseSandbox ?? {}), allowTools },
+    ...(spec.permission ? { permission: spec.permission } : {}),
+    ...(spec.editOnly ? { editOnly: spec.editOnly } : {}),
   };
   const chosen = spec.model
     ? { provider: spec.provider ?? ctx.baseModel.provider, model: spec.model }

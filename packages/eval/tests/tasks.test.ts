@@ -32,8 +32,8 @@ async function runWithScript(task: TaskDefinition, responses: MockResponse[]): P
 }
 
 describe('task catalog', () => {
-  it('exports 25 tasks', () => {
-    expect(TASKS.length).toBe(25);
+  it('exports 30 tasks', () => {
+    expect(TASKS.length).toBe(30);
   });
 
   it('every task has the required shape', () => {
@@ -206,7 +206,7 @@ describe('multi-step tasks', () => {
     // 3) edit a.ts to remove the greet function (leaving VERSION intact)
     // 4) reply "done"
     const r = await runWithScript(TASKS[8]!, [
-      { toolCalls: [{ name: 'read_file', args: { path: 'a.ts' } }] },
+      { toolCalls: [{ name: 'read_file', args: { path: 'a.ts' } }, { name: 'read_file', args: { path: 'b.ts' } }] },
       { toolCalls: [
         {
           name: 'write_file',

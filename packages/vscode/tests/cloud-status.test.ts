@@ -14,19 +14,19 @@ describe('AWS Bedrock', () => {
   it('uses access keys when both are set, and names the region it will use', () => {
     const s = by({ AWS_ACCESS_KEY_ID: 'AKIAX', AWS_SECRET_ACCESS_KEY: 'shh', AWS_REGION: 'eu-west-1' })['AWS Bedrock']!;
     expect(s.tone).toBe('ok');
-    expect(s.text).toContain('AWS_ACCESS_KEY_ID');
+    expect(s.text).toContain('access keys');
     expect(s.text).toContain('eu-west-1');
     expect(s.text).not.toContain('AKIAX');
   });
 
   it('uses a Bedrock API key when there is one', () => {
-    expect(by({ AWS_BEARER_TOKEN_BEDROCK: 'tok' })['AWS Bedrock']!.text).toContain('AWS_BEARER_TOKEN_BEDROCK');
+    expect(by({ AWS_BEARER_TOKEN_BEDROCK: 'tok' })['AWS Bedrock']!.text).toContain('Bedrock API key');
   });
 
   it('says a lone half of the access key pair is ignored, which is the usual mistake', () => {
     const s = by({ AWS_ACCESS_KEY_ID: 'AKIAX' })['AWS Bedrock']!;
     expect(s.tone).toBe('bad');
-    expect(s.text).toContain('AWS_SECRET_ACCESS_KEY');
+    expect(s.text).toContain('Only one of the two AWS access keys');
   });
 
   it('says what happens with nothing set: the usual AWS sign-in is tried, so it is a note and not an error', () => {
@@ -38,10 +38,11 @@ describe('AWS Bedrock', () => {
 });
 
 describe('Google Vertex AI', () => {
-  it('needs a project, and says so by name when there is none', () => {
+  it('needs a project, and says so in words when there is none', () => {
     const s = by({})['Google Vertex AI']!;
     expect(s.tone).toBe('bad');
-    expect(s.text).toContain('GOOGLE_VERTEX_PROJECT');
+    expect(s.text).toContain('No Google Cloud project');
+    expect(s.text).toContain('under Advanced');
   });
 
   it('shows the project and the location, with the default location when none is set', () => {
@@ -66,13 +67,13 @@ describe('Google Vertex AI credentials file', () => {
 });
 
 describe('Azure OpenAI', () => {
-  it('needs a key and a resource name or an address, and names whichever is missing', () => {
-    expect(by({})['Azure OpenAI']!.text).toContain('AZURE_API_KEY');
-    expect(by({})['Azure OpenAI']!.text).toContain('Save one above');
+  it('needs a key and a resource name or an address, and says which is missing', () => {
+    expect(by({})['Azure OpenAI']!.text).toContain('No Azure key');
+    expect(by({})['Azure OpenAI']!.text).toContain('in the list above');
     const noResource = by({ AZURE_API_KEY: 'k' })['Azure OpenAI']!;
     expect(noResource.tone).toBe('bad');
-    expect(noResource.text).toContain('AZURE_RESOURCE_NAME');
-    expect(noResource.text).toContain('AZURE_OPENAI_BASE_URL');
+    expect(noResource.text).toContain('No Azure resource name or address');
+    expect(noResource.text).toContain('under Advanced');
   });
 
   it('is ready with a key and either a resource name or an address', () => {
@@ -95,6 +96,27 @@ describe('no value is ever shown', () => {
       .map((s) => s.text)
       .join('\n');
     for (const secret of ['AKIA-SECRET-ID', 'SECRET-KEY-VALUE', 'SESSION-TOKEN-VALUE', 'BEARER-VALUE', 'AZURE-KEY-VALUE']) expect(all).not.toContain(secret);
+  });
+});
+
+describe('no environment variable name is ever shown', () => {
+  // A person reads these lines; a name like GOOGLE_VERTEX_PROJECT means nothing to most of them.
+  const names = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/;
+  const cases: Record<string, string>[] = [
+    {},
+    { AWS_ACCESS_KEY_ID: 'a' },
+    { AWS_SECRET_ACCESS_KEY: 's' },
+    { AWS_ACCESS_KEY_ID: 'a', AWS_SECRET_ACCESS_KEY: 's' },
+    { AWS_BEARER_TOKEN_BEDROCK: 't' },
+    { GOOGLE_VERTEX_PROJECT: 'p' },
+    { GOOGLE_VERTEX_PROJECT: 'p', GOOGLE_VERTEX_LOCATION: 'europe-west4', GOOGLE_APPLICATION_CREDENTIALS: '/k/sa.json' },
+    { AZURE_API_KEY: 'k' },
+    { AZURE_API_KEY: 'k', AZURE_RESOURCE_NAME: 'r' },
+    { AZURE_API_KEY: 'k', AZURE_OPENAI_BASE_URL: 'https://x' },
+    { AZURE_RESOURCE_NAME: 'r' },
+  ];
+  it.each(cases.map((c, i) => [i, c] as const))('case %i', (_i, env) => {
+    for (const s of cloudProviderStatus(env)) expect(s.text, s.provider).not.toMatch(names);
   });
 });
 

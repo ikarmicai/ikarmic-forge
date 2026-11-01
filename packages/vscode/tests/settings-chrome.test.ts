@@ -45,7 +45,7 @@ describe('the API keys rows', () => {
   it('are laid out by the width of the main column, not the window, because the column is about 450px beside the chat', () => {
     expect(html).toContain('main { container: pane / inline-size;');
     // A fixed right column, so the inputs of every row share one right edge whatever buttons a row shows.
-    expect(html).toContain('@container pane (max-width: 500px) { .keyrow { grid-template-columns: minmax(0, 1fr) 9.5rem;');
+    expect(html).toContain('@container pane (max-width: 500px) { .keyrow { grid-template-columns: minmax(0, 1fr) auto; }');
   });
 });
 
@@ -54,7 +54,7 @@ describe('the sidebar', () => {
   const items = [...nav.matchAll(/<button type="button" class="ik-navitem" data-section="(\w+)">([\s\S]*?)<\/button>/g)];
 
   it('has an item for every section', () => {
-    expect(items.length).toBeGreaterThanOrEqual(17);
+    expect(items.length).toBeGreaterThanOrEqual(15);
   });
 
   it('gives each one an icon that is hidden from a screen reader, then its name', () => {

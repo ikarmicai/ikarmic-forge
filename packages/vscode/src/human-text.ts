@@ -5,7 +5,7 @@
 
 import type { AgentRunReason } from '@ikarmic/forge-core';
 
-const ACRONYMS: Record<string, string> = { mcp: 'MCP', api: 'API', url: 'URL', lsp: 'LSP', ai: 'AI', pr: 'PR', os: 'OS' };
+const ACRONYMS: Record<string, string> = { mcp: 'MCP', api: 'API', url: 'URL', lsp: 'LSP', ai: 'AI', pr: 'PR', os: 'OS', devops: 'DevOps' };
 
 /** `max_iterations`, `perChat` and `on-network` become "Max iterations", "Per chat" and "On network". */
 export function humanize(id: string): string {

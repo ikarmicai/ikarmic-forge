@@ -100,18 +100,23 @@ describe('the agent tasks', () => {
       'agents-code-installed-api',
       'agents-code-many-files',
       'agents-code-remembered-api',
+      'agents-code-stop-after-failures',
+      'agents-code-test-first',
       'agents-debug-indirect',
       'agents-debug-off-by-one',
+      'agents-design-tokens',
+      'agents-devops-ci',
       'agents-plan-callers',
       'agents-plan-feature',
       'agents-review-planted-bug',
       'agents-security-find',
       'agents-security-no-fix',
+      'agents-testing-reports-bug',
     ]);
   });
 
-  it('are tagged agents (or agents-hard) and with their agent', () => {
-    for (const t of agentTasks) expect([['agents', t.specialist], ['agents-hard', t.specialist]], t.id).toContainEqual(t.tags);
+  it('are tagged agents (or agents-hard, agents-discipline) and with their agent', () => {
+    for (const t of agentTasks) expect([['agents', t.specialist], ['agents-hard', t.specialist], ['agents-discipline', t.specialist]], t.id).toContainEqual(t.tags);
   });
 
   // Every fixture in turn, some with git repositories: the public Windows runner took over 5 s (RB-100 let it run).

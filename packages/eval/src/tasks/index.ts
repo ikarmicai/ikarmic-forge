@@ -20,6 +20,8 @@ import agentsReviewPlantedBug from './agents.review-planted-bug.js';
 import agentsSecurityFind from './agents.security-find.js';
 import agentsSecurityNoFix from './agents.security-no-fix.js';
 import { askDeepChain, askTraced, codeManyFiles, codeRememberedApi, debugIndirect, planCallers } from './agents.hard.js';
+import { codeStopAfterFailures, codeTestFirst } from './agents.discipline.js';
+import { designUsesTokens, devopsWritesCi, testingFindsBug } from './agents.new-roles.js';
 
 /**
  * The full task catalog. Order is the default run order. Keep grouped by
@@ -50,6 +52,9 @@ export const TASKS: readonly TaskDefinition[] = [
   agentsReviewPlantedBug,
   agentsSecurityFind,
   agentsSecurityNoFix,
+  designUsesTokens,
+  testingFindsBug,
+  devopsWritesCi,
   // agents, harder: select with --tag agents-hard
   planCallers,
   codeRememberedApi,
@@ -57,6 +62,9 @@ export const TASKS: readonly TaskDefinition[] = [
   askTraced,
   codeManyFiles,
   askDeepChain,
+  // agents, method under pressure: select with --tag agents-discipline
+  codeTestFirst,
+  codeStopAfterFailures,
 ];
 
 /** What a plain `forge-eval run` runs: everything but the agent tasks, which are opt-in with --tag agents (or agents-hard). */

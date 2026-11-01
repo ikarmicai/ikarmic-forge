@@ -544,6 +544,11 @@
           "default": true,
           "description": "%config.forge.voice.interimResults.description%"
         },
+        "forge.autoPlan": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.forge.autoPlan.description%"
+        },
         "forge.suggestSpec": {
           "type": "boolean",
           "default": true,
@@ -760,7 +765,7 @@
         },
         "forge.maxSteps": {
           "type": "integer",
-          "default": 50,
+          "default": 0,
           "minimum": 0,
           "description": "%config.forge.maxSteps.description%"
         },

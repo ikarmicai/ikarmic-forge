@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 
 import {
+  configuredSkillSettings,
   DEFAULT_SKILL_CATALOG_URL,
   discoverSkills,
-  fetchSkillsCatalog,
+  loadSkillsCatalog,
   installSkillFromCatalog,
 } from '@ikarmic/forge-core';
 
@@ -20,12 +21,13 @@ export function registerSkills(context: vscode.ExtensionContext, root: string): 
     }),
     vscode.commands.registerCommand('forge.skills.browse', async () => {
       const url = process.env.FORGE_SKILL_CATALOG_URL ?? DEFAULT_SKILL_CATALOG_URL;
-      const catalog = await fetchSkillsCatalog(url);
+      const catalog = await loadSkillsCatalog(url);
       if (!catalog) {
         void vscode.window.showWarningMessage(t('Forge: could not load the skills catalog ({0}).', url));
         return;
       }
-      const installedNames = new Set((await discoverSkills(root).catch(() => [])).map((s) => s.name));
+      const settings = await configuredSkillSettings();
+      const installedNames = new Set((await discoverSkills(root, settings.skillPaths, { otherToolSkills: settings.otherToolSkills }).catch(() => [])).map((s) => s.name));
       const pick = await vscode.window.showQuickPick(skillPickItems(catalog.skills, installedNames), {
         placeHolder: t('Install a skill'),
         matchOnDescription: true,
@@ -36,9 +38,11 @@ export function registerSkills(context: vscode.ExtensionContext, root: string): 
         void vscode.window.showInformationMessage(t('Forge: "{0}" is already installed.', pick.entry.name));
         return;
       }
-      const installed = await installSkillFromCatalog({ name: pick.entry.name, catalog });
+      let reason: string | undefined;
+      const installed = await installSkillFromCatalog({ name: pick.entry.name, catalog, onError: (m) => void (reason = m) });
       if (!installed) {
-        void vscode.window.showErrorMessage(t('Forge: could not install "{0}".', pick.entry.name));
+        const base = t('Forge: could not install "{0}".', pick.entry.name);
+        void vscode.window.showErrorMessage(reason ? `${base} ${reason}` : base);
         return;
       }
       void vscode.window.showInformationMessage(t('Forge: installed skill "{0}".', pick.entry.name));

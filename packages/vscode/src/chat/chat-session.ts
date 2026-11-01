@@ -7,6 +7,7 @@
  * dependency-injected so it is unit-testable.
  *
  */
+import type { ModelMessage } from 'ai';
 import path from 'node:path';
 
 import type { AgentRunResult, MessageFeedback, ModelConfig, Session, saveSession as coreSaveSession } from '@ikarmic/forge-core';
@@ -43,6 +44,8 @@ export class ChatSession {
   private totals: Totals = { ...EMPTY_TOTALS };
   /** Ratings by turn number (F3), kept in the session file. */
   private _feedback: Record<string, MessageFeedback> = {};
+  /** Saves run one after another, so a step's save cannot land on top of the turn's own. */
+  private saving: Promise<unknown> = Promise.resolve();
   /** What was last written, so a rating can be saved without a new turn. */
   private lastSaved: Session | undefined;
 
@@ -155,7 +158,27 @@ export class ChatSession {
     this.label = label;
   }
 
+  /**
+   * Save a run that is still going, so a crash or a reload loses at most one step (RB-125). The next turn starts
+   * from the recorded history as before; only the file moves ahead.
+   */
+  saveProgress(messages: readonly ModelMessage[], model: ModelConfig, cwd: string, turnStart: number): void {
+    const added = messages.slice(turnStart) as ChatHistory;
+    const session: Session = {
+      id: this._id,
+      createdAt: this.createdAt,
+      updatedAt: this.now().toISOString(),
+      ...(this.label ? { label: this.label } : {}),
+      cwd: this._cwd ?? cwd,
+      model,
+      messages: messages as ChatHistory,
+      transcript: [...this.transcript, ...added],
+    };
+    this.saving = this.saving.then(() => this.write(session));
+  }
+
   async recordTurn(result: TurnResult, model: ModelConfig, cwd: string): Promise<SaveOutcome> {
+    await this.saving;
     this._cwd ??= cwd;
     // A turn appends what it said to the transcript; a Condense (no turn messages) leaves it as it was.
     if (result.turnMessages) this._transcript = [...this.transcript, ...result.turnMessages];

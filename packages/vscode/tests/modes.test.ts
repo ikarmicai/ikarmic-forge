@@ -35,8 +35,19 @@ const ctx = (over: Partial<Parameters<typeof modeOverrides>[1]> = {}) => ({
 });
 
 describe('listModes', () => {
+  it('carries an agent\'s own limits into the chat (RB-120)', () => {
+    const c = ctx({ specialists: BUILTIN_SPECIALISTS });
+    expect(modeOverrides('devops', c).permission?.bash).toHaveProperty(['*git push*'], 'deny');
+    expect(modeOverrides('testing', c).editOnly).toContain('*.test.*');
+    expect(modeOverrides('code', c).permission).toBeUndefined();
+    expect(modeOverrides('code', c).editOnly).toBeUndefined();
+  });
+
   it('offers the Security agent from core as a mode', () => {
     expect(listModes(BUILTIN_SPECIALISTS)).toContainEqual(expect.objectContaining({ id: 'security', label: 'Security' }));
+    expect(listModes(BUILTIN_SPECIALISTS)).toContainEqual(expect.objectContaining({ id: 'devops', label: 'DevOps' }));
+    expect(listModes(BUILTIN_SPECIALISTS)).toContainEqual(expect.objectContaining({ id: 'design', label: 'Design' }));
+    expect(listModes(BUILTIN_SPECIALISTS)).toContainEqual(expect.objectContaining({ id: 'testing', label: 'Testing' }));
   });
 
   it('puts Agent first and excludes the orchestrator router', () => {
@@ -75,7 +86,7 @@ describe('modeOverrides', () => {
   it('specialist mode sets prompt and effective tool allowlist, plus the todo list and questions', () => {
     expect(modeOverrides('ask', ctx())).toEqual({
       systemPrompt: 'ASK PROMPT',
-      toolSandbox: { allowTools: ['read_file', 'list_files', 'todo_write', 'todo_read', 'ask_user'] },
+      toolSandbox: { allowTools: ['read_file', 'list_files', 'todo_write', 'todo_read', 'ask_user', 'suggest_agent'] },
     });
   });
 

@@ -13,6 +13,7 @@ import process from 'node:process';
 
 import {
   BUILTIN_SPECIALISTS,
+  humanize,
   runReasonLabel,
   listSpecialists,
   loadForgeConfigFile,
@@ -159,6 +160,7 @@ async function runOrchestratorCli(
         process.stdout.write(`     → ${preview.replace(/\n/g, ' ')}\n`);
       }
     }
+    for (const s of result.skippedSteps ?? []) process.stdout.write(`  Skipped [${humanize(s.specialist)}]: an earlier step did not finish.\n`);
     const kept = result.steps.filter((s) => s.worktreeCommit && s.worktreeBranch);
     if (kept.length > 0) {
       process.stdout.write('\nBranches with committed work (review, then merge or delete):\n');

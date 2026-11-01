@@ -12,13 +12,20 @@ import {
   SUPPORTED_PROVIDERS,
   defaultUserMcpPath,
   builtinSkills,
+  configuredSkillSettings,
   discoverSkills,
   exportSettings,
-  fetchSkillsCatalog,
+  loadSkillsCatalog,
   importSettings,
   installMcpServer,
   defaultForgeConfigPath,
   installSkillFromCatalog,
+  folderName,
+  installSkillFromSource,
+  listManagedSkills,
+  listSkillsInSource,
+  removeManagedSkill,
+  updateManagedSkills,
   listInstalledServers,
   listSpecialists,
   loadForgeConfigFile,
@@ -199,7 +206,7 @@ export class SettingsViewProvider {
         status: async () => {
           const env: NodeJS.ProcessEnv = { ...process.env };
           applyProviderEnv(readConfig().providerEnv, env);
-          // A key saved on the API keys page is put in the environment when a run starts; count it the same way.
+          // A key saved on the Models and providers page is put in the environment when a run starts; count it the same way.
           const saved = await resolveApiKeysWithStore(this.store, {});
           for (const provider of KEY_PROVIDERS) {
             const name = envVarForProvider(provider);
@@ -304,7 +311,10 @@ export class SettingsViewProvider {
       ...(root
         ? {
             skills: {
-              list: () => discoverSkills(root).catch(() => []),
+              list: async () => {
+                const s = await configuredSkillSettings();
+                return discoverSkills(root, s.skillPaths, { otherToolSkills: s.otherToolSkills }).catch(() => []);
+              },
               open: async (p: string) => {
                 // A skill built into Forge has no file: show its text in an unsaved Markdown tab.
                 const builtin = builtinSkills().find((s) => s.source.path === p);
@@ -315,9 +325,14 @@ export class SettingsViewProvider {
                 await vscode.window.showTextDocument(vscode.Uri.file(p));
               },
               catalog: async () => {
-                const c = await fetchSkillsCatalog(process.env.FORGE_SKILL_CATALOG_URL ?? DEFAULT_SKILL_CATALOG_URL);
+                const c = await loadSkillsCatalog(process.env.FORGE_SKILL_CATALOG_URL ?? DEFAULT_SKILL_CATALOG_URL);
                 return c ? { entries: c.skills } : null;
               },
+              inspectLink: (link: string) => listSkillsInSource(link),
+              installLink: (link: string, names?: string[]) => installSkillFromSource(link, names ? { only: names } : {}),
+              managed: () => listManagedSkills(),
+              update: (name: string | undefined, force: boolean) => updateManagedSkills({ ...(name ? { names: [name] } : {}), force }),
+              remove: (name: string) => removeManagedSkill(name),
               fetchLink: async (url: string) => {
                 const warnings: string[] = [];
                 const got = await loadRemoteSkills(url, {});
@@ -331,22 +346,29 @@ export class SettingsViewProvider {
                 return { fileName: path.basename(uri.fsPath), content: Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8') };
               },
               saveOwn: async (fileName: string, content: string) => {
+                // A skill is a folder with a SKILL.md in it, the layout every agent reads (RB-114).
                 const dir = path.join(os.homedir(), '.forge', 'skills');
                 await mkdir(dir, { recursive: true });
-                const stem = fileName.replace(/\.md$/, '');
+                const stem = folderName(fileName.replace(/\.md$/, '')) || 'skill';
                 for (let n = 1; ; n++) {
-                  const target = path.join(dir, n === 1 ? fileName : `${stem}-${n}.md`);
+                  const folder = path.join(dir, n === 1 ? stem : `${stem}-${n}`);
                   try {
-                    await writeFile(target, content, { encoding: 'utf8', flag: 'wx' });
-                    return target;
+                    await mkdir(folder);
                   } catch (err) {
-                    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+                    if ((err as NodeJS.ErrnoException).code === 'EEXIST') continue;
+                    throw err;
                   }
+                  const target = path.join(folder, 'SKILL.md');
+                  await writeFile(target, content, { encoding: 'utf8', flag: 'wx' });
+                  return target;
                 }
               },
               install: async (name: string) => {
-                const c = await fetchSkillsCatalog(process.env.FORGE_SKILL_CATALOG_URL ?? DEFAULT_SKILL_CATALOG_URL);
-                return c ? Boolean(await installSkillFromCatalog({ name, catalog: c })) : false;
+                const c = await loadSkillsCatalog(process.env.FORGE_SKILL_CATALOG_URL ?? DEFAULT_SKILL_CATALOG_URL);
+                if (!c) return false;
+                let reason: string | undefined;
+                const done = await installSkillFromCatalog({ name, catalog: c, onError: (m) => void (reason = m) });
+                return done ? true : (reason ?? false);
               },
             },
           }

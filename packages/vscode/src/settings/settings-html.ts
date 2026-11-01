@@ -63,6 +63,8 @@ export const SETTINGS_CSS = `
   .rule .ik-input, .rule .ik-select, .agent .ik-input, .agent .ik-textarea, .setting .ik-textarea { width: 100%; }
   input[type="checkbox"] { accent-color: var(--ion); margin: 0; }
   .setting .row label { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: var(--control); }
+  .setting > .row + .row { margin-top: var(--space-xs); }
+  #mode-model-list { display: flex; flex-direction: column; gap: var(--space-xs); margin-top: var(--space-xs); }
   .list { overflow: hidden; }
   .item { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); min-width: 0; }
   .item + .item, .item + .item-body, .item-body + .item { border-top: var(--border-hairline) solid var(--line-subtle); }
@@ -71,6 +73,9 @@ export const SETTINGS_CSS = `
   .item .sub { font: var(--text-caption); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .item .sub.err { color: var(--danger); }
   #builtin-agents .item .sub { white-space: normal; }
+  /* A skill can have four controls (on, open, update, remove): at a narrow width they go under the name, not over it (RB-110). */
+  #skills-list .item { flex-wrap: wrap; }
+  #skills-list .item .main { flex: 1 1 calc(var(--space-2xl) * 4); }
   .item-body { padding: var(--space-xs) var(--space-sm) var(--space-sm) var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-2xs); background: var(--bg-sunken); }
   .dot { width: 8px; height: 8px; border-radius: var(--radius-pill); flex: none; background: var(--ink-muted); }
   .dot.connected { background: var(--success); } .dot.failed { background: var(--danger); } .dot.needs-auth { background: var(--warning); } .dot.disabled { background: transparent; box-shadow: inset 0 0 0 2px var(--ink-muted); }
@@ -95,6 +100,8 @@ export const SETTINGS_CSS = `
   /* The key dialog: a fixed layer over the page. The scrim and the dialog are the design system's; only the placement is here. */
   .dlg-layer { position: fixed; inset: 0; z-index: 20; }
   .dlg-layer .ik-dialog { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(28rem, calc(100% - 2 * var(--space-md))); max-height: calc(100% - 2 * var(--space-md)); overflow-y: auto; display: grid; gap: var(--space-sm); }
+  .dlg-layer .prov-dialog { width: min(40rem, calc(100% - 2 * var(--space-md))); }
+  .prov-dialog .dlg-foot { position: sticky; bottom: calc(-1 * var(--space-md)); padding: var(--space-sm) 0; background: var(--bg-raised); }
   .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
   .dlg-head h2 { margin: 0; font: var(--text-title-sm); color: var(--ink-strong); }
   .dlg-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); }
@@ -103,9 +110,6 @@ export const SETTINGS_CSS = `
   .rule-head { display: flex; gap: var(--space-xs); font: var(--text-overline); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); margin-bottom: var(--space-2xs); }
   .checks { display: flex; flex-wrap: wrap; gap: 2px var(--space-md); }
   .checks label { display: flex; gap: var(--space-xs); align-items: center; min-height: var(--control); font: var(--text-code); }
-  /* Provider names are product names, not code; only tool names read as monospace. */
-  #hidden-providers label { font-family: inherit; }
-  #hidden-providers { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px var(--space-md); }
   /* One row per tool: the name over its description on the left, the Ask / Allow / Block control centred on the right. */
   .tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-md); align-items: center; padding: var(--space-xs) 0; border-bottom: var(--border-hairline) solid var(--line-subtle); }
   /* A long list gets the whole width, not the right-hand column. */
@@ -129,13 +133,13 @@ export const SETTINGS_CSS = `
   details.adv > summary { cursor: pointer; min-height: var(--control); color: var(--ink-muted); }
   .rule { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(130px, 1fr) minmax(140px, 2fr) auto; gap: var(--space-xs); align-items: center; margin-top: var(--space-xs); }
   .pattern-rule { grid-template-columns: minmax(110px, 1fr) minmax(140px, 2fr) auto auto auto auto auto; }
-  .keyrow { display: grid; grid-template-columns: 120px minmax(110px, 160px) minmax(110px, 1fr) auto; gap: var(--space-xs); align-items: center; padding: var(--space-xs) 0; }
+  .keyrow { display: grid; grid-template-columns: 150px minmax(110px, 1fr) auto; gap: var(--space-xs); align-items: center; padding: var(--space-xs) 0; }
   .keyrow > .kcell { display: grid; gap: var(--space-2xs); overflow-wrap: anywhere; font: var(--text-caption); }
   .kmore { display: flex; gap: var(--space-sm); }
   .kmore .ik-btn { min-height: 24px; }
   .agent .ik-field { gap: var(--space-2xs); }
   .agent-title { font: var(--text-title-sm); color: var(--ink-strong); }
-  @container pane (max-width: 500px) { .keyrow { grid-template-columns: minmax(0, 1fr) 9.5rem; } .keyrow > .kcell { justify-items: end; text-align: right; } }
+  @container pane (max-width: 500px) { .keyrow { grid-template-columns: minmax(0, 1fr) auto; } .keyrow > .kcell { grid-column: 1 / -1; grid-row: 2; } }
   .keyrow + .keyrow { border-top: var(--border-hairline) solid var(--line-subtle); }
   .keyrow .kstatus { overflow-wrap: normal; }
   .keyrow .row { flex-wrap: nowrap; gap: var(--space-2xs); }
@@ -177,9 +181,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   <nav id="settings-nav" aria-label="Settings sections">
     <input class="ik-input" type="search" id="search" placeholder="Search settings" aria-label="Search settings" />
     <select class="ik-select" id="section-picker" aria-label="Settings section">
-      <option value="model">Model</option>
-      <option value="keys">API keys</option>
-      <option value="providers">Providers</option>
+      <option value="model">Models and providers</option>
       <option value="agents">Agents</option>
       <option value="mcp">MCP servers</option>
       <option value="skills">Skills</option>
@@ -196,9 +198,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <option value="about">About</option>
     </select>
     <div class="navlist">
-    <button type="button" class="ik-navitem" data-section="model"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l1.5 4.5L14 8l-4.5 1.5L8 14l-1.5-4.5L2 8l4.5-1.5z"/></svg>Model</button>
-    <button type="button" class="ik-navitem" data-section="keys"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 4.5a2.5 2.5 0 1 0-1 2L13 13M11 9l2 2"/></svg>API keys</button>
-    <button type="button" class="ik-navitem" data-section="providers"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 11.5a3 3 0 0 1 .3-6 4 4 0 0 1 7.6 1 2.5 2.5 0 0 1-.4 5z"/></svg>Providers</button>
+    <button type="button" class="ik-navitem" data-section="model"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l1.5 4.5L14 8l-4.5 1.5L8 14l-1.5-4.5L2 8l4.5-1.5z"/></svg>Models and providers</button>
     <div class="sep">Agent behaviour</div>
     <button type="button" class="ik-navitem" data-section="agents"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 13.5c.5-2.5 2.5-4 5-4s4.5 1.5 5 4"/></svg>Agents<span class="ik-badge" id="badge-agents"></span></button>
     <button type="button" class="ik-navitem" data-section="mcp"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/></svg>MCP servers<span class="ik-badge" id="badge-mcp"></span></button>
@@ -228,9 +228,24 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     <div id="search-results" hidden></div>
 
     <section id="sec-model">
-      <h2>Model</h2>
+      <h2>Models and providers</h2>
+      <p class="lead">Connect a provider, then choose the model Forge uses. Keys stay in VS Code's secret storage, never in settings files.</p>
+      <div class="group-label">Providers</div>
+      <p class="ik-muted">Press Save on a row to store its key. A key can also come from an environment variable such as OPENAI_API_KEY; the row says so. Untick a provider to skip it in auto-detect and leave it out of the model lists; that saves with the page's Save button.</p>
+      <div id="row-keys"><div id="key-rows"></div></div>
+      <div class="group-label">Custom providers</div>
+      <p class="ik-muted">Add any OpenAI-compatible service, or start from a preset. A model on it is written provider:model, such as groq:llama-3.3-70b-versatile. Press Save provider to apply it.</p>
+      <div id="row-providers">
+        <div id="provider-list"></div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="prov-add">Add provider</button></div>
+      </div>
+      <div class="group-label">Cloud accounts</div>
+      <p class="ik-muted">AWS Bedrock, Google Vertex AI and Azure OpenAI use your cloud account, not a key stored here. This is what Forge finds for each; no value is shown.</p>
+      <div class="ik-card list" id="cloud-status"></div>
+
+      <div class="group-label">Main model</div>
       <p class="lead">The provider and model Forge uses for chat, specs and agents. Agents can override this.</p>
-      <div class="setting" id="row-provider"><div class="t">Provider</div><div class="d">API keys are stored in VS Code's secret storage.</div>
+      <div class="setting" id="row-provider"><div class="t">Provider</div><div class="d">Automatic uses the first provider that has a key.</div>
         <div class="row"><select class="ik-select" id="provider" aria-label="Provider"></select><span id="provider-key" class="ik-muted"></span></div>
         <div class="d" id="provider-effective" aria-live="polite"></div></div>
       <div class="setting" id="row-model"><div class="t">Model</div>
@@ -242,49 +257,14 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         <div class="row"><select class="ik-select" id="reasoning-effort" aria-label="Reasoning effort">
           <option value="">Provider default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option>
         </select></div></div>
-      <div class="setting" id="row-hidden"><div class="t">Providers</div><div class="d">Turn a provider off to skip it in auto-detect and leave it out of the model pickers.</div>
-        <div class="checks" id="hidden-providers"></div></div>
+      <div class="group-label">Other models</div>
+      <p class="ik-muted">Leave blank to use the main model.</p>
       <div class="setting" id="row-mode-models"><div class="t">Model per mode</div><div class="d">Give a built-in mode its own model (provider:model, a model id or an alias). Blank uses the main model; Agent mode always does.</div>
         <div id="mode-model-list"></div></div>
       <div class="setting" id="row-compaction-model"><div class="t">Compaction model</div><div class="d">The model that summarises long chats. Blank uses the main model.</div>
         <div class="row"><div class="ik-combo" data-combo="models"><input type="text" id="compaction-model" class="ik-input ik-input--mono" role="combobox" aria-expanded="false" autocomplete="off" aria-label="Compaction model" placeholder="model id or alias" /><button type="button" class="ik-combo__toggle" tabindex="-1" aria-label="Show models"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><div class="ik-combo__list" role="listbox" hidden></div></div></div></div>
       <div class="setting" id="row-subagent-model"><div class="t">Sub-agent model</div><div class="d">The model helper agents use. Blank uses the chat model.</div>
         <div class="row"><div class="ik-combo" data-combo="models"><input type="text" id="subagent-model" class="ik-input ik-input--mono" role="combobox" aria-expanded="false" autocomplete="off" aria-label="Sub-agent model" placeholder="model id, alias or id:model" /><button type="button" class="ik-combo__toggle" tabindex="-1" aria-label="Show models"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button><div class="ik-combo__list" role="listbox" hidden></div></div></div></div>
-      <div class="setting" id="row-retention"><div class="t">Delete old chats</div><div class="d">Delete saved chats not used for this many days when Forge starts. Blank keeps everything.</div>
-        <div class="row"><input type="text" id="retention-days" inputmode="numeric" class="ik-input ik-input--mono" aria-label="Days to keep chats" placeholder="blank keeps all" /></div>
-        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="prune-chats">Delete old chats now</button></div>
-        <div class="d" id="cleanup-last" aria-live="polite"></div>
-        <div class="err" id="retention-error" aria-live="polite"></div></div>
-    </section>
-
-    <section id="sec-keys" hidden>
-      <h2>API keys<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
-      <p class="lead">Stored in VS Code's secret storage, never in settings files. A key can also come from an environment variable such as OPENAI_API_KEY; the row says so.</p>
-      <div id="row-keys"><div id="key-rows"></div></div>
-      <div class="group-label">Cloud accounts</div>
-      <p class="ik-muted">AWS Bedrock, Google Vertex AI and Azure OpenAI use your cloud account, not a key stored here. This is what Forge finds for each; no value is shown.</p>
-      <div class="ik-card list" id="cloud-status"></div>
-    </section>
-
-    <section id="sec-providers" hidden>
-      <h2>Providers<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
-      <p class="lead">Add any OpenAI-compatible service, or start from a preset. A model on it is written id:model, such as groq:llama-3.3-70b-versatile.</p>
-      <div id="row-providers">
-        <div id="provider-list"></div>
-        <div class="group-label">Add or edit a provider</div>
-        <div class="form">
-          <div class="ik-field full"><label class="ik-label" for="prov-preset">Start from a preset</label><select class="ik-select" id="prov-preset" aria-label="Start from a preset"></select></div>
-          <div class="ik-field"><label class="ik-label" for="prov-id">Provider id</label><input type="text" id="prov-id" class="ik-input ik-input--mono" aria-label="Provider id" placeholder="id, e.g. groq or my-gateway" /></div>
-          <div class="ik-field"><label class="ik-label" for="prov-name">Display name</label><input class="ik-input" type="text" id="prov-name" aria-label="Display name" placeholder="display name" /></div>
-          <div class="ik-field full"><label class="ik-label" for="prov-url">Base URL</label><input type="text" id="prov-url" class="ik-input ik-input--mono" aria-label="Base URL" placeholder="https://api.example.com/v1" /></div>
-          <div class="ik-field"><label class="ik-label" for="prov-env">Environment variable for the key</label><input type="text" id="prov-env" class="ik-input ik-input--mono" aria-label="Environment variable for the key" placeholder="key from this environment variable" /></div>
-          <div class="ik-field"><label class="ik-label" for="prov-key">API key</label><input class="ik-input" type="password" id="prov-key" autocomplete="off" aria-label="API key" placeholder="or paste a key (kept as plain text in the config file)" /></div>
-          <div class="ik-field"><label class="ik-label" for="prov-api">API style</label><select class="ik-select" id="prov-api" aria-label="API style"><option value="openai-compatible">OpenAI compatible</option><option value="anthropic">Anthropic messages</option></select></div>
-          <div class="ik-field"><label class="ik-label" for="prov-timeout">Request timeout in milliseconds</label><input type="number" id="prov-timeout" min="1" class="ik-input ik-input--mono" aria-label="Request timeout in milliseconds" placeholder="timeout ms" /></div>
-          <div class="ik-field"><label class="ik-label" for="prov-chunk">Stream idle timeout in milliseconds</label><input type="number" id="prov-chunk" min="1" class="ik-input ik-input--mono" aria-label="Stream idle timeout in milliseconds" placeholder="idle ms" /></div>
-          <div class="row full"><button type="button" class="ik-btn ik-btn--primary" id="prov-save">Save provider</button><button type="button" class="ik-btn ik-btn--secondary" id="prov-clear">Clear form</button></div>
-        </div>
-      </div>
     </section>
 
     <section id="sec-agents" hidden>
@@ -327,6 +307,11 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       <h2>Context and memory<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
       <p class="lead">How much of a chat Forge keeps, and what it remembers between chats.</p>
       <div id="rows-context"></div>
+      <div class="setting" id="row-retention"><div class="t">Delete old chats</div><div class="d">Delete saved chats not used for this many days when Forge starts. Blank keeps everything.</div>
+        <div class="row"><input type="text" id="retention-days" inputmode="numeric" class="ik-input ik-input--mono" aria-label="Days to keep chats" placeholder="blank keeps all" /></div>
+        <div class="row"><button type="button" class="ik-btn ik-btn--secondary" id="prune-chats">Delete old chats now</button></div>
+        <div class="d" id="cleanup-last" aria-live="polite"></div>
+        <div class="err" id="retention-error" aria-live="polite"></div></div>
     </section>
     <section id="sec-safety" hidden>
       <h2>Safety and cost<span class="ik-badge ik-badge--outline">Saves instantly</span></h2>
@@ -393,6 +378,25 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   </main>
   <!-- The key dialog lives outside every section, so it opens from any page (MCP cards and the AWS access keys). -->
   <div id="mcp-dialog-layer" class="dlg-layer" hidden></div>
+  <!-- The provider dialog is a layer of its own, outside every section, for the same reason as the key dialog above. -->
+  <div id="prov-dialog-layer" class="dlg-layer" hidden>
+    <div class="ik-scrim" id="prov-scrim"></div>
+    <form id="prov-form" class="ik-dialog prov-dialog" role="dialog" aria-modal="true" aria-labelledby="prov-dlg-title" novalidate>
+      <div class="dlg-head"><h2 id="prov-dlg-title">Add provider</h2><button type="button" class="ik-btn ik-btn--ghost ik-btn--icon" id="prov-close" aria-label="Close" title="Close"><svg class="ik-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+      <div class="form">
+          <div class="ik-field full"><label class="ik-label" for="prov-preset">Start from a preset</label><select class="ik-select" id="prov-preset" aria-label="Start from a preset"></select></div>
+          <div class="ik-field"><label class="ik-label" for="prov-id">Provider id</label><input type="text" id="prov-id" class="ik-input ik-input--mono" aria-label="Provider id" placeholder="id, e.g. groq or my-gateway" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-name">Display name</label><input class="ik-input" type="text" id="prov-name" aria-label="Display name" placeholder="display name" /></div>
+          <div class="ik-field full"><label class="ik-label" for="prov-url">Base URL</label><input type="text" id="prov-url" class="ik-input ik-input--mono" aria-label="Base URL" placeholder="https://api.example.com/v1" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-env">Environment variable for the key</label><input type="text" id="prov-env" class="ik-input ik-input--mono" aria-label="Environment variable for the key" placeholder="key from this environment variable" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-key">API key</label><input class="ik-input" type="password" id="prov-key" autocomplete="off" aria-label="API key" placeholder="or paste a key (kept as plain text in the config file)" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-api">API style</label><select class="ik-select" id="prov-api" aria-label="API style"><option value="openai-compatible">OpenAI compatible</option><option value="anthropic">Anthropic messages</option></select></div>
+          <div class="ik-field"><label class="ik-label" for="prov-timeout">Request timeout in milliseconds</label><input type="number" id="prov-timeout" min="1" class="ik-input ik-input--mono" aria-label="Request timeout in milliseconds" placeholder="timeout ms" /></div>
+          <div class="ik-field"><label class="ik-label" for="prov-chunk">Stream idle timeout in milliseconds</label><input type="number" id="prov-chunk" min="1" class="ik-input ik-input--mono" aria-label="Stream idle timeout in milliseconds" placeholder="idle ms" /></div>
+      </div>
+      <div class="dlg-foot"><button type="button" class="ik-btn ik-btn--ghost" id="prov-cancel">Cancel</button><button type="submit" class="ik-btn ik-btn--primary" id="prov-save">Save provider</button></div>
+    </form>
+  </div>
 </div>
 <div id="unsaved" hidden><span class="dotmark" aria-hidden="true">●</span><span id="unsaved-count">1 unsaved change</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="discard-all">Discard</button><button type="button" class="ik-btn ik-btn--primary" id="save-all">Save</button></div>
 <script>
@@ -452,7 +456,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     if (name === 'mcp' && !mcpLoaded) { mcpLoaded = true; vscode.postMessage({ type: 'mcpList' }); }
     if (name === 'instructions') vscode.postMessage({ type: 'loadInstructions' });
     if (name === 'tools') vscode.postMessage({ type: 'loadIndexStatus' });
-    if (name === 'keys') vscode.postMessage({ type: 'loadCloudStatus' });
+    if (name === 'model') vscode.postMessage({ type: 'loadCloudStatus' });
     if (name === 'context') vscode.postMessage({ type: 'loadCleanup' });
     if (name === 'skills' && !skillsLoaded) { skillsLoaded = true; vscode.postMessage({ type: 'skillsList' }); }
   }
@@ -502,7 +506,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   $('search').addEventListener('input', () => renderSearch($('search').value));
 
   // draft bar
-  const ROW_FOR = { provider: 'row-provider', model: 'row-model', reasoningEffort: 'row-effort', disabledProviders: 'row-hidden', modeModels: 'row-mode-models', blockDefault: 'row-blocks', showReasoning: 'row-show-reasoning', blockModes: 'row-block-modes', autoApprove: 'row-tools', permissionRules: 'row-pattern-rules', compactionModel: 'row-compaction-model', subagentModel: 'row-subagent-model', sessionRetentionDays: 'row-retention', agents: 'row-agents' };
+  const ROW_FOR = { provider: 'row-provider', model: 'row-model', reasoningEffort: 'row-effort', disabledProviders: 'row-keys', modeModels: 'row-mode-models', blockDefault: 'row-blocks', showReasoning: 'row-show-reasoning', blockModes: 'row-block-modes', autoApprove: 'row-tools', permissionRules: 'row-pattern-rules', compactionModel: 'row-compaction-model', subagentModel: 'row-subagent-model', sessionRetentionDays: 'row-retention', agents: 'row-agents' };
   function refreshDirty() {
     if (!FS) return;
     const dirty = FS.dirtyKeys(saved, draft);
@@ -532,12 +536,6 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   const labelOf = (p) => PROVIDER_LABELS[p] || p;
   { const o = document.createElement('option'); o.value = ''; o.textContent = 'Auto-detect from API keys'; $('provider').appendChild(o); }
   providers.forEach((p) => { const o = document.createElement('option'); o.value = p; o.textContent = labelOf(p); $('provider').appendChild(o); });
-  providers.forEach((p) => {
-    const l = document.createElement('label');
-    const c = document.createElement('input'); c.type = 'checkbox'; c.dataset.provider = p;
-    c.addEventListener('change', () => { draft.disabledProviders = Array.prototype.slice.call($('hidden-providers').querySelectorAll('input:not(:checked)')).map((x) => x.dataset.provider); refreshDirty(); });
-    l.appendChild(c); l.appendChild(document.createTextNode(' ' + labelOf(p))); $('hidden-providers').appendChild(l);
-  });
   // Models are listed for the chosen provider, or for the one the chat resolved when the provider is on Auto.
   const CUSTOM = '__custom__';
   let effectiveProvider = '';
@@ -578,7 +576,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     $('model-custom-row').hidden = !customMode;
     if (customMode && document.activeElement !== $('model-custom')) $('model-custom').value = draft.model;
     renderModelStatus();
-    $('provider-key').textContent = draft.provider ? (keysSet.has(draft.provider) ? '✓ Key set' : envKeys[draft.provider] ? '✓ Key from ' + envKeys[draft.provider] : 'No key saved') : '';
+    $('provider-key').textContent = draft.provider ? (keysSet.has(draft.provider) ? '✓ Key set' : envKeys[draft.provider] ? '✓ Key from environment' : 'No key saved') : '';
   }
   $('provider').addEventListener('change', () => { draft.provider = $('provider').value; draft.model = ''; customMode = false; renderModelOptions(); draft.model = $('model').value; refreshDirty(); requestModels(false); });
   $('model').addEventListener('change', () => {
@@ -708,42 +706,32 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   // keys (immediate)
   function renderKeys() {
     const box = $('key-rows');
-    // Rebuilding must not wipe a key somebody is in the middle of pasting.
-    const typed = {};
-    box.querySelectorAll('input').forEach((i) => { if (i.value) typed[i.dataset.provider] = i.value; });
     box.textContent = '';
     providers.forEach((p) => {
       const row = document.createElement('div'); row.className = 'keyrow';
       const fromEnv = !keysSet.has(p) && envKeys[p];
+      const has = keysSet.has(p) || !!fromEnv;
       const note = keyNotes[p];
-      const base = keysSet.has(p) ? '✓ Key set' : fromEnv ? '✓ From ' + envKeys[p] : 'No key';
+      const base = keysSet.has(p) ? '✓ Key set' : fromEnv ? '✓ From environment' : 'No key';
       // Environment names may only wrap after an underscore, never in the middle of a word.
       const shown = esc(note ? note.text : base).split('_').join('_<wbr>');
-      row.innerHTML = '<span>' + esc(labelOf(p)) + '</span><span class="kcell"><span class="kstatus ' + (note && !note.ok ? 'bad' : keysSet.has(p) || fromEnv ? 'ok' : 'ik-muted') + '" title="' + esc(note ? note.text : base) + '">' + shown + '</span><span class="kmore"></span></span>';
+      row.innerHTML = '<label class="ik-check" title="Untick to skip this provider in auto-detect and leave it out of the model lists"><input type="checkbox" data-provider="' + esc(p) + '"' + ((draft.disabledProviders || []).indexOf(p) < 0 ? ' checked' : '') + ' /><span>' + esc(labelOf(p)) + '</span></label><span class="kcell"><span class="kstatus ' + (note && !note.ok ? 'bad' : has ? 'ok' : 'ik-muted') + '" title="' + esc(note ? note.text : base) + '">' + shown + '</span>' + '<span class="kmore"></span></span><span class="kact"></span>';
+      row.querySelector('input[type="checkbox"]').addEventListener('change', () => { draft.disabledProviders = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]:not(:checked)')).map((x) => x.dataset.provider); refreshDirty(); });
       const kmore = row.querySelector('.kmore');
-      const input = document.createElement('input'); input.type = 'password'; input.className = 'ik-input'; input.placeholder = keysSet.has(p) || fromEnv ? 'Paste new key' : 'Paste key'; input.setAttribute('aria-label', labelOf(p) + ' API key');
-      const acts = document.createElement('span'); acts.className = 'row';
-      const save = document.createElement('button'); save.type = 'button'; save.className = 'ik-btn ik-btn--secondary'; save.textContent = 'Save'; save.disabled = true;
-      input.dataset.provider = p;
-      if (typed[p]) { input.value = typed[p]; save.disabled = false; }
-      input.addEventListener('input', () => { save.disabled = !input.value.trim(); });
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !save.disabled) { e.preventDefault(); save.click(); } });
-      save.addEventListener('click', () => { if (input.value.trim()) vscode.postMessage({ type: 'setKey', provider: p, key: input.value.trim() }); input.value = ''; save.disabled = true; });
-      acts.appendChild(save);
-      const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'ik-btn ik-btn--link'; eye.textContent = 'Show';
-      eye.addEventListener('click', () => { const show = input.type === 'password'; input.type = show ? 'text' : 'password'; eye.textContent = show ? 'Hide' : 'Show'; });
-      acts.appendChild(eye);
-      if (keysSet.has(p) || fromEnv) {
+      const set = document.createElement('button'); set.type = 'button'; set.className = 'ik-btn ik-btn--secondary'; set.textContent = has ? 'Change key' : 'Set key'; set.setAttribute('aria-label', (has ? 'Change key for ' : 'Set key for ') + labelOf(p));
+      set.addEventListener('click', () => openKeyDialog({ title: (has ? 'Change key for ' : 'Set key for ') + labelOf(p), prefix: 'provider-' + p, fields: [{ id: 'key', label: 'API key', help: 'Paste the key from your provider.' }], submitLabel: 'Save key', note: "Saved in your editor's secret storage. It is never written to a settings file.", submit: (values) => vscode.postMessage({ type: 'setKey', provider: p, key: values.key.trim() }) }, set));
+      row.querySelector('.kact').appendChild(set);
+      if (has) {
         const test = document.createElement('button'); test.type = 'button'; test.className = 'ik-btn ik-btn--link'; test.textContent = 'Test';
         test.addEventListener('click', () => { keyNotes[p] = { ok: true, text: 'Testing…' }; renderKeys(); vscode.postMessage({ type: 'loadModels', provider: p, refresh: true, test: true }); });
         kmore.appendChild(test);
       }
       if (keysSet.has(p)) {
-        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
-        rm.addEventListener('click', () => vscode.postMessage({ type: 'deleteKey', provider: p }));
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove'; rm.setAttribute('aria-label', 'Remove key for ' + labelOf(p));
+        rm.addEventListener('click', () => confirmDialog({ title: 'Remove key for ' + labelOf(p) + '?', text: "The saved key is deleted from your editor's secret storage. You can paste it again later.", confirmLabel: 'Remove key', confirm: () => vscode.postMessage({ type: 'deleteKey', provider: p }) }, rm));
         kmore.appendChild(rm);
       }
-      row.appendChild(input); row.appendChild(acts); box.appendChild(row);
+      box.appendChild(row);
     });
   }
 
@@ -941,7 +929,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     $('provider').value = draft.provider;
     renderModelOptions();
     $('reasoning-effort').value = draft.reasoningEffort;
-    $('hidden-providers').querySelectorAll('input').forEach((c) => { c.checked = draft.disabledProviders.indexOf(c.dataset.provider) < 0; });
+    renderKeys();
     $('block-default').value = draft.blockDefault;
     $('show-reasoning').checked = draft.showReasoning;
     ['reasoning', 'terminal', 'edit', 'mcp'].forEach((k) => { $('mode-' + k).value = draft.blockModes[k]; });
@@ -1161,6 +1149,33 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   const MCP_ICON_ALERT = 'M8 2.5l6 10.5H2L8 2.5zM8 7v3M8 11.5v.5';
   const MCP_ICON_LOCK = 'M3.5 7h9v6.5h-9zM5.5 7V5.5a2.5 2.5 0 0 1 5 0V7';
   const MCP_ICON_CLOSE = 'M4 4l8 8M12 4l-8 8';
+  /** A yes-or-no question over the page. It starts on Cancel, so a stray Enter cannot delete anything; Escape and the scrim cancel; focus goes back to the button that opened it. */
+  function confirmDialog(cfg, opener) {
+    const layer = $('mcp-dialog-layer');
+    layer.textContent = ''; layer.hidden = false;
+    const close = () => { layer.hidden = true; layer.textContent = ''; if (opener && opener.isConnected) opener.focus(); };
+    const scrim = document.createElement('div'); scrim.className = 'ik-scrim';
+    scrim.addEventListener('click', close);
+    const dlg = document.createElement('form'); dlg.className = 'ik-dialog confirm-dialog'; dlg.noValidate = true;
+    dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-labelledby', 'confirm-dlg-title'); dlg.setAttribute('aria-describedby', 'confirm-dlg-text');
+    const head = document.createElement('div'); head.className = 'dlg-head';
+    const title = document.createElement('h2'); title.id = 'confirm-dlg-title'; title.textContent = cfg.title;
+    head.appendChild(title); dlg.appendChild(head);
+    const text = document.createElement('p'); text.id = 'confirm-dlg-text'; text.className = 'ik-muted'; text.textContent = cfg.text; dlg.appendChild(text);
+    const foot = document.createElement('div'); foot.className = 'dlg-foot';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ik-btn ik-btn--ghost'; cancel.textContent = 'Cancel'; cancel.addEventListener('click', close);
+    const go = document.createElement('button'); go.type = 'submit'; go.className = 'ik-btn ik-btn--danger'; go.textContent = cfg.confirmLabel;
+    foot.appendChild(cancel); foot.appendChild(go); dlg.appendChild(foot);
+    dlg.addEventListener('submit', (ev) => { ev.preventDefault(); cfg.confirm(); close(); });
+    dlg.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); return; }
+      if (ev.key !== 'Tab') return;
+      if (ev.shiftKey && document.activeElement === cancel) { ev.preventDefault(); go.focus(); }
+      else if (!ev.shiftKey && document.activeElement === go) { ev.preventDefault(); cancel.focus(); }
+    });
+    layer.appendChild(scrim); layer.appendChild(dlg);
+    cancel.focus();
+  }
   /** The key dialog: every field a server needs, in one place, whatever the number. Escape and the scrim close it; focus comes back to the button that opened it. */
   function openKeyDialog(cfg, opener) {
     const layer = $('mcp-dialog-layer');
@@ -1260,14 +1275,25 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
 
   // skills (immediate)
   let skillsLoaded = false;
-  const SCOPES = [['local', 'This workspace', 'skills/'], ['project', 'This project', '.forge/skills/'], ['global', 'Your account', '~/.forge/skills/'], ['remote', 'From a link', ''], ['builtin', 'Built into Forge', '']];
+  const SCOPES = [['local', 'This workspace', 'skills/'], ['project', 'This project', '.forge/skills/ and .agents/skills/'], ['global', 'Your account', '~/.forge/skills/, ~/.agents/skills/, Claude Code and Cursor'], ['remote', 'From a link', ''], ['builtin', 'Built into Forge', '']];
   $('skills-rescan').addEventListener('click', () => vscode.postMessage({ type: 'skillsList' }));
   $('skills-browse').addEventListener('click', () => vscode.postMessage({ type: 'skillCatalog' }));
-  function renderSkills(skills) {
+  function renderSkills(skills, otherTools) {
     const box = $('skills-list');
     box.textContent = '';
     $('badge-skills').textContent = skills.length ? String(skills.length) : '';
     const help = document.createElement('p'); help.className = 'ik-muted'; help.textContent = 'Switch a skill off and the model never sees it. The switch applies to every skill with that name, whoever wrote it.'; box.appendChild(help);
+    if (skills.some((s) => s.updatable)) {
+      const upAll = document.createElement('button'); upAll.type = 'button'; upAll.className = 'ik-btn ik-btn--secondary'; upAll.textContent = 'Update all';
+      upAll.title = 'Read the link of each skill you installed from a link and replace the ones that changed';
+      upAll.addEventListener('click', () => vscode.postMessage({ type: 'skillUpdate' }));
+      box.appendChild(upAll);
+    }
+    const toolsRow = document.createElement('label'); toolsRow.className = 'ik-check';
+    const toolsBox = document.createElement('input'); toolsBox.type = 'checkbox'; toolsBox.checked = otherTools !== false;
+    toolsBox.addEventListener('change', () => vscode.postMessage({ type: 'skillOtherTools', enabled: toolsBox.checked }));
+    const toolsText = document.createElement('span'); toolsText.textContent = 'Use skills installed for Claude Code and Cursor (~/.claude/skills and ~/.cursor/skills)';
+    toolsRow.appendChild(toolsBox); toolsRow.appendChild(toolsText); box.appendChild(toolsRow);
     SCOPES.forEach((sc) => {
       const label = document.createElement('div'); label.className = 'group-label'; label.textContent = sc[1];
       const where = document.createElement('span'); where.className = 'path'; where.textContent = sc[2]; label.appendChild(where); box.appendChild(label);
@@ -1277,7 +1303,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       const list = document.createElement('div'); list.className = 'ik-card list';
       inScope.forEach((s) => {
         const item = document.createElement('div'); item.className = 'item';
-        item.innerHTML = '<div class="main"><div class="name">' + esc(s.name) + '</div><div class="sub">' + esc(s.description) + '</div></div>';
+        item.innerHTML = '<div class="main"><div class="name">' + esc(s.name) + '</div><div class="sub">' + esc(s.description) + (s.from ? ' (installed from ' + esc(s.from) + ')' : '') + '</div></div>';
         const open = document.createElement('button'); open.type = 'button'; open.className = 'ik-btn ik-btn--link'; open.textContent = 'Open';
         open.addEventListener('click', () => vscode.postMessage({ type: 'skillOpen', path: s.path }));
         const sw = document.createElement('input'); sw.type = 'checkbox'; sw.checked = s.enabled; sw.setAttribute('aria-label', 'Turn ' + s.name + ' on or off for the model');
@@ -1286,23 +1312,64 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         const st = document.createElement('span'); const showOn = () => { st.textContent = sw.checked ? 'On' : 'Off'; }; showOn(); sw.addEventListener('change', showOn);
         sl.appendChild(sw); sl.appendChild(st);
         const acts = document.createElement('span'); acts.className = 'row'; acts.appendChild(sl); acts.appendChild(open);
+        if (s.updatable) {
+          const up = document.createElement('button'); up.type = 'button'; up.className = 'ik-btn ik-btn--link'; up.textContent = 'Update'; up.title = 'Read ' + s.from + ' again and replace this skill if it changed';
+          up.addEventListener('click', () => vscode.postMessage({ type: 'skillUpdate', name: s.name }));
+          acts.appendChild(up);
+        }
+        if (s.removable) {
+          // Deleting a folder is asked twice, in place: the first press arms the button, the second one deletes.
+          const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove';
+          let armed = false;
+          rm.addEventListener('click', () => {
+            if (!armed) { armed = true; rm.textContent = 'Really remove?'; setTimeout(() => { armed = false; rm.textContent = 'Remove'; }, 4000); return; }
+            vscode.postMessage({ type: 'skillRemove', name: s.name });
+          });
+          acts.appendChild(rm);
+        }
         item.appendChild(acts); list.appendChild(item);
       });
       box.appendChild(list);
     });
     box.appendChild(addYourOwnSkill());
   }
+  /** A link that holds several skills: the person ticks the ones to install; nothing is downloaded before that. */
+  function showSkillPick(msg) {
+    const box = $('skills-list');
+    const old = $('skill-pick'); if (old) old.remove();
+    const card = document.createElement('div'); card.className = 'ik-card card'; card.id = 'skill-pick'; card.style.marginTop = 'var(--space-sm)';
+    const title = document.createElement('strong'); title.textContent = 'This link holds ' + msg.skills.length + ' skills. Choose the ones to install.';
+    card.appendChild(title);
+    const boxes = [];
+    const install = document.createElement('button'); install.type = 'button'; install.className = 'ik-btn ik-btn--primary'; install.textContent = 'Install selected'; install.disabled = true;
+    const refresh = () => { install.disabled = !boxes.some((b) => b.cb.checked); };
+    msg.skills.forEach((s) => {
+      const row = document.createElement('label'); row.className = 'ik-check';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.addEventListener('change', refresh);
+      const text = document.createElement('span'); text.textContent = s.name + ': ' + s.description + ' (' + s.files + (s.files === 1 ? ' file' : ' files') + ')';
+      row.appendChild(cb); row.appendChild(text); card.appendChild(row); boxes.push({ cb, name: s.name });
+    });
+    install.addEventListener('click', () => { install.disabled = true; vscode.postMessage({ type: 'skillInstallPicked', link: msg.link, names: boxes.filter((b) => b.cb.checked).map((b) => b.name) }); });
+    const all = document.createElement('button'); all.type = 'button'; all.className = 'ik-btn ik-btn--secondary'; all.textContent = 'Select all';
+    all.addEventListener('click', () => { boxes.forEach((b) => { b.cb.checked = true; }); refresh(); });
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ik-btn ik-btn--link'; cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => card.remove());
+    const row = document.createElement('div'); row.className = 'row'; row.appendChild(install); row.appendChild(all); row.appendChild(cancel);
+    card.appendChild(row);
+    box.insertBefore(card, box.lastChild);
+    card.scrollIntoView({ block: 'nearest' });
+  }
   function addYourOwnSkill() {
     const card = document.createElement('div'); card.className = 'ik-card card'; card.style.marginTop = 'var(--space-sm)';
     const title = document.createElement('strong'); title.textContent = 'Add your own';
     const sub = document.createElement('span'); sub.className = 'ik-muted'; sub.style.fontSize = '12px';
-    sub.textContent = 'Paste the https address of a skill file or a list of skills, or choose a skill file on this computer.';
+    sub.textContent = 'Paste a GitHub repository (owner/repo) or the address of a skill. Forge downloads the skill folder to this computer. Or choose a skill file here.';
     const field = document.createElement('div'); field.className = 'ik-field';
-    const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = 'skill-add-url'; lab.textContent = 'Address';
-    const url = document.createElement('input'); url.type = 'url'; url.id = 'skill-add-url'; url.className = 'ik-input'; url.placeholder = 'https://example.com/skills.json'; url.spellcheck = false;
+    const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = 'skill-add-url'; lab.textContent = 'Repository or address';
+    const url = document.createElement('input'); url.type = 'text'; url.id = 'skill-add-url'; url.className = 'ik-input'; url.placeholder = 'owner/repo, or a GitHub or GitLab address'; url.spellcheck = false;
     field.appendChild(lab); field.appendChild(url);
     const row = document.createElement('div'); row.className = 'row';
-    const addLink = document.createElement('button'); addLink.type = 'button'; addLink.className = 'ik-btn ik-btn--primary'; addLink.textContent = 'Add address';
+    const addLink = document.createElement('button'); addLink.type = 'button'; addLink.className = 'ik-btn ik-btn--primary'; addLink.textContent = 'Add skill';
     addLink.addEventListener('click', () => { if (url.value.trim()) vscode.postMessage({ type: 'skillAddLink', url: url.value.trim() }); });
     const file = document.createElement('button'); file.type = 'button'; file.className = 'ik-btn ik-btn--secondary'; file.textContent = 'Choose a file…';
     file.addEventListener('click', () => vscode.postMessage({ type: 'skillAddFile' }));
@@ -1316,7 +1383,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   function showEffective(effective) {
     $('provider-effective').textContent = effective
       ? 'The chat is using ' + effective + '.'
-      : 'No provider is configured yet: add an API key (API keys section) or set one in the environment.';
+      : 'No provider is configured yet: add a key to a provider above, or set one in the environment.';
   }
 
   function renderSkillCatalog(entries, error) {
@@ -1411,7 +1478,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'ik-btn ik-btn--secondary'; nb.textContent = 'New steering note';
     nb.addEventListener('click', () => vscode.postMessage({ type: 'steeringNew' }));
     r.appendChild(nb); steer.appendChild(t); steer.appendChild(d); steer.appendChild(r); box.appendChild(steer);
-    const more = document.createElement('p'); more.className = 'ik-muted'; more.textContent = 'An AGENTS.md in a folder is also read the first time Forge reads a file there.'; box.appendChild(more);
+    const more = document.createElement('p'); more.className = 'ik-muted'; more.textContent = 'A FORGE.md or AGENTS.md in a folder is also read the first time Forge reads a file there.'; box.appendChild(more);
   }
 
   // about
@@ -1547,8 +1614,11 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       case 'mcpCatalogListed':
         renderMcpCatalog(msg);
         break;
+      case 'skillPick':
+        showSkillPick(msg);
+        break;
       case 'skillsListed':
-        renderSkills(msg.skills);
+        renderSkills(msg.skills, msg.otherTools);
         if (msg.note) say(msg.note, true);
         break;
       case 'skillCatalogListed':
@@ -1596,12 +1666,34 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       const info = document.createElement('span'); info.className = 'd';
       info.textContent = ' ' + p.name + ' · ' + p.baseUrl + ' · ' + (p.hasInlineKey ? 'key stored' : p.apiKeyEnv ? 'key from ' + p.apiKeyEnv : 'no key') + (p.models ? ' · ' + p.models + ' model' + (p.models === 1 ? '' : 's') : '');
       const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'ik-btn ik-btn--link'; edit.textContent = 'Edit'; edit.setAttribute('aria-label', 'Edit ' + p.id);
-      edit.addEventListener('click', () => fillProviderForm(p));
+      edit.addEventListener('click', () => { fillProviderForm(p); showProvDialog('Edit provider', edit); });
       const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'ik-btn ik-btn--link'; rm.textContent = 'Remove'; rm.setAttribute('aria-label', 'Remove ' + p.id);
-      rm.addEventListener('click', () => vscode.postMessage({ type: 'deleteProvider', id: p.id }));
+      rm.addEventListener('click', () => confirmDialog({ title: 'Remove provider ' + p.id + '?', text: 'Its settings and any key saved with it are deleted. Models written as ' + p.id + ':model stop working.', confirmLabel: 'Remove provider', confirm: () => vscode.postMessage({ type: 'deleteProvider', id: p.id }) }, rm));
       row.appendChild(name); row.appendChild(info); row.appendChild(edit); row.appendChild(rm); box.appendChild(row);
     });
   }
+  /** The provider dialog: Escape and the scrim close it, Tab stays inside, and focus goes back to the button that opened it. */
+  let provOpener = null;
+  function showProvDialog(title, opener) {
+    provOpener = opener || null;
+    $('prov-dlg-title').textContent = title;
+    $('prov-dialog-layer').hidden = false;
+    $('prov-preset').focus();
+  }
+  function closeProvDialog() {
+    $('prov-dialog-layer').hidden = true;
+    $('prov-key').value = '';
+    if (provOpener && provOpener.isConnected) provOpener.focus(); else $('prov-add').focus();
+    provOpener = null;
+  }
+  $('prov-form').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeProvDialog(); return; }
+    if (ev.key !== 'Tab') return;
+    const stops = Array.prototype.slice.call($('prov-form').querySelectorAll('button, input, select')).filter((x) => !x.disabled);
+    const first = stops[0]; const last = stops[stops.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+  });
   function fillProviderForm(p) {
     $('prov-id').value = p.id; $('prov-name').value = p.name || ''; $('prov-url').value = p.baseUrl || ''; $('prov-env').value = p.apiKeyEnv || ''; $('prov-key').value = '';
     $('prov-api').value = p.api || 'openai-compatible'; $('prov-timeout').value = p.timeoutMs || ''; $('prov-chunk').value = p.chunkTimeoutMs || '';
@@ -1610,13 +1702,18 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     const p = providerPresets.find((x) => x.id === $('prov-preset').value);
     if (p) fillProviderForm({ id: p.id, name: p.name, baseUrl: p.baseUrl, apiKeyEnv: p.apiKeyEnv, api: 'openai-compatible' });
   });
-  $('prov-clear').addEventListener('click', () => { fillProviderForm({ id: '' }); $('prov-preset').value = ''; });
-  $('prov-save').addEventListener('click', () => {
+  $('prov-add').addEventListener('click', () => { fillProviderForm({ id: '' }); $('prov-preset').value = ''; showProvDialog('Add provider', $('prov-add')); });
+  $('prov-close').addEventListener('click', closeProvDialog);
+  $('prov-cancel').addEventListener('click', closeProvDialog);
+  $('prov-scrim').addEventListener('click', closeProvDialog);
+  $('prov-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
     const num = (id) => { const v = $(id).value.trim(); return v === '' ? '' : Number(v); };
     const provider = { id: $('prov-id').value.trim(), name: $('prov-name').value, baseUrl: $('prov-url').value, apiKeyEnv: $('prov-env').value, api: $('prov-api').value, timeoutMs: num('prov-timeout'), chunkTimeoutMs: num('prov-chunk') };
     if ($('prov-key').value) provider.apiKey = $('prov-key').value;
     vscode.postMessage({ type: 'saveProvider', provider: provider });
     $('prov-key').value = '';
+    closeProvDialog();
   });
 
   // forge.* settings: one row each, saved the moment a value changes.

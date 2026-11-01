@@ -67,7 +67,7 @@ describe('M6: narrow Settings uses a section picker, not a clipped strip', () =>
     const sel = html.match(/<select class="ik-select" id="section-picker"[^>]*>([\s\S]*?)<\/select>/);
     expect(sel).not.toBeNull();
     expect(html).toMatch(/<select class="ik-select" id="section-picker" aria-label="Settings section"/);
-    for (const s of ['model', 'keys', 'providers', 'agents', 'mcp', 'skills', 'instructions', 'perm', 'context', 'safety', 'notifications', 'tools', 'git', 'advanced', 'display', 'backup']) {
+    for (const s of ['model', 'agents', 'mcp', 'skills', 'instructions', 'perm', 'context', 'safety', 'notifications', 'tools', 'git', 'advanced', 'display', 'backup']) {
       expect(sel![1], s).toContain(`value="${s}"`);
     }
     expect(html).toMatch(/#section-picker \{ display: none;/);

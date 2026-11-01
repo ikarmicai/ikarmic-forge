@@ -5,7 +5,7 @@ import { SETTINGS_INDEX } from '../src/settings/settings-model.js';
 import { handleSettingsMessage, type SettingsDeps } from '../src/settings/settings-protocol.js';
 
 /**
- * Forge reads AGENTS.md, CLAUDE.md and CONVENTIONS.md at the start of every chat, cutting each at a length. Nothing
+ * Forge reads AGENTS.md, FORGE.md at the start of every chat, cutting each at a length. Nothing
  * on the Settings page said which of them it was using, or that one was cut. The page names a file; the extension
  * checks the name against the three it reads and holds the folder.
  */
@@ -33,8 +33,8 @@ describe('Instructions: host side', () => {
 
   it('opens and creates only the three names Forge reads', async () => {
     const d = deps();
-    await handleSettingsMessage({ type: 'instructionOpen', name: 'CLAUDE.md' }, d.all);
-    expect(d.instructions.open).toHaveBeenCalledWith('CLAUDE.md');
+    await handleSettingsMessage({ type: 'instructionOpen', name: 'FORGE.md' }, d.all);
+    expect(d.instructions.open).toHaveBeenCalledWith('FORGE.md');
     for (const bad of ['../x.md', 'notes.md', '/etc/passwd', 'AGENTS.md/../../x']) {
       const r = await handleSettingsMessage({ type: 'instructionOpen', name: bad }, d.all);
       expect(r, bad).toMatchObject({ type: 'error' });

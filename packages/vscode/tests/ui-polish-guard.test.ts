@@ -17,7 +17,9 @@ describe('Chat polish guard (RB-8, on the design system since RB-83)', () => {
     expect(html).toMatch(/\.approval \.kind \{[^}]*color: var\(--warning\)/);
     expect(html).toMatch(/\.cfoot \.auto\.on \{ color: var\(--danger\)/);
     // The note is a tinted banner with a danger edge and icon; its text stays body ink so it reads on the tint in every theme.
-    expect(html).toMatch(/#auto-note \{[^}]*color-mix\(in srgb, var\(--danger\)[^}]*border-left: 3px solid var\(--danger\)/);
+    // Flat: the Autonomous note is a line of text with a red icon, not a boxed or barred banner.
+    expect(html).not.toMatch(/#auto-note \{[^}]*border-left/);
+    expect(html).toMatch(/\.cfoot \.auto\.on \{[^}]*color: var\(--danger\)/);
     expect(html).toMatch(/#auto-note svg \{[^}]*color: var\(--danger\)/);
   });
 
@@ -58,7 +60,7 @@ describe('Settings: which rows save instantly (S1) and the narrow nav (S5)', () 
   const html = getSettingsHtml();
   const section = (id: string) => html.slice(html.indexOf(`<section id="sec-${id}"`), html.indexOf('</section>', html.indexOf(`<section id="sec-${id}"`)));
 
-  it.each(['keys', 'mcp', 'skills', 'backup'])('%s: the heading says the actions apply at once', (id) => {
+  it.each(['mcp', 'skills', 'backup'])('%s: the heading says the actions apply at once', (id) => {
     expect(section(id).match(/<h2>[\s\S]*?<\/h2>/)?.[0]).toContain('<span class="ik-badge ik-badge--outline">Saves instantly</span>');
   });
 
@@ -174,9 +176,9 @@ describe('Chat: mode and model sit in the composer, the header keeps actions (C6
     expect(composer).toContain('<div class="cchips">');
     expect(composer.indexOf('id="mode"')).toBeGreaterThan(composer.indexOf('class="cchips"'));
     expect(composer.indexOf('id="model-label"')).toBeLessThan(composer.indexOf('class="cfoot"'));
-    // The chips head the composer, above the text box, on a sunken strip with a hairline under it.
+    // The chips head the composer, above the text box, flat: no strip fill and no hairline under them.
     expect(composer.indexOf('class="cchips"')).toBeLessThan(composer.indexOf('id="input"'));
-    expect(html).toMatch(/\.cchips \{[^}]*background: var\(--bg-sunken\)[^}]*border-bottom: 1px solid var\(--line-subtle\)/);
+    expect(html).not.toMatch(/\.cchips \{[^}]*(background:|border-bottom:)/);
     expect(html).toContain('id="model-menu"');
     expect(html.indexOf('id="model-menu"')).toBeGreaterThan(html.indexOf('id="input-area"'));
   });
@@ -195,11 +197,19 @@ describe('Chat: mode and model sit in the composer, the header keeps actions (C6
 });
 
 describe('Edges, depth and selection (RB-8, tokens in the design-system test)', () => {
-  it('chat: fill means content, edge means control', () => {
+  it('chat: the input starts about three lines tall, grows to 240px and shrinks back in a short window', () => {
     const html = chatHtml();
-    expect(html).toMatch(/\.composer \{ border: 1px solid var\(--line-control\)[^}]*box-shadow: var\(--elev-1\)/);
-    expect(html).toMatch(/\.cchips select \{[^}]*border: 1px solid var\(--line-control\)/);
-    expect(html).toMatch(/\.cchips \.model \{[^}]*border: 1px solid var\(--line-control\)/);
+    expect(html).toMatch(/#input \{[^}]*min-height: 84px; max-height: 240px/);
+    expect(html).toMatch(/@media \(max-height: 480px\) \{ #input \{ min-height: 32px; \} \}/);
+    expect(html).not.toContain('Math.min(inputEl.scrollHeight, 200)');
+  });
+
+  it('chat: the composer and its chips are flat, a surface step instead of an edge', () => {
+    const html = chatHtml();
+    expect(html).toMatch(/\.composer \{ border: 0;[^}]*background: var\(--bg-surface\)/);
+    expect(html).not.toMatch(/\.composer \{[^}]*box-shadow/);
+    expect(html).toMatch(/\.cchips select \{[^}]*border: 0/);
+    expect(html).toMatch(/\.cchips \.model \{[^}]*border: 0/);
     expect(html).toMatch(/\.msg\.user \.body \{ background: var\(--bg-overlay\); border: 1px solid var\(--line-subtle\)/);
     expect(html).toMatch(/\.approval \{[^}]*box-shadow: var\(--elev-1\)/);
     for (const menu of ['#model-menu', '#more-menu', '#panel .rowmenu']) {

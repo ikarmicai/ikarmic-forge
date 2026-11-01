@@ -122,3 +122,11 @@ describe('the webview twin equals the one in core (the terminal app uses core\'s
     for (const r of AGENT_RUN_REASONS) expect(runReasonLabel(r), r).toBe(core.runReasonLabel(r));
   });
 });
+
+// RB-55: seen by eye in the chat, where the row read "Suggest agent change_files".
+describe('a suggest-agent row', () => {
+  it('shows the reason, not the value of the need', () => {
+    const row = summarizeTool('suggest_agent', { needs: 'change_files', reason: 'The fix needs an edit.' });
+    expect(row.target).toBe('The fix needs an edit.');
+  });
+});

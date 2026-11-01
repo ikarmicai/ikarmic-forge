@@ -317,7 +317,7 @@ describe('handleSettingsMessage: keys, MCP and skills', () => {
     };
     const loadForgeConfigFile = vi.fn().mockResolvedValue({ config: {}, warnings: [] });
     expect(await handleSettingsMessage({ type: 'skillsList' }, baseDeps({ skills, loadForgeConfigFile }))).toEqual({
-      type: 'skillsListed', skills: [{ name: 'release-notes', description: 'Writes notes', scope: 'project', path: '/w/.forge/skills/release-notes.md', enabled: true }],
+      type: 'skillsListed', otherTools: true, skills: [{ name: 'release-notes', description: 'Writes notes', scope: 'project', path: '/w/.forge/skills/release-notes.md', enabled: true, removable: false, updatable: false }],
     });
   });
 

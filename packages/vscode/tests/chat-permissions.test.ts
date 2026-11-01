@@ -8,6 +8,11 @@ describe('permissionExtras', () => {
     expect(permissionExtras({ permission: rules })).toEqual({ permissionRules: rules });
   });
 
+  it('puts the agent\'s rules after the person\'s', () => {
+    const merged = permissionExtras({ permission: { bash: { 'git push *': 'allow' } } }, { bash: { '*git push*': 'deny' } });
+    expect(merged.permissionRules).toEqual({ bash: { 'git push *': 'allow', '*git push*': 'deny' } });
+  });
+
   it('adds nothing when the config has no rules or an empty object', () => {
     expect(permissionExtras({})).toEqual({});
     expect(permissionExtras({ permission: {} })).toEqual({});

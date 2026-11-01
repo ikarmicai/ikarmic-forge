@@ -123,6 +123,10 @@ function target(name: string, a: Rec): { target: string; title: string } {
     }
     case 'list_files':
       return { target: path ?? '.', title: path ?? '.' };
+    case 'suggest_agent': {
+      const reason = str(a.reason) ?? '';
+      return { target: clip(reason), title: reason };
+    }
     case 'run_command': {
       const cmd = str(a.command) ?? '';
       return { target: clip(cmd), title: cmd };
@@ -238,6 +242,9 @@ export function summarizeTool(name: string, args: unknown, outcome?: ToolOutcome
   }
   if (typeof result === 'string' && result.startsWith('Denied by user')) {
     return { verb, ...t, meta: 'denied', metaTone: 'err' };
+  }
+  if (typeof result === 'string' && result.startsWith('Blocked')) {
+    return { verb, ...t, meta: 'blocked', metaTone: 'err' };
   }
   const m = resultMeta(name, a, rec(result));
   return { verb, ...t, ...m };

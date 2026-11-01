@@ -3,10 +3,10 @@
  * the sessions, and a due wakeup delivered as an automatic message once the chat is idle. Closing the editor stops
  * the timers; reopening the chat restores them.
  */
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 
-import { WakeupScheduler, wakeupMessage, type Wakeup, type WakeupStore } from '@ikarmic/forge-core';
+import { WakeupScheduler, wakeupMessage, writeAtomic, type Wakeup, type WakeupStore } from '@ikarmic/forge-core';
 
 /** `<sessions>/wakeups/<chat id>.json`; the folder has no `.json` suffix, so the session list never reads it. */
 export function wakeupFile(sessionDir: string, chatId: string): string {
@@ -34,9 +34,7 @@ export function fileWakeupStore(file: string): WakeupStore {
         return;
       }
       await mkdir(path.dirname(file), { recursive: true });
-      const tmp = `${file}.tmp`;
-      await writeFile(tmp, JSON.stringify(list), 'utf8');
-      await rename(tmp, file);
+      await writeAtomic(file, JSON.stringify(list));
     },
   };
 }

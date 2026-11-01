@@ -10,14 +10,24 @@ export const CHAT_CSS = `  :root {
   }
   html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font-sans); font-size: var(--size-body); color: var(--ink-body); background: var(--bg-canvas); }
   body { display: flex; flex-direction: column; }
-  #toolbar { display: flex; align-items: center; gap: 4px; padding: 5px 8px 5px 10px; border-bottom: 1px solid var(--line-subtle); position: relative; flex-wrap: wrap; row-gap: 4px; min-width: 0; }
-  /* The meter and the three icon buttons wrap together, never one orphan icon on a second row. */
-  #toolbar .tb-end { display: flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
-  .cchips select { background: transparent; color: var(--ink-body); border: 1px solid var(--line-control); border-radius: var(--radius-xs); font-size: var(--size-caption); padding: 2px 4px; flex: none; min-height: 24px; cursor: pointer; field-sizing: content; }
+  #toolbar { display: flex; align-items: center; gap: 2px; padding: 5px 8px 5px 10px; position: relative; min-width: 0; container: tb / inline-size; }
+  /* Every action is an icon. Below about 230px inside the padding (a container query ignores the padding, RB-141) the three planning tools fold into the ... menu, so an icon is never orphaned on a second row. */
+  #toolbar button.icon { width: 28px; height: 28px; position: relative; }
+  #toolbar button.icon:hover, #toolbar button.icon.hot { background: var(--ion-tint); color: var(--ion-text); }
+  #toolbar .tb-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--line-subtle); flex: none; }
+  #toolbar .tb-sp { flex: 1; }
+  #toolbar .cdot { position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 2px var(--bg-canvas); display: none; }
+  #condense-btn.hot .cdot { display: block; }
+  #more-btn { display: none; }
+  @container tb (max-width: 230px) {
+    #toolbar .tb-extra { display: none; }
+    #more-btn { display: inline-grid; }
+  }
+  .cchips select { background: transparent; color: var(--ink-body); border: 0; border-radius: var(--radius-xs); font-size: var(--size-caption); padding: 2px 4px; flex: none; min-height: 24px; cursor: pointer; field-sizing: content; }
   .cchips select:hover { background: var(--bg-overlay); }
   /* The select itself is transparent, so its popup needs an explicit themed background or it renders white with pale text. */
   .cchips select option { background: var(--bg-raised); color: var(--ink-body); }
-  .cchips .model { background: none; border: 1px solid var(--line-control); border-radius: var(--radius-xs); padding: 2px 6px; min-height: 24px; color: var(--ink-body); font-size: var(--size-caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; cursor: pointer; text-align: left; }
+  .cchips .model { background: none; border: 0; border-radius: var(--radius-xs); padding: 2px 6px; min-height: 24px; color: var(--ink-body); font-size: var(--size-caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; cursor: pointer; text-align: left; }
   .cchips .model::after { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 1px 2px 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
   .cchips .model:hover, .cchips .model[aria-expanded="true"] { background: var(--bg-overlay); color: var(--ink-body); }
   #model-menu { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 2px); z-index: 7; display: flex; flex-direction: column; max-height: min(70vh, 420px); background: var(--bg-raised); color: var(--ink-body); border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); box-shadow: var(--elev-3); }
@@ -84,10 +94,9 @@ export const CHAT_CSS = `  :root {
   .mp-foot p { margin: 0; flex: 1; color: var(--ink-muted); font-size: var(--size-caption); }
   #more-menu { position: absolute; right: 8px; top: calc(100% + 2px); z-index: 6; min-width: 220px; padding: 4px; background: var(--bg-raised); color: var(--ink-body); border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); box-shadow: var(--elev-3); }
   #more-menu[hidden] { display: none; }
-  #more-menu button { display: block; width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--radius-xs); font-size: var(--size-body); }
+  #more-menu button { display: flex; align-items: center; gap: var(--space-xs); width: 100%; text-align: left; background: none; color: inherit; border: 0; padding: 5px 8px; border-radius: var(--radius-xs); font-size: var(--size-body); }
   #more-menu button:hover, #more-menu button:focus-visible { background: var(--ion-tint); color: var(--ion-text); }
-  #more-menu .stat { border-top: 1px solid var(--line-subtle); margin-top: 4px; padding: 6px 8px 2px; font-size: var(--size-caption); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
-  #more-menu .stat:empty { display: none; }
+  #more-menu button svg { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   #panel { display: none; position: absolute; inset: 36px 0 0 0; background: var(--bg-canvas); z-index: 5; overflow-y: auto; padding: 8px 12px; border-top: 1px solid var(--line-subtle); }
   #panel.open { display: block; animation: rise .14s ease-out; }
   @media (prefers-reduced-motion: reduce) { #panel.open { animation: none; } }
@@ -148,13 +157,15 @@ export const CHAT_CSS = `  :root {
   .steps-head { font-size: var(--size-caption); color: var(--ink-muted); padding: 0 4px 2px; font-variant-numeric: tabular-nums; }
   .steps-head.auto { color: var(--danger); }
   .tool-body .why { margin: 0 0 4px; font-size: var(--size-caption); color: var(--ink-muted); }
-  #input-area { position: relative; border-top: 1px solid var(--line-subtle); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-  .composer { border: 1px solid var(--line-control); border-radius: var(--radius-sm); background: var(--bg-raised); box-shadow: var(--elev-1); }
-  .composer:focus-within { border-color: var(--focus-ring); outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-  #input { display: block; width: 100%; resize: none; min-height: 32px; max-height: 200px; border: 0; outline: none; background: transparent; color: var(--ink-body); padding: 10px 12px 6px; font-family: var(--font-sans); font-size: var(--size-body); }
+  #input-area { position: relative; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .composer { border: 0; border-radius: var(--radius-sm); background: var(--bg-surface); }
+  .composer:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+  #input { display: block; width: 100%; resize: none; min-height: 84px; max-height: 240px; border: 0; outline: none; background: transparent; color: var(--ink-body); padding: 8px 14px; line-height: 22px; font-family: var(--font-sans); font-size: var(--size-body); }
   #input::placeholder { color: var(--ink-muted); }
   /* In a very narrow sidebar the placeholder wraps; leave room for all of it instead of clipping it behind scroll arrows. */
   @media (max-width: 260px) { #input { min-height: 56px; } }
+  /* A short window keeps the conversation: the box goes back to one line there and still grows as you type. */
+  @media (max-height: 480px) { #input { min-height: 32px; } }
   #queue { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
   #queue:empty { display: none; }
   #queue .queued { display: flex; align-items: center; gap: 6px; font-size: var(--size-caption); color: var(--ink-muted); }
@@ -194,7 +205,11 @@ export const CHAT_CSS = `  :root {
   #todo-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
   #todo-chip .st-ic { flex: none; display: none; }
   #todo-chip.s-doing .st-doing, #todo-chip.s-done .st-done, #todo-chip.s-idle .st-idle { display: block; }
-  #todo-bar { display: flex; gap: 2px; padding: 0 12px 10px; }
+
+  /* No run going (stopped, finished, a reopened chat): the step in progress stands still instead of spinning. */
+  #todo-chip.s-doing.stopped .st-doing { display: none; }
+  #todo-chip.s-doing.stopped .st-idle { display: block; }
+  #todo-chip.stopped .todo-spin { animation: none; }  #todo-bar { display: flex; gap: 2px; padding: 0 12px 10px; }
   #todo-bar span { flex: 1; height: 3px; border-radius: 2px; background: var(--line-subtle); }
   #todo-bar span.done { background: var(--success); }
   #todo-bar span.doing { background: var(--ion); }
@@ -214,6 +229,8 @@ export const CHAT_CSS = `  :root {
   .question .opts { display: flex; flex-wrap: wrap; gap: 6px; }
   .question .opts button, .question .custom button { font-size: var(--size-caption); padding: 3px 9px; }
   .question .custom { display: flex; gap: 6px; }
+  .question .picks { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+  .question .pick { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .question .custom input { flex: 1; min-width: 0; border: 1px solid var(--line-control); border-radius: var(--radius-xs); background: var(--bg-raised); color: var(--ink-body); font: inherit; font-size: var(--size-caption); padding: 3px 8px; }
   .turn-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin: -4px 0 0; font-size: var(--size-caption); }
   .diagram { margin: 6px 0; padding: 8px; overflow: auto; border-radius: var(--radius-sm); background: var(--bg-sunken); }
@@ -226,18 +243,17 @@ export const CHAT_CSS = `  :root {
   .chip button { width: 16px; height: 16px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; line-height: 1; }
   .msg.user .files { margin-top: 4px; font-size: var(--size-caption); opacity: .8; }
   /* Mode and model are set once and rarely touched, so they head the composer on a sunken strip, out of the way of typing. */
-  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; min-width: 0; background: var(--bg-sunken); border-bottom: 1px solid var(--line-subtle); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .cchips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px 0; min-width: 0; }
   .cchips #mode { font-weight: 600; }
   .cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 4px 4px 8px; }
   /* The approval level is a select like the mode and model chips. It stays neutral while Ask first, reads as a mild step at Accept edits, and is the one red control in the composer at Autonomous. */
-  .cfoot .auto { font-size: var(--size-caption); color: var(--ink-muted); background: transparent; border: 1px solid var(--line-control); border-radius: var(--radius-xs); min-height: 24px; padding: 2px 4px; cursor: pointer; field-sizing: content; }
+  .cfoot .auto { font-size: var(--size-caption); color: var(--ink-muted); background: transparent; border: 0; border-radius: var(--radius-xs); min-height: 24px; padding: 2px 4px; cursor: pointer; field-sizing: content; }
   .cfoot .auto:hover { color: var(--ink-body); background: var(--bg-overlay); }
   .cfoot .auto option { background: var(--bg-raised); color: var(--ink-body); font-weight: normal; }
-  .cfoot .auto.edits { color: var(--ink-body); border-color: var(--line-control); }
-  .cfoot .auto.on { color: var(--danger); font-weight: 600; border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
-  #auto-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 6px; padding: 6px 8px; font-size: var(--size-caption); line-height: 1.4; color: var(--ink-body); background: color-mix(in srgb, var(--danger) 12%, transparent); border-left: 3px solid var(--danger); border-radius: var(--radius-xs); }
+  .cfoot .auto.edits { color: var(--ink-body); }
+  .cfoot .auto.on { color: var(--danger); font-weight: 600; }
+  #auto-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 4px; padding: 0; font-size: var(--size-caption); line-height: 1.4; color: var(--ink-muted); }
   #auto-note svg { flex: none; margin-top: 1px; color: var(--danger); }
-  #auto-note.edits { background: var(--bg-sunken); border-left-color: var(--line-control); }
   #auto-note.edits svg { color: var(--ink-muted); }
   #auto-note[hidden] { display: none; }
   #send, #cancel { flex: none; min-height: 24px; }
@@ -326,7 +342,7 @@ export const CHAT_CSS = `  :root {
   .approval .cmd code { min-width: 0; font: inherit; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
   .approval .cmd.open code { display: block; -webkit-line-clamp: unset; max-height: 200px; overflow: auto; }
   .approval .meta { font-size: var(--size-caption); color: var(--ink-body); font-family: var(--font-mono); }
-  .approval button { flex: none; font-size: var(--size-caption); min-height: 28px; padding: 3px 12px; white-space: nowrap; }
+  .approval button { flex: 0 1 auto; max-width: 100%; font-size: var(--size-caption); min-height: 28px; padding: 3px 12px; white-space: normal; }
   .approval .ik-btn--link { padding: 0; min-height: 24px; }
   .approval .ik-btn--link:hover { text-decoration: underline; }
   .approval .fb { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
@@ -395,8 +411,8 @@ export const CHAT_CSS = `  :root {
   .approval-default-card .adc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   .approval-default-card .adc-note { color: var(--ink-muted); font-size: var(--size-caption); }
   .empty-state .examples { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
-  .empty-state .ex { text-align: left; background: transparent; color: var(--ink-body); border: 1px solid var(--line-control); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--size-caption); min-height: 28px; }
-  .empty-state .ex:hover { background: var(--bg-overlay); border-color: var(--focus-ring); }
+  .empty-state .ex { text-align: left; background: transparent; color: var(--ink-body); border: 0; border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--size-caption); min-height: 28px; }
+  .empty-state .ex:hover { background: var(--bg-overlay); color: var(--ink-strong); }
   .empty-state .hint { font-size: var(--size-caption); line-height: 1.4; margin-top: 6px; max-width: none; }
   /* Short panes (small windows, the composer's Autonomous note): give up the decoration first, never the hint. */
   @container msgs (max-height: 360px) {
@@ -510,18 +526,20 @@ export function chatHtml(
 <script src="${voiceScriptUri}" onerror="window.__forgeVoiceLoadFailed=true"></script>
 <script src="${forgeUiScriptUri}" onerror="window.__forgeUiLoadFailed=true"></script>
 <div id="toolbar" role="toolbar" aria-label="Chat actions">
-  <div class="tb-end">
   <button id="new-chat" class="icon" type="button" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button>
-  <button id="history-btn" class="icon" type="button" title="History" aria-label="History"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.5 2.5v2.2h2.2"/><path d="M8 5v3.2l2 1.3"/></svg></button>
+  <button id="history-btn" class="icon" type="button" title="History" aria-label="History"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v2.2h2.2M8 5v3.2l2 1.3"/></svg></button>
+  <button id="checkpoints-btn" class="icon" type="button" title="Restore checkpoint" aria-label="Restore checkpoint"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 3v3h3"/></svg></button>
+  <button id="condense-btn" class="icon" type="button" title="Condense conversation. Summarize older turns to free up context." aria-label="Condense conversation"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h11M4.5 8h7M6.5 11h3"/></svg><span id="condense-dot" class="cdot" aria-hidden="true"></span></button>
+  <span class="tb-sep tb-extra" aria-hidden="true"></span>
+  <button id="specs-btn" class="icon tb-extra" type="button" title="Specs: turn a task into requirements, a design and a checklist" aria-label="Specs"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h5.5L12 5v8.5H4zM6 8.5l1 1 2-2.5M6 11.5h4"/></svg></button>
+  <button id="steering-btn" class="icon tb-extra" type="button" title="Steering: guidance Forge reads at the start of every chat" aria-label="Steering"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 6.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM2.7 7.2l3.9.6M13.3 7.2l-3.9.6M8 9.3v4.2"/></svg></button>
+  <span class="tb-sp"></span>
+  <button id="manager-window-btn" class="icon tb-extra" type="button" title="Agent Manager in new window: run several sessions at once" aria-label="Agent Manager in new window"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5h-3v9h9v-3M9 3.5h3.5V7M12.5 3.5l-5 5"/></svg></button>
   <button id="more-btn" class="icon" type="button" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r=".7"/><circle cx="8" cy="8" r=".7"/><circle cx="12.5" cy="8" r=".7"/></svg></button>
-  </div>
   <div id="more-menu" role="menu" aria-label="More actions" hidden>
-    <button id="checkpoints-btn" type="button" role="menuitem">Restore checkpoint…</button>
-    <button id="condense-btn" type="button" role="menuitem" title="Summarize older turns to free up context">Condense conversation</button>
-    <button id="specs-btn" type="button" role="menuitem" title="Turn a task into requirements, a design and a checklist">Specs…</button>
-    <button id="steering-btn" type="button" role="menuitem" title="Guidance Forge reads at the start of every chat">Steering…</button>
-    <button id="manager-window-btn" type="button" role="menuitem" title="Run several sessions at once, in a window of its own">Agent Manager in new window</button>
-    <div class="stat" id="meter-stat"></div>
+    <button id="specs-menu-btn" type="button" role="menuitem" title="Turn a task into requirements, a design and a checklist"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h5.5L12 5v8.5H4zM6 8.5l1 1 2-2.5M6 11.5h4"/></svg>Specs…</button>
+    <button id="steering-menu-btn" type="button" role="menuitem" title="Guidance Forge reads at the start of every chat"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 6.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM2.7 7.2l3.9.6M13.3 7.2l-3.9.6M8 9.3v4.2"/></svg>Steering…</button>
+    <button id="manager-menu-btn" type="button" role="menuitem" title="Run several sessions at once, in a window of its own"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5h-3v9h9v-3M9 3.5h3.5V7M12.5 3.5l-5 5"/></svg>Agent Manager in new window</button>
   </div>
 </div>
 <div id="findbar" role="search" hidden><input id="find-input" type="text" aria-label="Find in this chat" placeholder="Find in this chat" /><button id="find-prev" class="ik-btn ik-btn--link" type="button" aria-label="Previous match">Prev</button><button id="find-next" class="ik-btn ik-btn--link" type="button" aria-label="Next match">Next</button><button id="find-close" class="ik-btn ik-btn--link" type="button" aria-label="Close find">Close</button></div>
@@ -633,7 +651,9 @@ export function chatHtml(
     const chosen = approvalSelect.options[approvalSelect.selectedIndex];
     approvalSelect.title = chosen ? chosen.title : '';
   }
-  approvalSelect.addEventListener('change', showApproval);
+  // A level the person picked is theirs: a default the host sends later (it arrives after the model list loads) must not undo it.
+  let approvalTouched = false;
+  approvalSelect.addEventListener('change', () => { approvalTouched = true; showApproval(); });
   // The level new chats start at, and whether the first-run card is still to be shown (both come from the host).
   let approvalDefault = '${level}';
   let offerApprovalCard = false;
@@ -674,7 +694,6 @@ export function chatHtml(
   const meterLive = document.getElementById('meter-live');
   const meterCostEl = document.getElementById('meter-cost');
   const meterText = document.getElementById('meter-text');
-  const meterStat = document.getElementById('meter-stat');
   const attachBtn = document.getElementById('attach');
   const queueEl = document.getElementById('queue');
   const editBanner = document.getElementById('edit-banner');
@@ -835,7 +854,7 @@ export function chatHtml(
     const open = moreMenu.hidden;
     moreMenu.hidden = !open;
     moreBtn.setAttribute('aria-expanded', String(open));
-    if (open) checkpointsBtn.focus();
+    if (open) moreMenu.querySelector('[role="menuitem"]').focus();
   });
   document.addEventListener('click', (e) => { if (!moreMenu.hidden && !moreMenu.contains(e.target)) closeMore(); });
   moreMenu.addEventListener('keydown', (e) => {
@@ -1194,6 +1213,9 @@ export function chatHtml(
   document.getElementById('specs-btn').addEventListener('click', () => openWork('specs'));
   document.getElementById('steering-btn').addEventListener('click', () => openWork('steering'));
   document.getElementById('manager-window-btn').addEventListener('click', () => { closeMore(); vscode.postMessage({ type: 'open_agent_manager_window' }); });
+  document.getElementById('specs-menu-btn').addEventListener('click', () => openWork('specs'));
+  document.getElementById('steering-menu-btn').addEventListener('click', () => openWork('steering'));
+  document.getElementById('manager-menu-btn').addEventListener('click', () => { closeMore(); vscode.postMessage({ type: 'open_agent_manager_window' }); });
 
   function appendWarning(text) {
     hideEmpty();
@@ -1226,12 +1248,35 @@ export function chatHtml(
   }
 
   // Offered instead of running a request that asks for a whole system; the host holds the message.
-  function removeSuggestCard() { const c = messagesEl.querySelector('.approval.suggest'); if (c) c.remove(); }
+  // Two cards share the look: the big-request offer and the plan-saved note. A new one replaces its own kind only: the plan-saved
+  // note arrives right after the spec offer for a large plan and must not remove it (RB-119).
+  function removeSuggestCard(kind) { messagesEl.querySelectorAll('.approval.suggest').forEach((c) => { if (!kind || c.dataset.card === kind) c.remove(); }); }
   // afterPlan: the Plan agent already wrote a large plan, so "Plan first" is left out.
+  // Forge planned first by itself: say so, and give the one way back. Only the newest notice stays.
+  function showAutoPlan(id) {
+    document.querySelectorAll('[data-card="auto-plan"]').forEach((el) => el.remove());
+    const card = document.createElement('div');
+    card.className = 'approval suggest';
+    card.dataset.card = 'auto-plan';
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'Switched to Plan mode');
+    const line = document.createElement('div'); line.className = 'line';
+    const q = document.createElement('span'); q.className = 'q'; q.textContent = 'Switched to Plan mode for a new app or feature. Forge will ask a few questions, then write a plan.';
+    line.appendChild(q);
+    const undo = document.createElement('button'); undo.type = 'button'; undo.className = 'ik-btn ik-btn--secondary'; undo.textContent = 'Undo';
+    undo.title = 'Run this in Agent mode instead, without planning';
+    undo.addEventListener('click', () => { card.remove(); vscode.postMessage({ type: 'auto_plan_undo', id }); });
+    line.appendChild(undo);
+    card.appendChild(line);
+    messagesEl.appendChild(card);
+    autoscroll();
+  }
+
   function showSuggestSpec(afterPlan) {
     removeSuggestCard();
     const card = document.createElement('div');
     card.className = 'approval suggest';
+    card.dataset.card = 'big-request';
     card.setAttribute('role', 'group');
     card.setAttribute('aria-label', 'This looks like a big build');
     const kind = document.createElement('div'); kind.className = 'kind'; kind.textContent = 'Big request';
@@ -1255,11 +1300,64 @@ export function chatHtml(
     autoscroll();
   }
 
-  // The Plan agent finished and the host saved the plan in the project. offer: ask whether to carry it out.
-  function showPlanSaved(path, offer) {
-    removeSuggestCard();
+  // An agent could not do what was asked: why, and the one next step (RB-122). Only a click here changes anything.
+  function showBlockedCard(msg) {
     const card = document.createElement('div');
     card.className = 'approval suggest';
+    card.dataset.card = 'blocked';
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', msg.title);
+    const kind = document.createElement('div'); kind.className = 'kind'; kind.textContent = msg.title;
+    const line = document.createElement('div'); line.className = 'line';
+    const q = document.createElement('span'); q.className = 'q'; q.textContent = msg.text;
+    line.appendChild(q);
+    if (msg.command) {
+      const code = document.createElement('code'); code.className = 'ik-mono'; code.textContent = msg.command;
+      line.appendChild(code);
+    }
+    const choose = (choice) => { card.remove(); vscode.postMessage({ type: 'blocked_choice', choice }); };
+    const go = document.createElement('button'); go.type = 'button'; go.textContent = msg.primary; go.className = 'ik-btn ik-btn--primary';
+    go.addEventListener('click', () => choose('go'));
+    line.appendChild(go);
+    if (msg.offersStay) {
+      const stay = document.createElement('button'); stay.type = 'button'; stay.textContent = 'Stay'; stay.className = 'ik-btn ik-btn--secondary';
+      stay.addEventListener('click', () => choose('stay'));
+      line.appendChild(stay);
+    }
+    card.appendChild(kind); card.appendChild(line);
+    messagesEl.appendChild(card);
+    autoscroll();
+  }
+
+  // The message looks like it holds a key or password, and nothing has been sent yet (RB-121).
+  function showSecretFound() {
+    const card = document.createElement('div');
+    card.className = 'approval suggest';
+    card.dataset.card = 'secret';
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'Possible secret in your message');
+    const kind = document.createElement('div'); kind.className = 'kind'; kind.textContent = 'Possible secret';
+    const line = document.createElement('div'); line.className = 'line';
+    const q = document.createElement('span'); q.className = 'q';
+    q.textContent = 'This message looks like it holds a key or password. Nothing has been sent yet. Anything you send goes to your model provider.';
+    line.appendChild(q);
+    for (const [label, choice, secondary] of [['Hide it and send', 'hide', false], ['Send as typed', 'keep', true]]) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+      b.className = secondary ? 'ik-btn ik-btn--secondary' : 'ik-btn ik-btn--primary';
+      b.addEventListener('click', () => { card.remove(); vscode.postMessage({ type: 'secret_choice', choice }); });
+      line.appendChild(b);
+    }
+    card.appendChild(kind); card.appendChild(line);
+    messagesEl.appendChild(card);
+    autoscroll();
+  }
+
+  // The Plan agent finished and the host saved the plan in the project. offer: ask whether to carry it out.
+  function showPlanSaved(path, offer) {
+    removeSuggestCard('plan-saved');
+    const card = document.createElement('div');
+    card.className = 'approval suggest';
+    card.dataset.card = 'plan-saved';
     card.setAttribute('role', 'group');
     card.setAttribute('aria-label', 'Plan saved');
     const kind = document.createElement('div'); kind.className = 'kind'; kind.textContent = 'Plan saved';
@@ -1478,8 +1576,9 @@ export function chatHtml(
     }
     meterBtn.title = detail || 'Cost of this chat and how full the context window is';
     meterBtn.setAttribute('aria-label', detail ? detail + '. Show usage details' : 'Chat cost and context usage');
-    meterStat.textContent = detail;
     const level = UI ? UI.meterLevel(pct) : 'none';
+    condenseBtn.classList.toggle('hot', level === 'warn' || level === 'crit');
+    condenseBtn.title = 'Condense conversation. ' + (detail ? detail + '.' : 'Summarize older turns to free up context.');
     meterEl.classList.toggle('empty', !detail);
     meterEl.classList.toggle('no-ctx', pct === null);
     meterEl.classList.toggle('warn', level === 'warn');
@@ -1504,7 +1603,7 @@ export function chatHtml(
     document.getElementById('mp-in').textContent = meterRun ? fmt(meterRun.input) : '–';
     document.getElementById('mp-out').textContent = meterRun ? fmt(meterRun.output) : '–';
     document.getElementById('mp-time').textContent = meterRun && meterRun.ms ? (meterRun.ms / 1000).toFixed(1) + 's' : '–';
-    document.getElementById('mp-step').textContent = meterRun && meterRun.max ? meterRun.iter + ' of ' + meterRun.max : '–';
+    document.getElementById('mp-step').textContent = meterRun ? (meterRun.max ? meterRun.iter + ' of ' + meterRun.max : String(meterRun.iter)) : '–';
   }
   function closeMeterPop(refocus) {
     if (meterPop.hidden) return;
@@ -1762,7 +1861,7 @@ export function chatHtml(
   // The host sends its commands to the chat that last said it had focus.
   window.addEventListener('focus', () => vscode.postMessage({ type: 'chat_focused' }));
   window.addEventListener('blur', () => vscode.postMessage({ type: 'chat_blurred' }));
-  newChatBtn.addEventListener('click', () => { closePanel(); vscode.postMessage({ type: 'new_chat' }); });
+  newChatBtn.addEventListener('click', () => { approvalTouched = false; closePanel(); vscode.postMessage({ type: 'new_chat' }); });
   historyBtn.addEventListener('click', () => { renderPanelMessage('Sessions', 'Loading…', true); vscode.postMessage({ type: 'listSessions' }); });
   checkpointsBtn.addEventListener('click', () => { closeMore(); renderPanelMessage('Checkpoints', 'Loading…', true); vscode.postMessage({ type: 'listCheckpoints' }); });
   attachBtn.addEventListener('click', () => {
@@ -1823,6 +1922,7 @@ export function chatHtml(
     approvalSelect.disabled = running;
     modeSelect.disabled = running;
     meterEl.classList.toggle('stream', running);
+    document.getElementById('todo-chip').classList.toggle('stopped', !running);
   }
 
   function escapeHtml(s) {
@@ -2470,7 +2570,7 @@ export function chatHtml(
       seg.className = state;
       bar.appendChild(seg);
     });
-    chip.className = doingCount > 0 ? 's-doing' : (todoItems.length > 0 && doneCount === todoItems.length ? 's-done' : 's-idle');
+    chip.className = (doingCount > 0 ? 's-doing' : (todoItems.length > 0 && doneCount === todoItems.length ? 's-done' : 's-idle')) + (taskRunning ? '' : ' stopped');
     if (!summary) list.hidden = true;
   }
   document.getElementById('todo-toggle').addEventListener('click', () => {
@@ -2509,12 +2609,39 @@ export function chatHtml(
       const body = document.createElement('span'); body.textContent = 'You answered: ' + (value || '(no answer)');
       log.appendChild(st); log.appendChild(body); appendStep(log);
     };
-    if (msg.options && msg.options.length) {
+    const multi = msg.multiple === true && msg.options && msg.options.length > 0;
+    if (multi) {
+      const hint = document.createElement('div'); hint.className = 'qk'; hint.textContent = 'Choose all that apply';
+      card.appendChild(hint);
+      const list = document.createElement('div'); list.className = 'picks';
+      const boxes = [];
+      const extra = document.createElement('input'); extra.type = 'text'; extra.placeholder = 'Add your own'; extra.setAttribute('aria-label', 'Add your own');
+      const send = document.createElement('button'); send.type = 'button'; send.className = 'ik-btn ik-btn--primary'; send.textContent = 'Answer';
+      send.disabled = true; send.title = 'Choose at least one';
+      const update = () => { send.disabled = boxes.every((c) => !c.checked) && !extra.value.trim(); send.title = send.disabled ? 'Choose at least one' : ''; };
+      msg.options.forEach((o) => {
+        const label = document.createElement('label'); label.className = 'pick';
+        const input = document.createElement('input'); input.type = 'checkbox'; input.value = o;
+        input.addEventListener('change', update);
+        boxes.push(input); label.appendChild(input); label.appendChild(document.createTextNode(' ' + o)); list.appendChild(label);
+      });
+      card.appendChild(list);
+      const submit = () => {
+        const picked = boxes.filter((c) => c.checked).map((c) => c.value);
+        if (extra.value.trim()) picked.push(extra.value.trim());
+        if (picked.length) answer(picked.join('; '));
+      };
+      send.addEventListener('click', submit);
+      const row = document.createElement('div'); row.className = 'custom';
+      if (msg.allowCustom) { extra.addEventListener('input', update); extra.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); }); row.appendChild(extra); }
+      row.appendChild(send); card.appendChild(row);
+    }
+    if (!multi && msg.options && msg.options.length) {
       const opts = document.createElement('div'); opts.className = 'opts';
       msg.options.forEach((o) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ik-btn ik-btn--secondary'; b.textContent = o; b.addEventListener('click', () => answer(o)); opts.appendChild(b); });
       card.appendChild(opts);
     }
-    if (msg.allowCustom) {
+    if (!multi && msg.allowCustom) {
       const custom = document.createElement('div'); custom.className = 'custom';
       const input = document.createElement('input'); input.type = 'text'; input.placeholder = 'Type your own answer'; input.setAttribute('aria-label', 'Your answer');
       const send = document.createElement('button'); send.type = 'button'; send.className = 'ik-btn ik-btn--primary'; send.textContent = 'Answer';
@@ -2611,7 +2738,7 @@ export function chatHtml(
           inputEl.value = committed + (voiceInterim ? ' ' + voiceInterim : '');
           inputEl.classList.toggle('interim', !!voiceInterim);
           inputEl.style.height = 'auto';
-          inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+          inputEl.style.height = Math.min(inputEl.scrollHeight, 240) + 'px';
           setSendEnabled();
         },
         stopped: (reason) => {
@@ -2673,13 +2800,13 @@ export function chatHtml(
     inputEl.value = step.value;
     inputEl.setSelectionRange(step.value.length, step.value.length);
     inputEl.style.height = 'auto';
-    inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 240) + 'px';
     setSendEnabled();
   }
   inputEl.addEventListener('input', () => {
     resetHistory();
     inputEl.style.height = 'auto';
-    inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 240) + 'px';
     setSendEnabled();
     const slashQuery = UI ? UI.slashMenuQuery(inputEl.value, inputEl.selectionStart) : undefined;
     if (slashQuery !== undefined) {
@@ -3108,7 +3235,7 @@ export function chatHtml(
         offerApprovalCard = !!msg.offerCard;
         syncApprovalCard();
         // A chat that already has messages keeps its own level; an empty one starts at the stored default.
-        if (document.getElementById('empty') && !taskRunning) setApprovalLevel(msg.level);
+        if (document.getElementById('empty') && !taskRunning && !approvalTouched) setApprovalLevel(msg.level);
         break;
       case 'transcript':
         closePanel();
@@ -3119,7 +3246,7 @@ export function chatHtml(
         queued.length = 0;
         renderQueue();
         renderTranscript(msg.items);
-        if (!msg.items.length) setApprovalLevel(approvalDefault);
+        if (!msg.items.length && !approvalTouched) setApprovalLevel(approvalDefault);
         lastUserText = null;
         setEditing(false);
         break;
@@ -3207,6 +3334,15 @@ export function chatHtml(
         break;
       case 'suggest_spec':
         showSuggestSpec(msg.afterPlan);
+        break;
+      case 'auto_plan':
+        showAutoPlan(msg.id);
+        break;
+      case 'blocked_card':
+        showBlockedCard(msg);
+        break;
+      case 'secret_found':
+        showSecretFound();
         break;
       case 'run_changes':
         showRunChanges(msg.count);

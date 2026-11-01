@@ -26,7 +26,11 @@ with:
 ```bash
 forge skill list                       # every discovered SKILL.md
 forge skill show commit-message        # body + source path
-forge skill install <github-url>       # scaffold a SKILL.md stub
+forge skill install <repo-link>        # a GitHub or GitLab repo (owner/repo or its address): copies the skill folder
+forge skill install <repo-link> --list # what the link holds, installing nothing
+forge skill install <repo-link> --skill pdf,docx   # only these (or --all; with a person at the terminal it asks)
+forge skill update [name]              # re-read the source of what you installed (--force replaces a copy you edited)
+forge skill remove <name> --yes        # delete a skill from ~/.forge/skills
 forge skill browse                     # print the marketplace catalog
 
 forge hook list                        # every configured hook

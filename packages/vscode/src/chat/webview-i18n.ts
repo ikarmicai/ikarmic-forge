@@ -34,6 +34,8 @@ export const WEBVIEW_STRINGS: readonly string[] = [
   'History',
   'More actions',
   'Restore checkpoint…',
+  'Restore checkpoint',
+  'Agent Manager in new window',
   'Condense conversation',
   'Summarize older turns to free up context',
   'Panel',

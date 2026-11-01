@@ -174,7 +174,7 @@ export function readConfig(): ExtensionConfig {
     maxCostUsd: clampSetting(cfg.get<number>('maxCostUsd'), 0, 0),
     keepAwake: cfg.get<boolean>('keepAwake') ?? false,
     loopGuardThreshold: Math.max(0, Math.floor(cfg.get<number>('loopGuardThreshold') ?? 0)),
-    maxSteps: Math.max(0, Math.floor(cfg.get<number>('maxSteps') ?? 50)),
+    maxSteps: Math.max(0, Math.floor(cfg.get<number>('maxSteps') ?? 0)),
     commandSandbox: (['on', 'on-network'] as const).find((v) => v === cfg.get<string>('commandSandbox')) ?? 'off',
     commandSandboxHosts: userList(cfg.inspect<string[]>('commandSandbox.allowedHosts')),
     goalMaxTurns: Math.max(1, Math.floor(cfg.get<number>('goalMaxTurns') ?? 25)),

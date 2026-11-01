@@ -1,3 +1,4 @@
+import type { ModelMessage } from 'ai';
 import * as vscode from 'vscode';
 
 import { execFile } from 'node:child_process';
@@ -50,6 +51,7 @@ import {
   BackgroundAgents,
   backgroundResultsBlock,
   existingProjectInstructionFiles,
+  legacyInstructionFiles,
   isProjectControlled,
   loadSkillsRegistryAsync,
   loadSpecialistsFromConfig,
@@ -61,6 +63,7 @@ import {
   registeredCustomProviders,
   resolveModelAlias,
   redact,
+  type AgentNeed,
   resolveProviderEndpoint,
   splitModelRef,
   generateShellCommand,
@@ -139,6 +142,7 @@ import { KeepAwake } from './keep-awake.js';
 import { runOs, soundCommand, toastCommand } from './notify-os.js';
 import { resolveCheapModel } from '../cheap-model.js';
 import { activeCommands, withEntry } from './command-allow-store.js';
+import { blockedCard, type BlockedCard, type BlockedInfo } from './blocked-card.js';
 import { looksLargeMessage } from './large-request.js';
 import { planVerify } from './verify-checks.js';
 import { createVsCodeCommandRunner } from './terminal-runner.js';
@@ -164,6 +168,7 @@ import { replySpeed } from './reply-speed.js';
 import { pushPrompt, userPrompts } from './prompt-history.js';
 import { approvalLevelOf, autoApproveFor, startingLevel, storedApprovalOf, whyRan, type ApprovalLevel } from './approval-level.js';
 import { followUpAfterSuggestion, requestOfFollowUp, savePlan } from './plan-file.js';
+import { shouldAutoPlan } from './auto-plan.js';
 import { offerSpecAfterPlan, runAfterCard } from './plan-size.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
@@ -229,8 +234,20 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   /** Set once the webview script has posted `ready`; host messages sent earlier are dropped. */
   private webviewReady = false;
   private specHandler: ((task: string) => void) | undefined;
+  /** The notice of the turn Forge switched to Plan mode by itself; only Undo on that notice may re-run it. */
+  private autoPlanId: string | undefined;
+  private autoPlanSeq = 0;
   /** The message held back while the "this looks big" card is on screen; the webview only sends a choice. */
   private pendingLarge: { text: string; level: ApprovalLevel; attachments: Attachment[]; afterPlan?: boolean; suggested?: boolean } | undefined;
+  /** A message held until the person answers the possible-secret card (RB-121). */
+  private pendingSecret: { text: string; level: ApprovalLevel; attachments: Attachment[]; plan: CommandRunPlan } | undefined;
+  /** The first refused call and the model's `suggest_agent` of the run going on (RB-122). */
+  private blockedCall: BlockedInfo | undefined;
+  private suggestedAgent: AgentNeed | undefined;
+  /** The request an offer to switch agents would run again. */
+  private pendingBlocked: { card: BlockedCard; text: string; level: ApprovalLevel } | undefined;
+  /** The next run sends the message as typed: the person saw the card and chose that. */
+  private keepInputOnce = false;
   /** The reason the model gave when it called suggest_plan in the run that is going or just ended; the card is shown after the run. */
   private suggestedPlan: string | undefined;
   /** The last plan the Plan agent wrote and the host saved, for "Implement this plan". */
@@ -283,6 +300,16 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   /** One chat view exists per tab and per Agent Manager session: each lets go of this when it is disposed. */
   private mcpChangedSubscription: vscode.Disposable | undefined;
 
+  /** The sentence about the old CLAUDE.md / CONVENTIONS.md that Forge no longer reads was shown (once per chat view, RB-116). */
+  private legacyNoticePosted = false;
+
+  private async postLegacyInstructionNotice(root: string): Promise<void> {
+    if (this.legacyNoticePosted) return;
+    this.legacyNoticePosted = true;
+    const old = await legacyInstructionFiles(root).catch(() => [] as string[]);
+    if (old.length) this.post({ type: 'warning', message: t('Forge no longer reads {0}. Rename it to FORGE.md (or AGENTS.md) so Forge uses it.', old.join(' and ')) });
+  }
+
   /** The sentence about what a workspace that is not trusted had left out was shown (once per chat view). */
   private restrictedNoticePosted = false;
 
@@ -291,7 +318,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     if (vscode.workspace.isTrusted || this.restrictedNoticePosted) return;
     this.restrictedNoticePosted = true;
     const instructionFiles = await existingProjectInstructionFiles(root).catch(() => [] as string[]);
-    const all = await loadSkillsRegistryAsync(root, [], { includeProject: true }).then((r) => r.list()).catch(() => []);
+    const all = await loadSkillsRegistryAsync(root, [], { includeProject: true }).then((r) => r.list()).catch(() => []); // skillPaths-not-needed: counts only what the repository ships
     const owned = await Promise.all(all.map((s) => isProjectControlled(s, root)));
     const list = restrictedIgnoredList({ instructionFiles, skills: owned.filter(Boolean).length });
     if (list) this.post({ type: 'warning', message: t('This workspace is not trusted, so Forge ignored its {0}. Trust the workspace to use them.', list) });
@@ -686,7 +713,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
 
   /** Built-in slash commands plus the user's own `.forge/commands` files. */
   private async slashEntries(): Promise<SlashEntry[]> {
-    const custom = await loadCustomCommands(this.workspaceRoot()).catch(() => new Map());
+    const custom = await loadCustomCommands(this.workspaceRoot(), undefined, { includeProject: vscode.workspace.isTrusted }).catch(() => new Map());
     const taken = new Set([...BUILTIN_SLASH.map((e) => e.name), ...custom.keys()]);
     const skills = (await this.skillsFor().catch(() => undefined))?.list() ?? [];
     // A skill whose name is a built-in or a command of yours is still reachable by the model; the slash name is taken.
@@ -750,7 +777,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private async skillsFor() {
     const { config } = await loadMergedForgeConfig(this.workspaceRoot(), { trusted: vscode.workspace.isTrusted });
     // In a workspace that is not trusted the repository's own skills are left out (RB-112).
-    return loadSkillsRegistryAsync(this.workspaceRoot(), config.skillPaths ?? [], { includeProject: vscode.workspace.isTrusted, disabledSkills: config.disabledSkills ?? [], onWarning: (w) => this.warnRemoteSkillOnce(w) });
+    return loadSkillsRegistryAsync(this.workspaceRoot(), config.skillPaths ?? [], { includeProject: vscode.workspace.isTrusted, otherToolSkills: config.otherToolSkills !== false, disabledSkills: config.disabledSkills ?? [], onWarning: (w) => this.warnRemoteSkillOnce(w) });
   }
 
   private async postSlashCommands(): Promise<void> {
@@ -1276,6 +1303,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         }
         if (this.pendingLarge) this.attachments.restore(this.pendingLarge.attachments);
         this.pendingLarge = undefined;
+        if (this.pendingSecret) this.attachments.restore(this.pendingSecret.attachments);
+        this.pendingSecret = undefined;
+        this.pendingBlocked = undefined;
         // Pasted/dropped files ride on this message; a message of files alone still needs a task.
         const attachments = this.attachments.take();
         this.postAttachments();
@@ -1290,6 +1320,28 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         }
         const typed = plan.text;
         const text = typed.trim() || (attachments.length > 0 ? t('Take a look at the attached files.') : typed);
+        if (redact(text).total > 0) {
+          this.pendingSecret = { text, level: approvalLevelOf(msg.level, msg.auto), attachments, plan };
+          this.post({ type: 'secret_found' });
+          return;
+        }
+        const level = approvalLevelOf(msg.level, msg.auto);
+        this.autoPlanId = undefined;
+        if (
+          shouldAutoPlan({
+            modeId: plan.modeId ?? this.modeId,
+            trusted: vscode.workspace.isTrusted,
+            enabled: vscode.workspace.getConfiguration('forge').get<boolean>('autoPlan', true),
+            typed: msg.text,
+            sent: text,
+          })
+        ) {
+          // Plan mode asks its questions and writes the plan; the question of "plan first?" is answered, so the model may not ask it (RB-88).
+          this.autoPlanId = `ap${++this.autoPlanSeq}`;
+          this.post({ type: 'auto_plan', id: this.autoPlanId });
+          await this.runChat(text, level, attachments, 'plan', undefined, true);
+          return;
+        }
         if (this.shouldSuggestSpec(msg.text, text)) {
           this.pendingLarge = { text, level: approvalLevelOf(msg.level, msg.auto), attachments };
           this.post({ type: 'suggest_spec' });
@@ -1323,6 +1375,20 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         await this.withOverrides(edited, () => this.runChat(text, approvalLevelOf(msg.level, msg.auto), last.attachments, edited?.modeId, last.historyBefore, last.planDeclined));
         return;
       }
+      case 'auto_plan_undo': {
+        const last = this.lastTurn;
+        if (!last || msg.id !== this.autoPlanId) return;
+        this.autoPlanId = undefined;
+        // Stop the planning run, put the conversation back to before it and run the same request in Agent mode.
+        this.cancel();
+        this.session.rewindTo(last.historyBefore, last.transcriptBefore);
+        const kept = transcriptFromMessages(last.transcriptBefore, (x) => stripContextBlocks(stripSteering(x)));
+        this.session.pruneFeedback(kept.filter((i) => i.role === 'user').length);
+        this.post({ type: 'transcript', items: kept, feedback: { ...this.session.feedback } });
+        this.post({ type: 'user_message', text: last.text, retry: true });
+        await this.runChat(last.text, this.lastLevel, last.attachments, 'agent', last.historyBefore, true);
+        return;
+      }
       case 'revert_run':
         await this.revertLatestRun();
         return;
@@ -1339,6 +1405,34 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         if (!file) return;
         const rel = path.relative(this.workspaceRoot(), file).split(path.sep).join('/');
         await this.runChat(t('Implement the plan above (saved in {0}).', rel), this.lastLevel, [], 'agent', undefined, true);
+        return;
+      }
+      case 'blocked_choice': {
+        const held = this.pendingBlocked;
+        this.pendingBlocked = undefined;
+        if (!held || msg.choice === 'stay') return;
+        if (held.card.action === 'copy') await vscode.env.clipboard.writeText(held.card.command);
+        else if (held.card.action === 'settings') await vscode.commands.executeCommand('forge.openSettings');
+        else {
+          // The approval level stays as it was: changing agent never raises autonomy.
+          this.modeId = resolveModeId(held.card.agentId, listSpecialists());
+          await this.context.workspaceState.update(MODE_STATE_KEY, this.modeId);
+          this.announceModes();
+          await this.runChat(held.text, held.level, [], this.modeId);
+        }
+        return;
+      }
+      case 'secret_choice': {
+        const held = this.pendingSecret;
+        this.pendingSecret = undefined;
+        if (!held) return;
+        this.keepInputOnce = msg.choice === 'keep';
+        const text = msg.choice === 'keep' ? held.text : redact(held.text).text;
+        try {
+          await this.withOverrides(held.plan, () => this.runChat(text, held.level, held.attachments, held.plan.modeId));
+        } finally {
+          this.keepInputOnce = false;
+        }
         return;
       }
       case 'suggest_choice': {
@@ -1644,7 +1738,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const m = /^\/([A-Za-z][\w-]*)(?:\s+([\s\S]*))?$/.exec(text.trim());
     if (!m) return { text };
     const name = m[1]!.toLowerCase();
-    const command = (await loadCustomCommands(this.workspaceRoot()).catch(() => new Map())).get(name);
+    const command = (await loadCustomCommands(this.workspaceRoot(), undefined, { includeProject: vscode.workspace.isTrusted }).catch(() => new Map())).get(name);
     if (command) {
       const plan = planCommandRun(command, m[2] ?? '', {
         agentNames: this.agentDefs.map((a) => a.name),
@@ -1703,6 +1797,21 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       // Nothing ran (no model, a run already going): don't lose what the user attached.
       this.attachments.restore(attachments);
       this.postAttachments();
+    }
+    // An agent could not do what was asked: say why and offer the next step, once the run has ended (RB-122).
+    const card = outcome && (this.blockedCall || this.suggestedAgent)
+      ? blockedCard({
+          ...(this.blockedCall ? { blocked: this.blockedCall } : {}),
+          ...(this.suggestedAgent ? { need: this.suggestedAgent } : {}),
+          modeId: modeId ?? this.modeId,
+          specialists: listSpecialists(),
+          cwd: this.workspaceRoot() ?? process.cwd(),
+        })
+      : undefined;
+    if (card) {
+      this.pendingBlocked = { card, text, level };
+      this.post({ type: 'blocked_card', title: card.title, text: card.text, primary: card.primary, offersStay: card.action === 'switch', ...(card.action === 'copy' ? { command: card.command } : {}) });
+      return;
     }
     // The model suggested planning first (F2): hold the request and ask, once the run has ended.
     if (outcome && this.suggestedPlan !== undefined) {
@@ -1775,6 +1884,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     this.starting = true;
     this.suggestedPlan = undefined;
+    this.blockedCall = undefined;
+    this.suggestedAgent = undefined;
     let cfg: ReturnType<typeof readConfig>;
     try {
       cfg = await this.resolveConfigWithKeys();
@@ -1936,11 +2047,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
     // Said once per chat view: in a workspace that is not trusted, what the repository supplies is left out (RB-112).
     if (!generating) void this.postRestrictedNotice(workspaceRoot);
-    const skillsRegistry = generating ? undefined : await loadSkillsRegistryAsync(workspaceRoot, sharedConfig.skillPaths ?? [], { includeProject: vscode.workspace.isTrusted, disabledSkills: sharedConfig.disabledSkills ?? [], onWarning: (w) => this.warnRemoteSkillOnce(w) }).catch(() => undefined);
+    if (!generating && vscode.workspace.isTrusted) void this.postLegacyInstructionNotice(workspaceRoot);
+    const skillsRegistry = generating ? undefined : await loadSkillsRegistryAsync(workspaceRoot, sharedConfig.skillPaths ?? [], { includeProject: vscode.workspace.isTrusted, otherToolSkills: sharedConfig.otherToolSkills !== false, disabledSkills: sharedConfig.disabledSkills ?? [], onWarning: (w) => this.warnRemoteSkillOnce(w) }).catch(() => undefined);
     const agentConfig: AgentConfig = {
       model: runModel,
       cwd: workspaceRoot,
-      // AGENTS.md, CLAUDE.md, CONVENTIONS.md and a folder's AGENTS.md are the repository's instructions to the model: not in
+      // FORGE.md, AGENTS.md and a folder's FORGE.md or AGENTS.md are the repository's instructions to the model: not in
       // a workspace the person has not trusted (RB-112).
       disableProjectInstructions: !vscode.workspace.isTrusted,
       // Audit entries name the chat, and OpenAI routes its calls to one cache by it (RB-61).
@@ -1977,7 +2089,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           }
         : {}),
       autoApproveTools: autoApproveFor(level, sharedConfig.autoApproveTools),
-      ...permissionExtras(sharedConfig),
+      ...permissionExtras(sharedConfig, overrides.permission),
+      ...(this.keepInputOnce ? { redact: { keepInput: true } } : {}),
+      ...(generating ? {} : { onStepMessages: (messages: readonly ModelMessage[]) => this.session.saveProgress(messages, runModel, workspaceRoot, this.session.history?.length ?? 1) }),
+      ...(overrides.permission ? { agentRules: overrides.permission } : {}),
+      ...(options.kind === 'chat' && overrides.systemPrompt ? { suggestAgent: true } : {}),
+      ...(overrides.editOnly ? { editOnly: overrides.editOnly } : {}),
       ...(sharedConfig.instructions?.length ? { extraInstructions: sharedConfig.instructions } : {}),
       ...(sharedConfig.subagentModel ? { subAgentModel: applyResolved(runModel, resolveModelAlias(sharedConfig.subagentModel, sharedConfig.aliases, runModel.provider)) } : {}),
       ...(this.todos.length > 0 && !generating ? { initialTodos: this.todos } : {}),
@@ -1988,7 +2105,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       ...(!generating ? { readRoots: [...this.readGrants], ...(vscode.workspace.isTrusted ? { askReadOutside: (dir: string) => this.askReadOutside(dir) } : {}) } : {}),
       ...(!generating
         ? {
-            askUser: (q: { question: string; options?: string[]; allowCustom?: boolean }, signal?: AbortSignal) =>
+            askUser: (q: { question: string; options?: string[]; multiple?: boolean; allowCustom?: boolean }, signal?: AbortSignal) =>
               new Promise<string>((resolve) => {
                 const id = `q${++this.questionSeq}`;
                 // Named and removed on any answer: the run's signal outlives every question (RB-36).
@@ -1998,7 +2115,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
                   resolve(answer);
                 });
                 signal?.addEventListener('abort', onAbort, { once: true });
-                this.post({ type: 'question_request', id, question: q.question, options: q.options ?? [], allowCustom: q.allowCustom !== false });
+                this.post({ type: 'question_request', id, question: q.question, options: q.options ?? [], multiple: q.multiple === true, allowCustom: q.allowCustom !== false });
               }),
           }
         : {}),
@@ -2103,6 +2220,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             stepFirstTokenAt ??= Date.now();
             this.post({ type: 'reasoning_delta', text: event.text });
             return;
+          case 'blocked':
+            this.blockedCall ??= { kind: event.kind, tool: event.tool, target: event.target };
+            return;
+          case 'input_redacted':
+            this.post({ type: 'warning', message: t('A secret in your message was hidden before it was sent.') });
+            return;
           case 'steering':
             this.post({ type: 'steering_applied', trigger: event.trigger, applied: event.applied, skipped: event.skipped, path: event.path });
             return;
@@ -2134,6 +2257,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             const call = toolCalls.get(event.id);
             if (event.name === 'suggest_plan' && !event.isError && (event.result as { suggested?: unknown } | null)?.suggested === true) {
               this.suggestedPlan = String((event.result as { reason?: unknown }).reason ?? '');
+            }
+            if (event.name === 'suggest_agent' && !event.isError) {
+              const offer = event.result as { suggested?: unknown; needs?: AgentNeed } | null;
+              if (offer?.suggested === true && offer.needs) this.suggestedAgent ??= offer.needs;
             }
             for (const file of call ? changedFilesFromToolResult(workspaceRoot, event.name, call.args, event.isError) : []) changedFiles.add(file);
             if (typeof event.result === 'string' && event.result.startsWith('Denied by user')) denied = true;
@@ -2444,6 +2571,8 @@ type ChatMessage =
   | { type: 'approval_response'; id: string; approved: boolean; note?: string }
   | { type: 'cancel' }
   | { type: 'suggest_choice'; choice: 'spec' | 'plan' | 'go' | 'never' }
+  | { type: 'secret_choice'; choice: 'hide' | 'keep' }
+  | { type: 'blocked_choice'; choice: 'go' | 'stay' }
   | { type: 'plan_implement' }
   | { type: 'message_feedback'; turn: number; rating: 'up' | 'down' | null; note?: string }
   | { type: 'revert_run' }
@@ -2481,15 +2610,16 @@ type ChatMessage =
   | { type: 'run_action'; runId: string; index: number; action: 'review' | 'merge' | 'discard' | 'clear' }
   | { type: 'goal_command'; args: string }
   | { type: 'question_answer'; id: string; answer: string }
+  | { type: 'auto_plan_undo'; id: string }
   | { type: 'slash_list' }
   | { type: 'slash_run'; name: string; args: string }
   | { type: 'cmd_insert'; command: string }
   | { type: 'cmd_copy'; command: string };
 
 const CHAT_TYPES = new Set([
-  'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'plan_implement', 'message_feedback', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
+  'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'secret_choice', 'blocked_choice', 'plan_implement', 'message_feedback', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
   'review_hunks', 'condense', 'mention_query', 'retry_last', 'attach_file', 'attach_uris', 'pick_attachments', 'enhance_prompt', 'remove_attachment', 'copy_resume', 'open_settings', 'open_agent_manager_window', 'list_models', 'select_model', 'toggle_favourite_model', 'bg_stop', 'bg_stop_all', 'bg_dismiss', 'work_load', 'work_act',
-  'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'run_action', 'goal_command', 'question_answer', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
+  'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'run_action', 'goal_command', 'question_answer', 'auto_plan_undo', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
 ]);
 
 function isChatMessage(msg: unknown): msg is ChatMessage {
@@ -2498,6 +2628,9 @@ function isChatMessage(msg: unknown): msg is ChatMessage {
   if (!CHAT_TYPES.has(m.type as string)) return false;
   if ((m.type === 'set_mode' || m.type === 'open_diff' || m.type === 'review_hunks' || m.type === 'copy_resume' || m.type === 'allow_command') && typeof m.id !== 'string') return false;
   if (m.type === 'suggest_choice' && !['spec', 'plan', 'go', 'never'].includes(m.choice as string)) return false;
+  if (m.type === 'auto_plan_undo' && typeof m.id !== 'string') return false;
+  if (m.type === 'secret_choice' && !['hide', 'keep'].includes(m.choice as string)) return false;
+  if (m.type === 'blocked_choice' && !['go', 'stay'].includes(m.choice as string)) return false;
   if (m.type === 'message_feedback' && !(Number.isInteger(m.turn) && (m.turn as number) >= 1 && (m.rating === null || m.rating === 'up' || m.rating === 'down') && (m.note === undefined || typeof m.note === 'string'))) return false;
   if (m.type === 'mention_query' && typeof m.q !== 'string') return false;
   if (m.type === 'retry_last' && m.text !== undefined && typeof m.text !== 'string') return false;

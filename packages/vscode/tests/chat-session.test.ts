@@ -224,3 +224,19 @@ describe('ChatSession transcript (RB-58)', () => {
     expect(ChatSession.fromSession(deps(), old).transcript).toHaveLength(2);
   });
 });
+
+describe('a run still going', () => {
+  it('reaches the disk before the run ends, and the final save lands last (RB-125)', async () => {
+    const d = deps();
+    const session = new ChatSession(d as never);
+    await session.recordTurn(turn('first') as never, model, '/ws');
+    const start = session.history!.length;
+    const later = [...session.history!, { role: 'user', content: 'second' }, { role: 'assistant', content: 'working' }];
+    session.saveProgress(later as never, model, '/ws', start);
+    await session.recordTurn(turn('second') as never, model, '/ws');
+    const saved = d.saveSession.mock.calls.map((c: unknown[]) => c[0] as Session);
+    expect(JSON.stringify(saved[1]!.messages)).toContain('working');
+    expect(JSON.stringify(saved[1]!.transcript)).toContain('working');
+    expect(JSON.stringify(saved[2]!.messages)).not.toContain('working');
+  });
+});

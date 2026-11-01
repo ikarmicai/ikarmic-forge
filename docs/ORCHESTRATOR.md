@@ -7,16 +7,20 @@ returns aggregated results.
 
 ## Specialists
 
-Five built-in specialists ship with v2.0. Each is a tightly-scoped
+Nine built-in specialists ship with Forge. Each is a tightly-scoped
 sub-agent with a focused system prompt + a narrow tool allowlist:
 
 | Id | Role | Tools | Iteration cap | Auto? |
 |---|---|---|---|---|
-| `plan` | Read-only investigation → structured plan | read-only | 8 | no |
-| `code` | Focused file edits + tests | full + write | 20 | yes |
-| `debug` | Reproduce + identify root cause | read + run_command | 15 | no |
-| `ask` | Pure Q&A | read + fetch_url | 5 | no |
-| `review` | Code review | read-only | 6 | no |
+| `plan` | Read-only investigation → structured plan | read-only | 25 | no |
+| `code` | Focused file edits + tests | full + write | 40 | yes |
+| `debug` | Reproduce + identify root cause | read + run_command | 30 | no |
+| `ask` | Pure Q&A | read + fetch_url | 15 | no |
+| `review` | Code review | read-only | 20 | no |
+| `security` | Finds exploitable problems; fixes only what you name | read + write + run_command | 30 | no |
+| `design` | Interfaces from the project's design system | read + write + run_command | 40 | yes |
+| `testing` | Writes tests; reports bugs; never changes source | read + write + run_command | 40 | yes |
+| `devops` | CI, container, build and deployment files; never deploys | read + write + run_command | 30 | no |
 
 Every specialist disallows `sub_agent` — no recursion. Library users
 can register custom specialists (Tier 2 follow-up).

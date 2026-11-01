@@ -10,6 +10,28 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Safer file changes.** Forge no longer overwrites a file it has not read or that changed since, edits never corrupt files in older encodings, and a crash cannot leave a file half written. Memory saved by parallel agents is no longer lost.
+- **Tighter permissions.** An allow rule now covers one command only, so `git status & rm x` asks. Every agent keeps the core safety rules. DevOps asks before each command, Autonomous included.
+- **Untrusted repositories** can no longer add memory or commands. More secret formats and credential files are recognised.
+- **Long runs.** A chat is saved after every step, and an orchestrator stops when a step fails.
+- **When an agent cannot do something, the chat says why and what to do next.** It offers the agent that can, gives you the exact command for a release, or opens your permissions. Nothing changes agent until you click.
+- **Secrets stay out of the chat.** A message that looks like it holds a key or password now asks before anything is sent, with "Hide it and send" first. Command output is scrubbed like file contents, saved chats hold no secrets, and every agent carries the rule never to copy a credential.
+- **Three new agents: Design, Testing and DevOps.** Design builds pages from your project's design system. Testing writes tests and reports bugs without changing source code. DevOps writes CI, container and deployment files and never deploys. All three are in the mode menu and the orchestrator. DevOps's release commands and Testing's limit to test files are refused in code, in Autonomous too, not only asked for in the prompt.
+- **Forge reads `FORGE.md` and `AGENTS.md`**, in the project root and in the folder of a file it reads. It no longer reads `CLAUDE.md` or `CONVENTIONS.md`; if one is there and there is no `FORGE.md`, the chat and the terminal app say so once. Rename the file to switch (RB-116).
+- **Skills are folders.** A skill is `<name>/SKILL.md` with `scripts/`, `references/` and `assets/` beside it. Forge reads that layout (linked folders included) and the `.agents/skills` folders that `npx skills add` writes, in the project and in your home folder. A flat `.md` still works (RB-114).
+- **Add skill asks which, and keeps them up to date.** A link that holds several skills shows a tick list; nothing is downloaded before you choose. Skills Forge installed show Update (re-reads the link, replaces the skill only if the source changed and you did not edit it) and Remove (asks twice). In the terminal: `forge skill install <link> --list|--skill a,b|--all`, `forge skill update [name] [--force]`, `forge skill remove <name> --yes` (RB-115).
+- **GitLab links work** (gitlab.com, or a server named `gitlab.…`), as GitHub ones do: a project, or a `-/tree/<branch>/<folder>` address. `GITLAB_TOKEN` and `GITHUB_TOKEN` are sent only to their own server, in a header. `FORGE_GITHUB_API_URL` and `FORGE_GITHUB_RAW_URL` point the installer at GitHub Enterprise.
+- **A large plan keeps its "Draft a spec" offer.** The "Plan saved" note used to remove the offer that was posted just before it, so a large plan showed no offer (RB-119).
+- **Skills you installed for Claude Code or Cursor are used too.** Forge reads `~/.claude/skills` and `~/.cursor/skills` as your own skills, below its own folders, and ignores the tool lists in them (they name that tool's tools). Settings → Skills has a switch to turn this off (RB-117).
+- **Add skill takes a GitHub repository or address** (`owner/repo`, a repository, or a `tree` link to one folder) and downloads the whole skill folder to `~/.forge/skills/`. The same installer serves `forge skill install` and the catalog (RB-115).
+
+### Fixed
+
+- A skill named in `skillPaths` now shows on the Settings Skills page, in `forge skill list` and in Browse (RB-114).
+- `forge skill install <link>` no longer writes an empty stub; the catalog no longer assumes the branch is `main` (RB-115).
+
 ## [5.5.0] - 2026-10-29
 
 ### Added

@@ -87,6 +87,15 @@ describe('Agent Manager git flow', () => {
     expect(readFileSync(path.join(root, 'a.txt'), 'utf8')).toBe('one\n');
   });
 
+  // RB-126: the failure was swallowed, so a branch stayed with nothing said.
+  it('says so when git keeps the branch', async () => {
+    const root = repo();
+    const wt = await prepareWorktree(root, 'held');
+    const other = await prepareWorktree(root, 'holder');
+    execFileSync('git', ['switch', '--ignore-other-worktrees', wt.branch], { cwd: other.path, stdio: 'pipe' });
+    expect((await discardWorktree(root, wt)).branch).toBe(wt.branch);
+  });
+
   it('reports a merge conflict and leaves the worktree to resolve or discard', async () => {
     const root = repo();
     const wt = await prepareWorktree(root, 'clash');

@@ -73,3 +73,10 @@ describe('MCP server rows', () => {
     for (const tone of ['ik-badge--success', 'ik-badge--danger', 'ik-badge--warning']) expect(html, tone).toContain(tone);
   });
 });
+
+describe('Settings rows stacked in one item keep a gap (RB-103)', () => {
+  it('spaces a row that follows a row, and the per-mode model list', () => {
+    expect(html).toMatch(/\.setting > \.row \+ \.row \{ margin-top: var\(--space-xs\); \}/);
+    expect(html).toMatch(/#mode-model-list \{ display: flex; flex-direction: column; gap: var\(--space-xs\)/);
+  });
+});

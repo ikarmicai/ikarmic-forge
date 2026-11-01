@@ -72,6 +72,9 @@ The mode menu under the message box picks an agent for the job. Each follows an 
 - **Ask** answers from the code and cites `path:line`. It never changes files.
 - **Review** reads the real diff, confirms each finding and reports at most ten. It never changes files.
 - **Security** audits your changes or the whole repository for exploitable problems and vulnerable dependencies, reports first, and changes files only for the findings you name.
+- **Design** builds and restyles pages from your project's own design system, covers every state, keyboard use and narrow widths, and says when it has not seen the result.
+- **Testing** writes tests and proves they can fail. It reports the bugs they find and never changes source code.
+- **DevOps** writes and repairs CI, container, build and deployment files and checks them locally. It never deploys: it gives you the exact command instead.
 
 ### Inline autocomplete
 
@@ -223,6 +226,7 @@ Forge ships **85 settings**, grouped by family in the Forge Settings page. The o
 | `forge.verify.auto` | Run the project's own checks after edits: `ask` (default), `on`, `off` |
 | `forge.verify.commands` | Your own check commands; they replace the detected ones |
 | `forge.maxCostUsd` | Stop a run at a spend limit |
+| `forge.autoPlan` | Switch to Plan mode when a message asks for a new app or feature |
 | `forge.suggestSpec` | Offer a spec when a message asks for a whole system |
 
 That table is deliberately short. For the [full list of all 85 settings](https://github.com/ikarmicai/ikarmic-forge/blob/main/packages/vscode/package.json), search `forge.` in VS Code Settings, or open **Forge: Open Settings** — every row has its range and its default, and shows a Reset button when it differs from that default.

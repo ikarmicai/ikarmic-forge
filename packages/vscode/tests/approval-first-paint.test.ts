@@ -25,3 +25,18 @@ describe('the chat starts at the saved approval level (RB-91)', () => {
     expect(selected(chatHtml({ approvalLevel: "auto';alert(1)//" as never }))).toBe('ask');
   });
 });
+
+describe('a level the person picked is not undone by the host (RB-91, second case)', () => {
+  const html = chatHtml();
+
+  it('remembers that the person changed the picker, and a later default does not overwrite it', () => {
+    expect(html).toContain('let approvalTouched = false;');
+    expect(html).toMatch(/approvalSelect\.addEventListener\('change', \(\) => \{ approvalTouched = true; showApproval\(\); \}\)/);
+    expect(html).toMatch(/if \(document\.getElementById\('empty'\) && !taskRunning && !approvalTouched\) setApprovalLevel\(msg\.level\)/);
+    expect(html).toMatch(/if \(!msg\.items\.length && !approvalTouched\) setApprovalLevel\(approvalDefault\)/);
+  });
+
+  it('starts over at the saved level when the person opens a new chat', () => {
+    expect(html).toMatch(/newChatBtn\.addEventListener\('click', \(\) => \{ approvalTouched = false;/);
+  });
+});

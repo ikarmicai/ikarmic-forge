@@ -67,20 +67,21 @@ export async function mergeWorktree(
   repoRoot: string,
   wt: SessionWorktree,
   prompt: string
-): Promise<{ ok: true; leftFolder?: string } | { ok: false; message: string }> {
+): Promise<{ ok: true; leftFolder?: string; leftBranch?: string } | { ok: false; message: string }> {
   await commitAllInWorktree(wt.path, `Forge Agent Manager: ${prompt.split('\n')[0]!.slice(0, 72)}`);
   const merged = await mergeBranch(repoRoot, wt.branch, `Merge Forge session: ${prompt.split('\n')[0]!.slice(0, 60)}`);
   if (!merged.ok) return { ok: false, message: merged.message };
   // The merge has landed: a folder that cannot be deleted yet is reported, never turned into "could not merge" (RB-95).
   const left = await discardWorktree(repoRoot, wt);
-  return left ? { ok: true, leftFolder: left } : { ok: true };
+  return { ok: true, ...(left.folder ? { leftFolder: left.folder } : {}), ...(left.branch ? { leftBranch: left.branch } : {}) };
 }
 
 /**
- * Remove the session's worktree and branch; the workspace is not touched. Returns the folder when it could not be
- * deleted (on Windows a shell or process still inside it holds it), after the listing and branch are gone (RB-95).
+ * Remove the session's worktree and branch; the workspace is not touched. Reports the folder when it could not be
+ * deleted (on Windows a shell or process still inside it holds it), after the listing and branch are gone (RB-95),
+ * and the branch when git kept it (RB-126).
  */
-export async function discardWorktree(repoRoot: string, wt: SessionWorktree): Promise<string | undefined> {
+export async function discardWorktree(repoRoot: string, wt: SessionWorktree): Promise<{ folder?: string; branch?: string }> {
   const manager = new WorktreeManager(repoRoot);
   let removed = false;
   for (let attempt = 0; attempt < 4 && !removed; attempt++) {
@@ -91,8 +92,11 @@ export async function discardWorktree(repoRoot: string, wt: SessionWorktree): Pr
     );
   }
   if (!removed) await pruneWorktreeListings(repoRoot);
-  await deleteBranch(repoRoot, wt.branch).catch(() => undefined);
-  return removed ? undefined : wt.path;
+  const branchGone = await deleteBranch(repoRoot, wt.branch).then(
+    () => true,
+    () => false
+  );
+  return { ...(removed ? {} : { folder: wt.path }), ...(branchGone ? {} : { branch: wt.branch }) };
 }
 
 function pruneWorktreeListings(repoRoot: string): Promise<void> {

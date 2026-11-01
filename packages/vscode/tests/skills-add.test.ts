@@ -10,7 +10,18 @@ const skill = (name: string, kind: 'builtin' | 'global' | 'remote' = 'global') =
   source: { kind, path: kind === 'builtin' ? `(built into Forge: ${name})` : `/skills/${name}.md` },
 });
 
-function deps(over: { listed?: unknown[]; fetched?: { skills: unknown[]; warnings: string[] }; picked?: { fileName: string; content: string } | undefined; paths?: string[] } = {}) {
+function deps(
+  over: {
+    listed?: unknown[];
+    fetched?: { skills: unknown[]; warnings: string[] };
+    picked?: { fileName: string; content: string } | undefined;
+    paths?: string[];
+    installed?: { installed: Array<{ name: string }>; skipped: Array<{ name: string; reason: string }> };
+    installError?: string;
+    /** The link was read and is not a skill (a list of skill files), as opposed to: it could not be read. */
+    notASkill?: boolean;
+  } = {}
+) {
   let paths = over.paths ?? [];
   const loadForgeConfigFile = vi.fn(async () => ({ config: paths.length ? { skillPaths: [...paths] } : {}, warnings: [] }));
   const saveForgeConfigFile = vi.fn(async (partial: { skillPaths?: string[] }) => void (paths = partial.skillPaths ?? paths));
@@ -19,6 +30,10 @@ function deps(over: { listed?: unknown[]; fetched?: { skills: unknown[]; warning
     open: vi.fn(),
     catalog: vi.fn(),
     install: vi.fn(),
+    installLink: vi.fn(async () => {
+      if (over.installError) throw Object.assign(new Error(over.installError), { notASkill: over.notASkill === true });
+      return over.installed ?? { installed: [{ name: 'team-style' }], skipped: [] };
+    }),
     fetchLink: vi.fn(async () => over.fetched ?? { skills: [skill('team-style', 'remote')], warnings: [] }),
     pickFile: vi.fn(async () => over.picked),
     saveOwn: vi.fn(async (fileName: string) => `/home/me/.forge/skills/${fileName}`),
@@ -27,46 +42,74 @@ function deps(over: { listed?: unknown[]; fetched?: { skills: unknown[]; warning
 }
 
 describe('Settings: add a skill by link', () => {
-  it('reads the link first, then adds it to the user skill paths', async () => {
+  it('downloads the skill and does not keep the link in the skill paths (RB-115)', async () => {
     const d = deps();
+    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'o/r' }, d.all);
+    expect(d.skills.installLink).toHaveBeenCalledWith('o/r');
+    expect(d.saveForgeConfigFile).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ type: 'skillsListed', note: 'Added team-style.' });
+  });
+
+  it('takes a GitHub address as well as owner/repo', async () => {
+    const d = deps();
+    await handleSettingsMessage({ type: 'skillAddLink', url: ' https://github.com/o/r/tree/main/skills/pdf ' }, d.all);
+    expect(d.skills.installLink).toHaveBeenCalledWith('https://github.com/o/r/tree/main/skills/pdf');
+  });
+
+  it('passes on in words why a link could not be added, and saves nothing', async () => {
+    const d = deps({ installError: 'Could not find o/r on GitHub, or the folder in it.' });
+    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'o/r' }, d.all);
+    expect(r).toMatchObject({ type: 'notice', message: 'Could not find o/r on GitHub, or the folder in it.' });
+    expect(d.saveForgeConfigFile).not.toHaveBeenCalled();
+  });
+
+  it('says so when every skill in the link was installed already', async () => {
+    const d = deps({ installed: { installed: [], skipped: [{ name: 'team-style', reason: 'already installed' }] } });
+    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'o/r' }, d.all);
+    expect(r).toMatchObject({ type: 'notice', message: expect.stringContaining('already installed') });
+  });
+
+  it('asks for something when the field is empty', async () => {
+    const d = deps();
+    expect(await handleSettingsMessage({ type: 'skillAddLink', url: '  ' }, d.all)).toMatchObject({ type: 'notice' });
+    expect(d.skills.installLink).not.toHaveBeenCalled();
+  });
+
+  it('keeps a list of skill files as a live link, since there is no folder to copy', async () => {
+    const d = deps({ installError: 'not a skill', notASkill: true, paths: ['~/team-skills'] });
     const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/skills.json' }, d.all);
-    expect(d.skills.fetchLink).toHaveBeenCalledWith('https://example.com/skills.json');
-    expect(d.saveForgeConfigFile).toHaveBeenCalledWith({ skillPaths: ['https://example.com/skills.json'] }, undefined);
+    expect(d.paths()).toEqual(['~/team-skills', 'https://example.com/skills.json']);
     expect(r).toMatchObject({ type: 'skillsListed' });
   });
 
-  it('keeps the links already there', async () => {
-    const d = deps({ paths: ['~/team-skills'] });
-    await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/a.md' }, d.all);
-    expect(d.paths()).toEqual(['~/team-skills', 'https://example.com/a.md']);
+  it('does not add a live link twice, and saves nothing when the list holds no skill', async () => {
+    const twice = deps({ installError: 'not a skill', notASkill: true, paths: ['https://example.com/a.json'] });
+    expect(await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/a.json' }, twice.all)).toMatchObject({ type: 'notice' });
+    expect(twice.saveForgeConfigFile).not.toHaveBeenCalled();
+    const empty = deps({ installError: 'It is not a skill.', notASkill: true, fetched: { skills: [], warnings: ['x'] } });
+    expect(await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/b.json' }, empty.all)).toMatchObject({ type: 'notice', message: 'It is not a skill.' });
+    expect(empty.saveForgeConfigFile).not.toHaveBeenCalled();
   });
 
-  it('refuses anything but https, and saves nothing', async () => {
-    const d = deps();
-    for (const url of ['http://example.com/a.md', 'file:///etc/passwd', 'example.com/a.md', '  ']) {
-      expect(await handleSettingsMessage({ type: 'skillAddLink', url }, d.all)).toMatchObject({ type: 'notice' });
-    }
+  it('tells the real reason, not "already in your skill paths", when a saved address cannot be read now', async () => {
+    const d = deps({ installError: 'Could not read https://example.com/a.json (the server answered 500).', paths: ['https://example.com/a.json'] });
+    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/a.json' }, d.all);
+    expect(r).toMatchObject({ type: 'notice', message: expect.stringContaining('500') });
     expect(d.skills.fetchLink).not.toHaveBeenCalled();
-    expect(d.saveForgeConfigFile).not.toHaveBeenCalled();
   });
 
-  it('saves nothing when the link holds no skill, and passes on why', async () => {
-    const d = deps({ fetched: { skills: [], warnings: ['https://example.com/a.md answered 404'] } });
-    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/a.md' }, d.all);
-    expect(r).toMatchObject({ type: 'notice', message: expect.stringContaining('404') });
-    expect(d.saveForgeConfigFile).not.toHaveBeenCalled();
-  });
-
-  it('does not add the same link twice', async () => {
-    const d = deps({ paths: ['https://example.com/a.md'] });
-    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/a.md' }, d.all);
-    expect(r).toMatchObject({ type: 'notice' });
-    expect(d.saveForgeConfigFile).not.toHaveBeenCalled();
+  it('says why a catalog skill could not be installed', async () => {
+    const d = deps();
+    d.skills.install.mockResolvedValue('GitHub is limiting requests. Set a GitHub token, or try again later.');
+    const r = await handleSettingsMessage({ type: 'skillInstall', name: 'x' }, d.all);
+    expect(r).toMatchObject({ type: 'notice', message: expect.stringContaining('limiting requests') });
+    d.skills.install.mockResolvedValue(false);
+    expect(await handleSettingsMessage({ type: 'skillInstall', name: 'x' }, d.all)).toMatchObject({ type: 'notice', message: 'Could not install skill "x".' });
   });
 
   it('says when a skill takes precedence over a bundled one of the same name', async () => {
-    const d = deps({ fetched: { skills: [skill('forge-config', 'remote')], warnings: [] } });
-    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'https://example.com/a.md' }, d.all);
+    const d = deps({ listed: [skill('forge-config', 'builtin')], installed: { installed: [{ name: 'forge-config' }], skipped: [] } });
+    const r = await handleSettingsMessage({ type: 'skillAddLink', url: 'o/r' }, d.all);
     expect(r).toMatchObject({ type: 'skillsListed', note: expect.stringContaining('forge-config') });
   });
 });

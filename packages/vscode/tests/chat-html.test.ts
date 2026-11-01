@@ -134,15 +134,17 @@ describe('chatHtml toolbar and composer (direction A)', () => {
     }
   });
 
-  it('puts Checkpoints and Condense in the ⋯ menu', () => {
+  it('shows Checkpoints and Condense as toolbar icons, and keeps the ⋯ menu for a very narrow sidebar', () => {
+    const bar = html.slice(html.indexOf('<div id="toolbar"'), html.indexOf('<div id="more-menu"'));
     const menu = html.slice(html.indexOf('id="more-menu"'), html.indexOf('</div>', html.indexOf('id="more-menu"')));
     expect(html).toContain('id="more-btn"');
-    expect(menu).toContain('id="checkpoints-btn"');
-    expect(menu).toContain('id="condense-btn"');
+    expect(bar).toContain('id="checkpoints-btn"');
+    expect(bar).toContain('id="condense-btn"');
+    expect(menu).not.toContain('id="checkpoints-btn"');
   });
 
   it('has the context meter, attach button and one-box composer', () => {
-    for (const id of ['meter-text', 'meter-wave-a', 'meter-cost', 'meter-stat', 'attach']) expect(html).toContain(`id="${id}"`);
+    for (const id of ['meter-text', 'meter-wave-a', 'meter-cost', 'condense-dot', 'attach']) expect(html).toContain(`id="${id}"`);
     expect(html).toContain('class="composer"');
     expect(html).not.toContain('id="header"');
   });
@@ -418,10 +420,11 @@ describe('chatHtml layout guards', () => {
     expect(html).not.toMatch(/class="link[ "]/);
   });
 
-  it('keeps the icon buttons in one group so a narrow header never orphans an icon', () => {
-    const group = html.match(/<div class="tb-end">([\s\S]*?)<\/div>/)?.[1] ?? '';
-    for (const id of ['new-chat', 'history-btn', 'more-btn']) expect(group).toContain(`id="${id}"`);
-    expect(group).not.toContain('id="meter"');
+  it('never wraps the toolbar, so a narrow header cannot orphan an icon: the planning tools fold into the menu instead', () => {
+    const bar = html.slice(html.indexOf('<div id="toolbar"'), html.indexOf('<div id="findbar"'));
+    for (const id of ['new-chat', 'history-btn', 'checkpoints-btn', 'condense-btn', 'more-btn']) expect(bar).toContain(`id="${id}"`);
+    expect(bar).not.toContain('id="meter"');
+    expect(html).not.toMatch(/#toolbar \{[^}]*flex-wrap: wrap/);
   });
 });
 

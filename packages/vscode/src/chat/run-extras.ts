@@ -13,17 +13,19 @@ import {
   expandModelAlias,
   resolveModelAlias,
   webSearchFromEnv,
+  withAgentRules,
   type AgentConfig,
   type ForgeConfigFile,
   type ModelAliases,
   type ModelConfig,
+  type PermissionConfig,
   type WebSearchConfig,
   type WebSearchProvider,
 } from '@ikarmic/forge-core';
 
-/** The shared config's `permission` rules as the run's `permissionRules`; nothing when there are none. */
-export function permissionExtras(shared: Pick<ForgeConfigFile, 'permission'>): Pick<AgentConfig, 'permissionRules'> {
-  const rules = shared.permission;
+/** The shared config's `permission` rules plus the chosen agent's own as the run's `permissionRules`; nothing when there are none. */
+export function permissionExtras(shared: Pick<ForgeConfigFile, 'permission'>, agent?: PermissionConfig): Pick<AgentConfig, 'permissionRules'> {
+  const rules = withAgentRules(shared.permission, agent);
   return rules && Object.keys(rules).length > 0 ? { permissionRules: rules } : {};
 }
 
@@ -107,7 +109,7 @@ export interface RunExtrasSettings {
   maxCostUsd: number;
   /** Stop a run after this many identical tool calls in a row; 0 or absent = off. */
   loopGuardThreshold?: number;
-  /** `forge.maxSteps`: steps a run may take; 0 = no limit, absent = core's default (50). */
+  /** `forge.maxSteps`: steps a run may take; 0 = no limit (the default), absent = core's default (50). */
   maxSteps?: number;
   /** `forge.commandSandbox`: run commands under bubblewrap / sandbox-exec; absent = off. */
   commandSandbox?: 'off' | 'on' | 'on-network';

@@ -92,8 +92,16 @@ export type SettingsMessage =
   | { type: 'skillsList' }
   /** Switch a skill off (or back on) by name: the model never sees a switched-off skill. */
   | { type: 'skillToggle'; name: string }
+  /** Read (or stop reading) the skills installed for Claude Code and Cursor in the home folder. */
+  | { type: 'skillOtherTools'; enabled: boolean }
   /** Add the skills at an https address (a skill file or a skill index) to the user's skill paths, after reading them. */
   | { type: 'skillAddLink'; url: string }
+  /** Install the skills ticked out of those a link holds. */
+  | { type: 'skillInstallPicked'; link: string; names: string[] }
+  /** Update one skill Forge installed from a link, or all of them when no name is given. */
+  | { type: 'skillUpdate'; name?: string; force?: boolean }
+  /** Delete a skill from the person's own skills folder. */
+  | { type: 'skillRemove'; name: string }
   /** Let the person choose a skill file and copy it into their skills folder. */
   | { type: 'skillAddFile' }
   | { type: 'skillOpen'; path: string }
@@ -124,7 +132,8 @@ export type SettingsResponse =
   | { type: 'mcpAddPreviewed'; ok: true; name: string; kind: 'command' | 'link' | 'json'; command: string; environment: string[]; secrets: string[]; variables: string[] }
   | { type: 'mcpAddPreviewed'; ok: false; reason: string }
   | { type: 'mcpCatalogListed'; entries: McpCatalogView[]; warning?: string }
-  | { type: 'skillsListed'; skills: SkillView[]; /** Something the person should know about what was just added. */ note?: string }
+  | { type: 'skillPick'; link: string; skills: Array<{ name: string; description: string; files: number }> }
+  | { type: 'skillsListed'; skills: SkillView[]; /** Whether skills installed for Claude Code and Cursor are read. */ otherTools?: boolean; /** Something the person should know about what was just added. */ note?: string }
   | { type: 'allowedCommandsListed'; commands: Array<{ workspace: string; command: string }> }
   | { type: 'skillCatalogListed'; entries: SkillCatalogView[]; /** Why the catalog could not be shown. */ error?: string }
   | { type: 'providersLoaded'; providers: ProviderView[]; presets: Array<{ id: string; name: string; baseUrl: string; apiKeyEnv: string }> }
@@ -236,7 +245,19 @@ export interface McpCatalogView {
   /** Secrets to ask for on the card; the values are sent back with the install request. */
   secrets: Array<{ id: string; label: string; help: string }>;
 }
-export interface SkillView { name: string; description: string; scope: Skill['source']['kind']; path: string; enabled: boolean }
+export interface SkillView {
+  name: string;
+  description: string;
+  scope: Skill['source']['kind'];
+  path: string;
+  enabled: boolean;
+  /** In the person's own skills folder: it can be removed from the page. */
+  removable?: boolean;
+  /** Installed from a link by Forge: it can be updated. */
+  updatable?: boolean;
+  /** The link it was installed from. */
+  from?: string;
+}
 export interface SkillCatalogView { name: string; displayName: string; description: string; installed: boolean }
 
 export interface SettingsMcpDeps {
@@ -267,8 +288,19 @@ export interface SettingsSkillsDeps {
   list(): Promise<Skill[]>;
   open(path: string): Promise<void>;
   catalog(): Promise<{ entries: SkillCatalogEntry[] } | null>;
-  install(name: string): Promise<boolean>;
-  /** Read the skills at an https address without adding them. */
+  /** `true` when installed; otherwise `false` or the reason, a sentence a person can read. */
+  install(name: string): Promise<boolean | string>;
+  /** The skills a link holds, to choose from. Throws a sentence a person can read. */
+  inspectLink?(link: string): Promise<Array<{ name: string; description: string; files: number }>>;
+  /** Download the skills a GitHub or GitLab repository or a link holds (only `names` when given) into the person's skills folder. Throws a sentence a person can read. */
+  installLink?(link: string, names?: string[]): Promise<{ installed: Array<{ name: string }>; skipped: Array<{ name: string; reason: string }> }>;
+  /** What is in the person's own skills folder: its path as the skill list shows it, and the link it was installed from. */
+  managed?(): Promise<Array<{ name: string; path: string; source?: string }>>;
+  /** Update one skill (or all, with no name) Forge installed from a link. */
+  update?(name: string | undefined, force: boolean): Promise<Array<{ name: string; status: string; message?: string }>>;
+  /** Delete one skill from the person's own skills folder. */
+  remove?(name: string): Promise<boolean>;
+  /** Read the skills at an https address without adding them (a list of skill files, kept as a live link). */
   fetchLink?(url: string): Promise<{ skills: Skill[]; warnings: string[] }>;
   /** Ask the person to choose a skill file. Undefined when they close the chooser. */
   pickFile?(): Promise<{ fileName: string; content: string } | undefined>;
@@ -401,11 +433,60 @@ function specEnvironment(spec: { env?: Record<string, string>; headers?: Record<
 
 const gone = (name: string): SettingsResponse => ({ type: 'notice', message: `MCP server "${name}" is no longer configured.` });
 
+/** What an update did, one sentence per skill, in words (the statuses are core's names, not text for a person). */
+function updateNote(outcomes: Array<{ name: string; status: string; message?: string }>): string {
+  if (outcomes.length === 0) return 'No skill was installed from a link, so there is nothing to update.';
+  return outcomes
+    .map((o) =>
+      o.status === 'updated' ? `Updated ${o.name}.`
+      : o.status === 'up to date' ? `${o.name} is up to date.`
+      : o.status === 'changed on this computer' ? `${o.name} was changed on this computer, so it was left alone.`
+      : o.status === 'not installed by Forge' ? `${o.name} was not installed from a link, so it is not updated.`
+      : `${o.name}: ${o.message ?? 'could not be updated.'}`
+    )
+    .join(' ');
+}
+
+/** Download what a link holds: a link with several skills first asks which (unless `names` says), and one skill goes in at once. */
+async function addFromLink(deps: SettingsDeps, link: string, names: string[] | undefined): Promise<SettingsResponse> {
+  const skills = deps.skills!;
+  const bundled = new Set((await skills.list()).filter((s) => s.source.kind === 'builtin').map((s) => s.name));
+  try {
+    if (!names && skills.inspectLink) {
+      const found = await skills.inspectLink(link);
+      if (found.length > 1) return { type: 'skillPick', link, skills: found };
+    }
+    // RB-115: the skill is downloaded into the person's skills folder (a copy that works offline), not kept as a link.
+    const got = names ? await skills.installLink!(link, names) : await skills.installLink!(link);
+    const added = got.installed.map((s) => s.name);
+    if (!added.length) return { type: 'notice', message: `${got.skipped.map((s) => s.name).join(', ') || 'That skill'} is already installed.` };
+    const shadowed = added.filter((n) => bundled.has(n));
+    const note = shadowed.length
+      ? `${shadowed.join(', ')} now takes the place of the skill built into Forge with that name.`
+      : `Added ${added.join(', ')}.${got.skipped.length ? ` ${got.skipped.map((s) => s.name).join(', ')} was already installed.` : ''}`;
+    return skillsListed(deps, note);
+  } catch (err) {
+    // A list of skill files (a JSON index) is not a skill to copy: it stays a live link in the skill paths.
+    if ((err as { notASkill?: boolean }).notASkill && /^https:\/\//i.test(link) && skills.fetchLink) {
+      const current = (await deps.loadForgeConfigFile(deps.configPath)).config.skillPaths ?? [];
+      if (current.includes(link)) return { type: 'notice', message: 'That address is already in your skill paths.' };
+      const got = await skills.fetchLink(link);
+      if (got.skills.length) {
+        await deps.saveForgeConfigFile({ skillPaths: [...current, link] }, deps.configPath);
+        return skillsListed(deps, `Added ${got.skills.length} skill${got.skills.length === 1 ? '' : 's'}.`);
+      }
+    }
+    return { type: 'notice', message: err instanceof Error && err.message ? err.message : 'Could not add that skill.' };
+  }
+}
+
 async function skillsListed(deps: SettingsDeps, note?: string): Promise<SettingsResponse> {
   if (!deps.skills) return { type: 'skillsListed', skills: [] };
   const list = await deps.skills.list();
-  const off = new Set((await deps.loadForgeConfigFile(deps.configPath)).config.disabledSkills ?? []);
-  return { type: 'skillsListed', skills: list.map((s) => ({ name: s.name, description: s.description, scope: s.source.kind, path: s.source.path, enabled: !off.has(s.name) })), ...(note ? { note } : {}) };
+  const config = (await deps.loadForgeConfigFile(deps.configPath)).config;
+  const off = new Set(config.disabledSkills ?? []);
+  const managed = new Map((deps.skills.managed ? await deps.skills.managed() : []).map((m) => [m.path, m]));
+  return { type: 'skillsListed', otherTools: config.otherToolSkills !== false, skills: list.map((s) => { const m = managed.get(s.source.path); return { name: s.name, description: s.description, scope: s.source.kind, path: s.source.path, enabled: !off.has(s.name), removable: !!m, updatable: !!m?.source, ...(m?.source ? { from: m.source } : {}) }; }), ...(note ? { note } : {}) };
 }
 
 /** Pure message handler: no VS Code API surface, fully unit-testable. */
@@ -667,17 +748,27 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
       case 'skillsList':
         return skillsListed(deps);
       case 'skillAddLink': {
-        if (!deps.skills?.fetchLink) return { type: 'none' };
-        const url = msg.url.trim();
-        if (!/^https:\/\//i.test(url)) return { type: 'notice', message: 'Use an https address.' };
-        const current = (await deps.loadForgeConfigFile(deps.configPath)).config.skillPaths ?? [];
-        if (current.includes(url)) return { type: 'notice', message: 'That address is already in your skill paths.' };
-        const got = await deps.skills.fetchLink(url);
-        if (!got.skills.length) return { type: 'notice', message: got.warnings[0] ?? 'There are no skills at that address.' };
-        const bundled = new Set((await deps.skills.list()).filter((s) => s.source.kind === 'builtin').map((s) => s.name));
-        const shadowed = got.skills.filter((s) => bundled.has(s.name)).map((s) => s.name);
-        await deps.saveForgeConfigFile({ skillPaths: [...current, url] }, deps.configPath);
-        return skillsListed(deps, shadowed.length ? `${shadowed.join(', ')} now takes the place of the skill built into Forge with that name.` : `Added ${got.skills.length} skill${got.skills.length === 1 ? '' : 's'}.`);
+        if (!deps.skills?.installLink) return { type: 'none' };
+        const link = msg.url.trim();
+        if (!link) return { type: 'notice', message: 'Type a GitHub or GitLab repository (owner/repo) or the address of a skill.' };
+        return addFromLink(deps, link, undefined);
+      }
+      case 'skillInstallPicked': {
+        if (!deps.skills?.installLink) return { type: 'none' };
+        if (!Array.isArray(msg.names) || msg.names.length === 0) return { type: 'notice', message: 'Tick at least one skill to install.' };
+        return addFromLink(deps, msg.link.trim(), msg.names);
+      }
+      case 'skillRemove': {
+        if (!deps.skills?.remove || !deps.skills.managed) return { type: 'none' };
+        // Only the person's own folder: a skill another tool put elsewhere is not Forge's to delete.
+        if (!(await deps.skills.managed()).some((m) => m.name === msg.name)) return { type: 'notice', message: `"${msg.name}" is not in your skills folder, so Forge does not remove it.` };
+        if (!(await deps.skills.remove(msg.name))) return { type: 'notice', message: `There is no skill named "${msg.name}" to remove.` };
+        return skillsListed(deps, `Removed ${msg.name}.`);
+      }
+      case 'skillUpdate': {
+        if (!deps.skills?.update) return { type: 'none' };
+        const outcomes = await deps.skills.update(msg.name, msg.force === true);
+        return skillsListed(deps, updateNote(outcomes));
       }
       case 'skillAddFile': {
         if (!deps.skills?.pickFile || !deps.skills.saveOwn) return { type: 'none' };
@@ -700,6 +791,11 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
         await deps.saveForgeConfigFile({ disabledSkills: next }, deps.configPath);
         return skillsListed(deps);
       }
+      case 'skillOtherTools': {
+        if (!deps.skills) return { type: 'none' };
+        await deps.saveForgeConfigFile({ otherToolSkills: msg.enabled === true }, deps.configPath);
+        return skillsListed(deps);
+      }
       case 'skillOpen': {
         if (!deps.skills) return { type: 'none' };
         const known = (await deps.skills.list()).some((s) => s.source.path === msg.path);
@@ -712,7 +808,7 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
           return {
             type: 'skillCatalogListed',
             entries: [],
-            error: 'Could not load the skills catalog. Check your connection, or set FORGE_SKILL_CATALOG_URL to a catalog you host.',
+            error: 'Could not load the skills catalog. Use Add skill from a link instead.',
           };
         }
         const have = new Set((await deps.skills!.list()).map((s) => s.name));
@@ -842,7 +938,7 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
       case 'skillInstall': {
         if (!deps.skills) return { type: 'none' };
         const ok = await deps.skills.install(msg.name);
-        if (!ok) return { type: 'notice', message: `Could not install skill "${msg.name}".` };
+        if (ok !== true) return { type: 'notice', message: typeof ok === 'string' && ok ? `Could not install skill "${msg.name}". ${ok}` : `Could not install skill "${msg.name}".` };
         return skillsListed(deps);
       }
     }

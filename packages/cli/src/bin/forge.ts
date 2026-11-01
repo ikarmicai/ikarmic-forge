@@ -22,6 +22,7 @@ import {
   formatAliasTable,
   generateSessionId,
   loadForgeConfigFile,
+  pruneByRetention,
   loadSchemaFile,
   loadSession,
   registerCustomProviders,
@@ -119,6 +120,8 @@ async function main(): Promise<void> {
   // silently skip. The user sees a one-line summary in stderr when
   // anything was actually cleaned up.
   await pruneWorktreesOnStartup(options.cwd ?? process.cwd());
+  // Same housekeeping as the extension. Not for `session` commands, so a chat being resumed is kept, however old.
+  if (!sessionCommand) await pruneByRetention(defaultSessionDir(), startupConfig.sessionRetentionDays).catch(() => undefined);
 
   if (listModels) {
     try {
