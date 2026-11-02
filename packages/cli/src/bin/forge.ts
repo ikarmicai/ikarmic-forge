@@ -85,13 +85,26 @@ interface SessionTools {
   cleanup: () => Promise<void>;
 }
 
+/**
+ * End the process with `code` once Node has nothing left to do. On Windows, Node 24 aborts with
+ * "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" and exit code 127 when `process.exit` runs soon after a
+ * `fetch`, so a command that talked to GitHub lost its exit code (RB-149). Setting the code and letting the loop end is
+ * clean; the fallback ends a process that something still holds open.
+ */
+export function exitWhenIdle(code: number): Promise<never> {
+  process.exitCode = code;
+  return new Promise<never>(() => {
+    setTimeout(() => process.exit(code), 3000).unref();
+  });
+}
+
 async function main(): Promise<void> {
   let parsed: ParsedInvocation;
   try {
     parsed = parseOptions(process.argv);
   } catch (err) {
     process.stderr.write(`forge: ${(err as Error).message}\n`);
-    process.exit(2);
+    return exitWhenIdle(2);
   }
   const { options, resolveModel, listModels, sessionCommand, skillCommand, pluginCommand, hookCommand, memoryCommand, mcpCommand, checkpointCommand, specCommand, watchCommand, diffCommand, orchestratorCommand, worktreeCommand, configCommand, acpCommand, policyCommand, importCommand, version } = parsed;
 
@@ -105,7 +118,7 @@ async function main(): Promise<void> {
     applyModelAliases(options, startupConfig.aliases);
   } catch (err) {
     process.stderr.write(`forge: ${(err as Error).message}\n`);
-    process.exit(2);
+    return exitWhenIdle(2);
   }
 
   // Bootstrap custom specialists from ~/.forge/specialists.json so
@@ -129,7 +142,7 @@ async function main(): Promise<void> {
       process.stdout.write(`${model.provider}/${model.model}\n`);
     } catch (err) {
       process.stderr.write(`forge: ${(err as Error).message}\n`);
-      process.exit(2);
+      return exitWhenIdle(2);
     }
     return;
   }
@@ -145,31 +158,31 @@ async function main(): Promise<void> {
   // Skill subcommand: `forge skill list|show|install|browse`.
   if (skillCommand) {
     const code = await handleSkillCommand(skillCommand, options.cwd ?? process.cwd());
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Plugin subcommand: `forge plugin list|show|install|remove`.
   if (pluginCommand) {
     const code = await handlePluginCommand(pluginCommand, options.cwd ?? process.cwd());
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Hook subcommand: `forge hook list|test|log`.
   if (hookCommand) {
     const code = await handleHookCommand(hookCommand, options.cwd ?? process.cwd());
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Memory subcommand: `forge memory list|check|forget`.
   if (memoryCommand) {
     const code = await handleMemoryCommand(memoryCommand, options.cwd ?? process.cwd());
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // MCP subcommand: `forge mcp list|install|remove|browse`.
   if (mcpCommand) {
     const code = await handleMcpCommand(mcpCommand, options.cwd ?? process.cwd());
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Organization policy + corporate proxy. The policy file is enforced by every Agent, so a
@@ -187,26 +200,26 @@ async function main(): Promise<void> {
   } catch (err) {
     if (!policyCommand) {
       process.stderr.write(`forge: ${(err as Error).message}\n`);
-      process.exit(2);
+      return exitWhenIdle(2);
     }
   }
 
   // `forge policy` shows the active organization policy.
   if (policyCommand) {
     const { handlePolicyCommand } = await import('../commands/policy.js');
-    process.exit(handlePolicyCommand());
+    return exitWhenIdle(handlePolicyCommand());
   }
 
   // `forge import claude [apply]` copies a Claude Code setup into Forge.
   if (importCommand) {
     const { handleImportCommand } = await import('../commands/import.js');
-    process.exit(await handleImportCommand(importCommand));
+    return exitWhenIdle(await handleImportCommand(importCommand));
   }
 
   // `forge acp` speaks the Agent Client Protocol on stdio (JetBrains AI Chat, Zed, ...).
   if (acpCommand) {
     const { handleAcpCommand } = await import('../commands/acp.js');
-    process.exit(await handleAcpCommand(options, resolveModel, version));
+    return exitWhenIdle(await handleAcpCommand(options, resolveModel, version));
   }
 
   // Config subcommand: `forge config` (interactive settings wizard).
@@ -216,13 +229,13 @@ async function main(): Promise<void> {
     const aliasTable = formatAliasTable(startupConfig.aliases);
     if (aliasTable) process.stdout.write(`${aliasTable}\n\n`);
     await runConfigWizard({ credentialStore: createKeyringCredentialStore() });
-    process.exit(0);
+    return exitWhenIdle(0);
   }
 
   // Checkpoint subcommand: `forge checkpoint list|show|restore|prune`.
   if (checkpointCommand) {
     const code = await handleCheckpointCommand(checkpointCommand, options.cwd ?? process.cwd());
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Spec subcommand: `forge spec list|show|cancel`.
@@ -241,13 +254,13 @@ async function main(): Promise<void> {
         return agent.run({ task });
       },
     });
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Watch subcommand: `forge watch`. Runs until Ctrl+C; no AI provider needed.
   if (watchCommand) {
     const code = await handleWatchCommand(options.cwd ?? process.cwd(), resolveModel, { aiComments: options.aiComments });
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Diff subcommand: `forge diff <fileA> <fileB>` or `--from-stdin`.
@@ -260,7 +273,7 @@ async function main(): Promise<void> {
       ...(diffCommand.summaryOnly ? { summaryOnly: true } : {}),
       cwd: options.cwd ?? process.cwd(),
     });
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Worktree subcommand: `forge worktree list | cleanup`. Doesn't need
@@ -271,7 +284,7 @@ async function main(): Promise<void> {
       worktreeCommand,
       options.cwd ?? process.cwd()
     );
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // Orchestrator subcommand: needs a model resolved before dispatch.
@@ -281,7 +294,7 @@ async function main(): Promise<void> {
       model = resolveModel();
     } catch (err) {
       process.stderr.write(`forge: ${(err as Error).message}\n`);
-      process.exit(2);
+      return exitWhenIdle(2);
     }
     const code = await handleOrchestratorCommand(
       orchestratorCommand,
@@ -293,7 +306,7 @@ async function main(): Promise<void> {
         commitChanges: options.orchestratorCommit,
       }
     );
-    process.exit(code);
+    return exitWhenIdle(code);
   }
   if (orchestratorCommand) {
     // list-only path: no model needed
@@ -302,7 +315,7 @@ async function main(): Promise<void> {
       options.cwd ?? process.cwd(),
       { provider: 'openai', model: 'noop' } // unused for list
     );
-    process.exit(code);
+    return exitWhenIdle(code);
   }
 
   // From here on we need a real model: resolve it now and surface any
@@ -312,7 +325,7 @@ async function main(): Promise<void> {
     model = resolveModel();
   } catch (err) {
     process.stderr.write(`forge: ${(err as Error).message}\n`);
-    process.exit(2);
+    return exitWhenIdle(2);
   }
 
   // Load MCP tools (if configured) once per process. The cleanup runs on exit.
@@ -983,7 +996,7 @@ async function resolveResume(
 
 main().catch((err: Error) => {
   process.stderr.write(`forge: ${err.message}\n`);
-  process.exit(1);
+  void exitWhenIdle(1);
 });
 
 void require;

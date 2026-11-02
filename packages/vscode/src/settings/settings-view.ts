@@ -1,7 +1,9 @@
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import * as vscode from 'vscode';
 
@@ -24,7 +26,14 @@ import {
   installSkillFromSource,
   listManagedSkills,
   listSkillsInSource,
+  githubFromEnv,
+  publishSkill,
+  readSkillArchive,
+  readSkillFolder,
+  installedFrom,
+  SKILL_ZIP_MAX_BYTES,
   removeManagedSkill,
+  saveSkill,
   updateManagedSkills,
   listInstalledServers,
   listSpecialists,
@@ -45,6 +54,8 @@ import {
   envVarForProvider,
   loadSteering,
   pruneSessions,
+  type PublishInput,
+  type SkillFile,
 } from '@ikarmic/forge-core';
 
 import { readConfig, resolveModel } from '../config.js';
@@ -361,6 +372,57 @@ export class SettingsViewProvider {
                   const target = path.join(folder, 'SKILL.md');
                   await writeFile(target, content, { encoding: 'utf8', flag: 'wx' });
                   return target;
+                }
+              },
+              save: async (name: string, files: SkillFile[], overwrite: boolean) => {
+                const saved = await saveSkill(name, files, { overwrite });
+                return saved.leftover ? { leftover: saved.leftover } : {};
+              },
+              // The chooser is the host's: the page never sends a path, and a link in a folder is refused by the reader.
+              pickSource: async (kind: 'folder' | 'zip') => {
+                const [uri] =
+                  (await vscode.window.showOpenDialog(
+                    kind === 'folder'
+                      ? { canSelectMany: false, canSelectFolders: true, canSelectFiles: false, openLabel: 'Add skill' }
+                      : { canSelectMany: false, canSelectFolders: false, filters: { 'Zip archives': ['zip'] }, openLabel: 'Add skill' }
+                  )) ?? [];
+                if (!uri) return undefined;
+                if (kind === 'folder') return { files: await readSkillFolder(uri.fsPath), folder: path.basename(uri.fsPath) };
+                // The archive is read whole, so its size is checked first (review bug 15).
+                const { size } = await vscode.workspace.fs.stat(uri);
+                if (size > SKILL_ZIP_MAX_BYTES) throw new Error(`That zip file is too large for a skill (at most ${SKILL_ZIP_MAX_BYTES / 1024 / 1024} MB).`);
+                return readSkillArchive(Buffer.from(await vscode.workspace.fs.readFile(uri)));
+              },
+              readOwn: async (name: string) => {
+                const dir = path.join(os.homedir(), '.forge', 'skills', name);
+                // Someone else's skill is never shared under the person's name, whatever the page asked (review bug 2).
+                const from = await installedFrom(dir);
+                if (from) throw new Error(`${name} was installed from ${from}, so it is someone else's skill and Forge does not share it under your name.`);
+                return readSkillFolder(dir);
+              },
+              // Asked for only when sharing is confirmed (RB-76): GITHUB_TOKEN / GH_TOKEN, else VS Code's GitHub sign-in.
+              githubToken: async () => {
+                const fromEnv = githubFromEnv();
+                if (fromEnv) return fromEnv.token;
+                try {
+                  const session = await vscode.authentication.getSession('github', ['public_repo'], { createIfNone: true });
+                  return session?.accessToken;
+                } catch (err) {
+                  // The person closing the sign-in is a "no"; anything else (no GitHub sign-in in this editor, offline) is said.
+                  const message = err instanceof Error ? err.message : String(err);
+                  if (/cancel|did not consent|user declined/i.test(message)) return undefined;
+                  throw new Error(message.endsWith('.') ? message : `${message}.`);
+                }
+              },
+              publish: (input: PublishInput, token: string, signal: AbortSignal) => publishSkill(input, { token, signal }),
+              openUrl: async (url: string) => {
+                await vscode.env.openExternal(vscode.Uri.parse(url));
+              },
+              defaultHolder: async () => {
+                try {
+                  return (await promisify(execFile)('git', ['config', 'user.name'], { timeout: 5000 })).stdout.trim();
+                } catch {
+                  return '';
                 }
               },
               install: async (name: string) => {

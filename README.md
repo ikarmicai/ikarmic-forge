@@ -2,7 +2,7 @@
 
 An all-in-one AI coding assistant. A shared agent engine that drives a polished terminal CLI today, and a VS Code extension tomorrow. One source of truth for the model loop, the tools, and the prompts: different surfaces on top.
 
-> **Status:** **v5.5.0**: CLI, VS Code extension and eval harness, open source under AGPL-3.0-only. The core engine (`@ikarmic/forge-core`) is proprietary and free to run with them.
+> **Status:** **v5.5.1**: CLI, VS Code extension and eval harness, open source under AGPL-3.0-only. The core engine (`@ikarmic/forge-core`) is proprietary and free to run with them.
 >
 > **Install:** `npm i -g ikarmic-forge` for the CLI, or the VS Code Marketplace / Open VSX listing for the extension. To build from source: `pnpm install && pnpm -r build`.
 
@@ -617,6 +617,9 @@ forge skill list               # show every discovered skill
 forge skill show commit-message  # print the source + body
 forge skill install <url>      # scaffold a SKILL.md stub in ./skills/
 forge skill browse             # print the marketplace catalog URL
+forge skill new <name> --description "…" --instructions-file notes.md   # write your own skill
+forge skill add <folder|zip>   # copy a skill folder or zip into ~/.forge/skills
+forge skill publish <name>     # share it: a pull request to the Forge skills repository (asks first; needs GITHUB_TOKEN)
 ```
 
 Programmatic access (in your own scripts):

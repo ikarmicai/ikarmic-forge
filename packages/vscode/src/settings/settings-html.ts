@@ -284,9 +284,14 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     </section>
 
     <section id="sec-skills" hidden>
-      <h2>Skills<span class="ik-badge ik-badge--outline">Saves instantly</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="skills-rescan">Rescan</button><button type="button" class="ik-btn ik-btn--primary" id="skills-browse">Browse catalog</button></h2>
-      <p class="lead">Skills are Markdown instructions Forge loads when a task matches them, read from three folders. Browse the catalog to install one.</p>
-      <div id="row-skills"><div id="skills-list"><p class="ik-muted">Loading skills…</p></div><div id="skills-catalog"></div></div>
+      <h2>Skills<span class="ik-badge ik-badge--outline">Saves instantly</span><span class="sp"></span><button type="button" class="ik-btn ik-btn--secondary" id="skills-rescan">Rescan</button></h2>
+      <p class="lead">Skills are Markdown instructions Forge loads when a task matches them. Install one from the catalog, add your own, or write one here.</p>
+      <div id="row-skills">
+        <div class="ik-tabs" role="tablist"><button type="button" role="tab" id="skills-tab-installed" aria-selected="true" aria-controls="skills-list" tabindex="0">Installed</button><button type="button" role="tab" id="skills-tab-catalog" aria-selected="false" aria-controls="skills-catalog" tabindex="-1">Catalog</button><button type="button" role="tab" id="skills-tab-add" aria-selected="false" aria-controls="skills-add" tabindex="-1">Add</button></div>
+        <div id="skills-list" role="tabpanel" aria-labelledby="skills-tab-installed"><p class="ik-muted">Loading skills…</p></div>
+        <div id="skills-catalog" class="hidden" role="tabpanel" aria-labelledby="skills-tab-catalog"><p class="ik-muted">Loading the catalog…</p></div>
+        <div id="skills-add" class="hidden" role="tabpanel" aria-labelledby="skills-tab-add"></div>
+      </div>
     </section>
 
     <section id="sec-perm" hidden>
@@ -1276,11 +1281,41 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   // skills (immediate)
   let skillsLoaded = false;
   const SCOPES = [['local', 'This workspace', 'skills/'], ['project', 'This project', '.forge/skills/ and .agents/skills/'], ['global', 'Your account', '~/.forge/skills/, ~/.agents/skills/, Claude Code and Cursor'], ['remote', 'From a link', ''], ['builtin', 'Built into Forge', '']];
-  $('skills-rescan').addEventListener('click', () => vscode.postMessage({ type: 'skillsList' }));
-  $('skills-browse').addEventListener('click', () => vscode.postMessage({ type: 'skillCatalog' }));
+  // The catalog is read once, when its tab is first opened; Rescan reads it again (with the skills) once it was read.
+  let skillCatalogLoaded = false;
+  $('skills-rescan').addEventListener('click', () => {
+    vscode.postMessage({ type: 'skillsList' });
+    if (skillCatalogLoaded) vscode.postMessage({ type: 'skillCatalog' });
+  });
+  // Tabs follow the ARIA pattern, as the MCP tabs do: arrows, Home and End move and select; only the selected tab is in the tab order.
+  const SKILL_TABS = ['installed', 'catalog', 'add'];
+  const SKILL_PANELS = { installed: 'skills-list', catalog: 'skills-catalog', add: 'skills-add' };
+  function skillsTab(which) {
+    SKILL_TABS.forEach((name) => {
+      const on = name === which;
+      $('skills-tab-' + name).setAttribute('aria-selected', String(on));
+      $('skills-tab-' + name).setAttribute('tabindex', on ? '0' : '-1');
+      $(SKILL_PANELS[name]).classList.toggle('hidden', !on);
+    });
+    if (which === 'catalog' && !skillCatalogLoaded) { skillCatalogLoaded = true; vscode.postMessage({ type: 'skillCatalog' }); }
+  }
+  SKILL_TABS.forEach((name, i) => {
+    $('skills-tab-' + name).addEventListener('click', () => skillsTab(name));
+    $('skills-tab-' + name).addEventListener('keydown', (e) => {
+      const n = SKILL_TABS.length;
+      const to = e.key === 'ArrowRight' ? (i + 1) % n : e.key === 'ArrowLeft' ? (i + n - 1) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
+      if (to < 0) return;
+      e.preventDefault();
+      skillsTab(SKILL_TABS[to]);
+      $('skills-tab-' + SKILL_TABS[to]).focus();
+    });
+  });
   function renderSkills(skills, otherTools) {
     const box = $('skills-list');
+    // A share card (perhaps sharing right now) survives a new list: it holds the only way to the pull request it opens.
+    const keepShare = $('skill-share');
     box.textContent = '';
+    if (keepShare) box.appendChild(keepShare);
     $('badge-skills').textContent = skills.length ? String(skills.length) : '';
     const help = document.createElement('p'); help.className = 'ik-muted'; help.textContent = 'Switch a skill off and the model never sees it. The switch applies to every skill with that name, whoever wrote it.'; box.appendChild(help);
     if (skills.some((s) => s.updatable)) {
@@ -1327,15 +1362,20 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
           });
           acts.appendChild(rm);
         }
+        if (s.removable && !s.updatable) {
+          const sh = document.createElement('button'); sh.type = 'button'; sh.className = 'ik-btn ik-btn--link'; sh.textContent = 'Share'; sh.title = 'Offer ' + s.name + ' to everyone who uses Forge, as a pull request you confirm first';
+          sh.addEventListener('click', () => vscode.postMessage({ type: 'skillShareStart', name: s.name }));
+          acts.appendChild(sh);
+        }
         item.appendChild(acts); list.appendChild(item);
       });
       box.appendChild(list);
     });
-    box.appendChild(addYourOwnSkill());
+
   }
   /** A link that holds several skills: the person ticks the ones to install; nothing is downloaded before that. */
   function showSkillPick(msg) {
-    const box = $('skills-list');
+    const box = $('skills-add');
     const old = $('skill-pick'); if (old) old.remove();
     const card = document.createElement('div'); card.className = 'ik-card card'; card.id = 'skill-pick'; card.style.marginTop = 'var(--space-sm)';
     const title = document.createElement('strong'); title.textContent = 'This link holds ' + msg.skills.length + ' skills. Choose the ones to install.';
@@ -1356,14 +1396,14 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     cancel.addEventListener('click', () => card.remove());
     const row = document.createElement('div'); row.className = 'row'; row.appendChild(install); row.appendChild(all); row.appendChild(cancel);
     card.appendChild(row);
-    box.insertBefore(card, box.lastChild);
+    box.insertBefore(card, box.firstChild);
     card.scrollIntoView({ block: 'nearest' });
   }
   function addYourOwnSkill() {
     const card = document.createElement('div'); card.className = 'ik-card card'; card.style.marginTop = 'var(--space-sm)';
     const title = document.createElement('strong'); title.textContent = 'Add your own';
     const sub = document.createElement('span'); sub.className = 'ik-muted'; sub.style.fontSize = '12px';
-    sub.textContent = 'Paste a GitHub repository (owner/repo) or the address of a skill. Forge downloads the skill folder to this computer. Or choose a skill file here.';
+    sub.textContent = 'Paste a GitHub repository (owner/repo) or the address of a skill. Forge downloads the skill folder to this computer. Or choose a skill file, a folder or a zip file.';
     const field = document.createElement('div'); field.className = 'ik-field';
     const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = 'skill-add-url'; lab.textContent = 'Repository or address';
     const url = document.createElement('input'); url.type = 'text'; url.id = 'skill-add-url'; url.className = 'ik-input'; url.placeholder = 'owner/repo, or a GitHub or GitLab address'; url.spellcheck = false;
@@ -1373,10 +1413,126 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
     addLink.addEventListener('click', () => { if (url.value.trim()) vscode.postMessage({ type: 'skillAddLink', url: url.value.trim() }); });
     const file = document.createElement('button'); file.type = 'button'; file.className = 'ik-btn ik-btn--secondary'; file.textContent = 'Choose a file…';
     file.addEventListener('click', () => vscode.postMessage({ type: 'skillAddFile' }));
-    row.appendChild(addLink); row.appendChild(file);
+    const folder = document.createElement('button'); folder.type = 'button'; folder.className = 'ik-btn ik-btn--secondary'; folder.textContent = 'Choose a folder…';
+    folder.addEventListener('click', () => vscode.postMessage({ type: 'skillUpload', kind: 'folder', overwrite: replacing() }));
+    const zip = document.createElement('button'); zip.type = 'button'; zip.className = 'ik-btn ik-btn--secondary'; zip.textContent = 'Choose a zip file…';
+    zip.addEventListener('click', () => vscode.postMessage({ type: 'skillUpload', kind: 'zip', overwrite: replacing() }));
+    row.appendChild(addLink); row.appendChild(file); row.appendChild(folder); row.appendChild(zip);
     card.appendChild(title); card.appendChild(sub); card.appendChild(field); card.appendChild(row);
     return card;
   }
+  /** One choice for the Add tab: a skill of the same name is replaced only when the person ticks this. */
+  function replaceSameName() {
+    const row = document.createElement('label'); row.className = 'ik-check'; row.style.marginTop = 'var(--space-sm)';
+    const box = document.createElement('input'); box.type = 'checkbox'; box.id = 'skill-replace';
+    const text = document.createElement('span'); text.textContent = 'Replace a skill of the same name (for a folder, a zip file or a new skill)';
+    row.appendChild(box); row.appendChild(text);
+    return row;
+  }
+  const replacing = () => { const b = $('skill-replace'); return !!(b && b.checked); };
+  /** A label above a control, the way the other cards lay out a field. */
+  function skillField(labelText, id, control) {
+    const wrap = document.createElement('div'); wrap.className = 'ik-field';
+    const lab = document.createElement('label'); lab.className = 'ik-label'; lab.htmlFor = id; lab.textContent = labelText;
+    control.id = id; wrap.appendChild(lab); wrap.appendChild(control);
+    return wrap;
+  }
+  function createYourOwnSkill() {
+    const card = document.createElement('div'); card.className = 'ik-card card'; card.style.marginTop = 'var(--space-sm)';
+    const title = document.createElement('strong'); title.textContent = 'Create a skill';
+    const sub = document.createElement('span'); sub.className = 'ik-help';
+    sub.textContent = 'Write what the agent should do when the skill applies. Forge saves it to your skills folder.';
+    const name = document.createElement('input'); name.type = 'text'; name.className = 'ik-input'; name.placeholder = 'release-notes'; name.maxLength = 64; name.spellcheck = false;
+    const description = document.createElement('input'); description.type = 'text'; description.className = 'ik-input'; description.placeholder = 'Writes release notes from the commits since the last tag.'; description.maxLength = 160;
+    const instructions = document.createElement('textarea'); instructions.className = 'ik-textarea'; instructions.rows = 6; instructions.placeholder = 'List the steps the agent should follow.';
+    const row = document.createElement('div'); row.className = 'row';
+    const create = document.createElement('button'); create.type = 'button'; create.className = 'ik-btn ik-btn--primary'; create.textContent = 'Create skill';
+    create.addEventListener('click', () => vscode.postMessage({ type: 'skillCreate', name: name.value.trim(), description: description.value.trim(), instructions: instructions.value, overwrite: replacing() }));
+    row.appendChild(create);
+    card.appendChild(title); card.appendChild(sub);
+    card.appendChild(skillField('Name', 'skill-create-name', name));
+    card.appendChild(skillField('What it does', 'skill-create-description', description));
+    card.appendChild(skillField('Instructions', 'skill-create-instructions', instructions));
+    card.appendChild(row);
+    return card;
+  }
+  /** The card for sharing a skill: the person sees where it goes and what is sent, and presses Share. Nothing is sent before. */
+  let shareBtn = null;
+  function showShareCard(msg) {
+    const box = $('skills-list');
+    const old = $('skill-share'); if (old) old.remove();
+    const card = document.createElement('div'); card.className = 'ik-card card'; card.id = 'skill-share'; card.style.marginTop = 'var(--space-sm)';
+    const title = document.createElement('strong'); title.textContent = 'Share ' + msg.name + ' with everyone';
+    const sub = document.createElement('span'); sub.className = 'ik-help';
+    sub.textContent = 'Forge opens a pull request to ' + msg.repo + ' with ' + msg.files + (msg.files === 1 ? ' file' : ' files') + '. Nothing is sent until you press Share.';
+    card.appendChild(title); card.appendChild(sub);
+    if (msg.problems.length) {
+      const note = document.createElement('div'); note.className = 'ik-note ik-note--warning';
+      const head = document.createElement('div'); head.textContent = 'This skill cannot be shared yet:'; note.appendChild(head);
+      msg.problems.forEach((p) => { const d = document.createElement('div'); d.textContent = p; note.appendChild(d); });
+      card.appendChild(note);
+    }
+    const titleIn = document.createElement('input'); titleIn.type = 'text'; titleIn.className = 'ik-input'; titleIn.value = msg.title; titleIn.maxLength = 120;
+    const bodyIn = document.createElement('textarea'); bodyIn.className = 'ik-textarea'; bodyIn.rows = 3; bodyIn.value = msg.body;
+    card.appendChild(skillField('Title of the pull request', 'skill-share-title', titleIn));
+    card.appendChild(skillField('Description', 'skill-share-body', bodyIn));
+    let licenceSel = null; let holderIn = null;
+    if (msg.needsLicence) {
+      licenceSel = document.createElement('select'); licenceSel.className = 'ik-select';
+      [['MIT', 'MIT: short, anyone may use it'], ['Apache-2.0', 'Apache 2.0: also grants patent rights']].forEach((o) => { const opt = document.createElement('option'); opt.value = o[0]; opt.textContent = o[1]; licenceSel.appendChild(opt); });
+      holderIn = document.createElement('input'); holderIn.type = 'text'; holderIn.className = 'ik-input'; holderIn.value = msg.holder; holderIn.maxLength = 100;
+      card.appendChild(skillField('Licence', 'skill-share-licence', licenceSel));
+      card.appendChild(skillField('Name of the copyright holder', 'skill-share-holder', holderIn));
+    } else {
+      const own = document.createElement('p'); own.className = 'ik-muted'; own.textContent = 'The skill has its own licence file, and Forge keeps it.'; card.appendChild(own);
+    }
+    const draftRow = document.createElement('label'); draftRow.className = 'ik-check';
+    const draft = document.createElement('input'); draft.type = 'checkbox'; draft.checked = true;
+    const draftText = document.createElement('span'); draftText.textContent = 'Open it as a draft, so nobody is asked to review it yet';
+    draftRow.appendChild(draft); draftRow.appendChild(draftText); card.appendChild(draftRow);
+    shareBtn = document.createElement('button'); shareBtn.type = 'button'; shareBtn.className = 'ik-btn ik-btn--primary'; shareBtn.textContent = 'Share'; shareBtn.disabled = msg.problems.length > 0;
+    shareBtn.addEventListener('click', () => {
+      shareBtn.disabled = true; shareBtn.textContent = 'Sharing…';
+      vscode.postMessage({ type: 'skillShare', name: msg.name, title: titleIn.value, body: bodyIn.value, draft: draft.checked, licence: licenceSel ? licenceSel.value : null, holder: holderIn ? holderIn.value : '' });
+    });
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ik-btn ik-btn--link'; cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => {
+      // While sharing, Cancel stops it and the card stays until GitHub's answer says what was kept (or the link, if it was done).
+      if (shareBtn && shareBtn.textContent === 'Sharing…') {
+        vscode.postMessage({ type: 'skillShareCancel', name: msg.name });
+        shareBtn.textContent = 'Stopping…';
+        return;
+      }
+      shareBtn = null; card.remove();
+    });
+    const row = document.createElement('div'); row.className = 'row'; row.appendChild(shareBtn); row.appendChild(cancel);
+    card.appendChild(row);
+    box.insertBefore(card, box.firstChild);
+    card.scrollIntoView({ block: 'nearest' });
+  }
+  function showShared(msg) {
+    shareBtn = null;
+    // The card may be gone (the list was drawn again): the link is never lost, so a new card holds it.
+    let card = $('skill-share');
+    if (!card) {
+      card = document.createElement('div'); card.className = 'ik-card card'; card.id = 'skill-share'; card.style.marginTop = 'var(--space-sm)';
+      $('skills-list').insertBefore(card, $('skills-list').firstChild);
+      skillsTab('installed');
+    }
+    card.textContent = '';
+    const title = document.createElement('strong'); title.textContent = 'Pull request opened';
+    const sub = document.createElement('span'); sub.className = 'ik-help';
+    sub.textContent = msg.draft ? 'It is a draft. Mark it ready for review on GitHub when you are happy with it.' : 'It is ready for review.';
+    const open = document.createElement('button'); open.type = 'button'; open.className = 'ik-btn ik-btn--primary'; open.textContent = 'Open on GitHub';
+    open.addEventListener('click', () => vscode.postMessage({ type: 'skillOpenShared', url: msg.url }));
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'ik-btn ik-btn--link'; close.textContent = 'Close';
+    close.addEventListener('click', () => card.remove());
+    const row = document.createElement('div'); row.className = 'row'; row.appendChild(open); row.appendChild(close);
+    card.appendChild(title); card.appendChild(sub); card.appendChild(row);
+  }
+  $('skills-add').appendChild(addYourOwnSkill());
+  $('skills-add').appendChild(createYourOwnSkill());
+  $('skills-add').appendChild(replaceSameName());
   /** Success notes use the green style; everything else keeps the warning style. */
   function say(text, ok) { const b = $('banner'); b.textContent = text; b.classList.toggle('ik-note--success', !!ok); b.classList.toggle('ik-note--warning', !ok); }
 
@@ -1619,7 +1775,15 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         break;
       case 'skillsListed':
         renderSkills(msg.skills, msg.otherTools);
-        if (msg.note) say(msg.note, true);
+        if (msg.note) { say(msg.note, true); skillsTab('installed'); }
+        // The create form did its job: empty it, so a second click does not try the same skill again.
+        if (msg.created) ['skill-create-name', 'skill-create-description', 'skill-create-instructions'].forEach((id) => { $(id).value = ''; });
+        break;
+      case 'skillShareCard':
+        showShareCard(msg);
+        break;
+      case 'skillShared':
+        showShared(msg);
         break;
       case 'skillCatalogListed':
         renderSkillCatalog(msg.entries, msg.error);
@@ -1640,6 +1804,7 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
         vscode.postMessage({ type: 'loadSandbox', cwd: '' });
         break;
       case 'notice':
+        if (shareBtn) { shareBtn.disabled = false; shareBtn.textContent = 'Share'; }
         say(msg.message, /^(Exported|Saved|Settings imported|Deleted)/.test(msg.message));
         break;
       case 'error':

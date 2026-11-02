@@ -10,8 +10,17 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.5.1] - 2026-11-02
+
+### Added
+
+- **Create, add and share your own skills.** Settings → Skills now has three tabs: Installed, Catalog and Add. Add takes a link, a skill file, a folder or a zip, and has a Create a skill form. Share on one of your skills opens a card that says where the pull request goes; nothing is sent until you press Share. Forge checks the skill first (name, size, files it must not send, keys and passwords) and adds an MIT or Apache-2.0 licence if the skill has none. The pull request goes to `ikarmicai/forge-skills` under your GitHub account (RB-148).
+
 ### Changed
 
+- **One "Models and providers" page in Settings.** The Model, API keys and Providers pages are one: each provider has its on/off tick, key status, Test and Remove, and a Set key button that opens a dialog. Adding or editing a custom provider opens in its own dialog, and Remove asks first. Delete old chats moved to Context and memory.
+- **Chat toolbar icons.** Restore checkpoint, Condense, Specs, Steering and Agent Manager were hidden in the More actions menu; each is an icon with its name as a tooltip, and below 280px wide they fold into the menu so the toolbar never wraps.
+- **A flatter chat.** The toolbar, composer, chips and example prompts lose their borders. The input starts taller and grows with your text.
 - **Safer file changes.** Forge no longer overwrites a file it has not read or that changed since, edits never corrupt files in older encodings, and a crash cannot leave a file half written. Memory saved by parallel agents is no longer lost.
 - **Tighter permissions.** An allow rule now covers one command only, so `git status & rm x` asks. Every agent keeps the core safety rules. DevOps asks before each command, Autonomous included.
 - **Untrusted repositories** can no longer add memory or commands. More secret formats and credential files are recognised.
@@ -29,6 +38,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A failed commit, language-server, lint or pull-request check is shown as a failure, not as "none", clean or passed; a failed commit keeps its worktree and branch (RB-144).
+- A run that ended at a limit says why in words, not as a blank or a reason code (RB-145).
+- `fetch_url` no longer reads past a page's `<main>` into a later tag that starts with the same letters (RB-146).
 - A skill named in `skillPaths` now shows on the Settings Skills page, in `forge skill list` and in Browse (RB-114).
 - `forge skill install <link>` no longer writes an empty stub; the catalog no longer assumes the branch is `main` (RB-115).
 
@@ -258,7 +270,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Memory**, **steering files** and per-project instructions.
 - **Verification**: Forge runs your project's own typecheck, lint and tests after edits, with Ask/On/Off.
 
-[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.0...HEAD
+[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.1...HEAD
+[5.5.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.0...v5.5.1
 [5.5.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.1...v5.5.0
 [5.4.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.0...v5.4.1
 [5.4.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.3.0...v5.4.0

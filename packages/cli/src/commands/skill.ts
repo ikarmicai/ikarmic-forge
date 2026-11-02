@@ -29,6 +29,7 @@ import {
 } from '@ikarmic/forge-core';
 
 import type { ParsedSkillCommand } from '../options.js';
+import { addSkill, newSkill, publishFromDisk } from './skill-share.js';
 
 /**
  * Skill marketplace catalog URL. The default URL points at a public
@@ -61,8 +62,11 @@ export async function handleSkillCommand(cmd: ParsedSkillCommand, cwd: string): 
   if (cmd.browse) {
     return browseMarketplace();
   }
+  if (cmd.create) return newSkill(cmd.create);
+  if (cmd.add) return addSkill(cmd.add, cwd);
+  if (cmd.publish) return publishFromDisk(cmd.publish, cwd);
   process.stderr.write(
-    'forge skill: expected one of list|show|install|update|remove|search|browse. Try `forge skill --help` (not yet implemented; read the README).\n'
+    'forge skill: expected one of list|show|install|update|remove|search|browse|new|add|publish. Try `forge skill --help` (not yet implemented; read the README).\n'
   );
   return 2;
 }
@@ -284,5 +288,9 @@ function browseMarketplace(): number {
   process.stdout.write('  forge skill remove <name> --yes             # delete a skill from ~/.forge/skills\n');
   process.stdout.write('  forge skill install <name>                  # from the marketplace catalog\n');
   process.stdout.write('  forge skill search <query>                  # find skills by keyword\n');
+  process.stdout.write('\nMake your own, and share it:\n');
+  process.stdout.write('  forge skill new <name> --description "…" --instructions-file <path>   # write a skill into ~/.forge/skills\n');
+  process.stdout.write('  forge skill add <folder|zip>                # copy a skill folder or zip into ~/.forge/skills\n');
+  process.stdout.write('  forge skill publish <name|folder>           # open a pull request to the Forge skills repository (asks first)\n');
   return 0;
 }

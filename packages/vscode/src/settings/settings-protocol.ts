@@ -42,6 +42,7 @@ import { AWS_CREDENTIALS, cloudCredentialProblem } from './cloud-credentials.js'
 import type { CloudProviderStatus } from './cloud-status.js';
 import { isInstructionName, type InstructionFileView } from './instructions-scan.js';
 import { SETTING_ROWS, SHORT_HELP, coerceRow, type SettingRow } from './settings-rows.js';
+import { cancelShare, createSkill, openShared, shareSkill, shareStart, uploadSkill, type SkillShareCard, type SkillShareDeps, type SkillShareReply } from '../skills/skill-share.js';
 
 export type SettingsMessage =
   | { type: 'load' }
@@ -107,6 +108,18 @@ export type SettingsMessage =
   | { type: 'skillOpen'; path: string }
   | { type: 'skillCatalog' }
   | { type: 'skillInstall'; name: string }
+  /** Write a new skill from the create form. */
+  | { type: 'skillCreate'; name: string; description: string; instructions: string; overwrite?: boolean }
+  /** Let the person choose a folder or a zip file and bring the skill in it. */
+  | { type: 'skillUpload'; kind: 'folder' | 'zip'; overwrite?: boolean }
+  /** Show the card for sharing one of the person's own skills. Nothing is sent. */
+  | { type: 'skillShareStart'; name: string }
+  /** Share the skill as a pull request, after the person confirmed the card. */
+  | { type: 'skillShare'; name: string; title: string; body: string; draft: boolean; licence: 'MIT' | 'Apache-2.0' | null; holder: string }
+  /** Cancel on the share card while it is sharing: stop it. */
+  | { type: 'skillShareCancel'; name: string }
+  /** Open the pull request that sharing made. */
+  | { type: 'skillOpenShared'; url: string }
   | { type: 'openConfig'; scope: 'user' | 'project' }
   | { type: 'loadProviders' }
   | { type: 'saveProvider'; provider: ProviderInput }
@@ -133,7 +146,7 @@ export type SettingsResponse =
   | { type: 'mcpAddPreviewed'; ok: false; reason: string }
   | { type: 'mcpCatalogListed'; entries: McpCatalogView[]; warning?: string }
   | { type: 'skillPick'; link: string; skills: Array<{ name: string; description: string; files: number }> }
-  | { type: 'skillsListed'; skills: SkillView[]; /** Whether skills installed for Claude Code and Cursor are read. */ otherTools?: boolean; /** Something the person should know about what was just added. */ note?: string }
+  | { type: 'skillsListed'; skills: SkillView[]; /** Whether skills installed for Claude Code and Cursor are read. */ otherTools?: boolean; /** Something the person should know about what was just added. */ note?: string; /** The create form made this skill, and may be cleared. */ created?: boolean }
   | { type: 'allowedCommandsListed'; commands: Array<{ workspace: string; command: string }> }
   | { type: 'skillCatalogListed'; entries: SkillCatalogView[]; /** Why the catalog could not be shown. */ error?: string }
   | { type: 'providersLoaded'; providers: ProviderView[]; presets: Array<{ id: string; name: string; baseUrl: string; apiKeyEnv: string }> }
@@ -145,6 +158,8 @@ export type SettingsResponse =
   | { type: 'instructionsLoaded'; folder: boolean; trusted: boolean; files: InstructionFileView[]; steering: number }
   | { type: 'rowSaved'; key: string; value: unknown }
   | { type: 'rowError'; key: string; message: string }
+  | SkillShareCard
+  | { type: 'skillShared'; url: string; draft: boolean }
   | { type: 'notice'; message: string }
   | { type: 'none' };
 
@@ -284,7 +299,7 @@ export interface SettingsMcpDeps {
   };
 }
 
-export interface SettingsSkillsDeps {
+export interface SettingsSkillsDeps extends SkillShareDeps {
   list(): Promise<Skill[]>;
   open(path: string): Promise<void>;
   catalog(): Promise<{ entries: SkillCatalogEntry[] } | null>;
@@ -478,6 +493,13 @@ async function addFromLink(deps: SettingsDeps, link: string, names: string[] | u
     }
     return { type: 'notice', message: err instanceof Error && err.message ? err.message : 'Could not add that skill.' };
   }
+}
+
+/** A reply of the share handlers as a Settings response: a saved skill lists the skills again with a note. */
+async function fromShare(reply: SkillShareReply, deps: SettingsDeps): Promise<SettingsResponse> {
+  if (reply.type !== 'listed') return reply;
+  const listed = await skillsListed(deps, reply.note);
+  return reply.created && listed.type === 'skillsListed' ? { ...listed, created: true } : listed;
 }
 
 async function skillsListed(deps: SettingsDeps, note?: string): Promise<SettingsResponse> {
@@ -802,6 +824,18 @@ export async function handleSettingsMessage(msg: SettingsMessage, deps: Settings
         if (known) await deps.skills.open(msg.path);
         return { type: 'none' };
       }
+      case 'skillCreate':
+        return fromShare(await createSkill(msg, deps.skills ?? {}), deps);
+      case 'skillUpload':
+        return fromShare(await uploadSkill(msg, deps.skills ?? {}), deps);
+      case 'skillShareStart':
+        return fromShare(await shareStart(msg, deps.skills ?? {}), deps);
+      case 'skillShare':
+        return fromShare(await shareSkill(msg, deps.skills ?? {}), deps);
+      case 'skillShareCancel':
+        return fromShare(cancelShare(msg), deps);
+      case 'skillOpenShared':
+        return fromShare(await openShared(msg, deps.skills ?? {}), deps);
       case 'skillCatalog': {
         const catalog = deps.skills ? await deps.skills.catalog() : null;
         if (!catalog) {

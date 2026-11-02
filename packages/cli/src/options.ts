@@ -213,6 +213,18 @@ export function buildProgram(): Command {
     .option('--skill <names>', 'with `skill install`: install only these skills (comma-separated names)')
     .option('--all', 'with `skill install`: install every skill the link holds', false)
     .option('--list', 'with `skill install`: show the skills the link holds and install nothing', false)
+    .option('--overwrite', 'with `skill install|new|add` and `mcp install`: replace one of the same name', false)
+    .option('--description <text>', 'with `skill new`: what the skill does, in one sentence')
+    .option('--instructions-file <path>', 'with `skill new`: a file that holds the instructions of the skill')
+    .option('--licence <name>', 'with `skill publish`: MIT or Apache-2.0, for a skill that has no LICENSE file')
+    .option('--holder <name>', 'with `skill publish`: who holds the copyright, for the licence Forge writes')
+    .option('--title <text>', 'with `skill publish`: the title of the pull request')
+    .option('--ready', 'with `skill publish`: open a pull request that is ready for review, not a draft', false)
+    .option('--limit <n>', 'with `session list|search`, `checkpoint list` and `log`: show at most this many', (v) => parseInt(v, 10))
+    .option('--full', 'with `session show`: print every message in full', false)
+    .option('--latest', 'with `session resume`: the most recent session', false)
+    .option('--keep <n>', 'with `checkpoint prune`: keep this many of the newest checkpoints', (v) => parseInt(v, 10))
+    .option('--session <id>', 'with `checkpoint`: the session whose checkpoints to use (default: the latest)')
     .option('--project', 'with `plugin install|remove`: use the project (.forge/plugins) instead of ~/.forge/plugins', false)
     .option('--global', 'with `memory forget`: edit ~/.forge/MEMORY.md instead of the project memory', false)
     .option('--confirm-reads', 'ask before read-only tools too (by default read, list and search run without a prompt)', false)
@@ -748,6 +760,12 @@ export interface ParsedSkillCommand {
   remove?: { name: string; yes: boolean };
   search?: { query: string; limit: number | null };
   browse?: true;
+  /** `forge skill new <name> --description … --instructions-file …`: write a skill to ~/.forge/skills. */
+  create?: { name: string; description: string; instructionsFile: string | null; overwrite: boolean };
+  /** `forge skill add <folder|zip>`: bring a skill in from a folder or a zip archive. */
+  add?: { path: string; overwrite: boolean };
+  /** `forge skill publish <name|folder>`: share a skill as a pull request to the Forge skills repository. */
+  publish?: { target: string; licence: 'MIT' | 'Apache-2.0' | null; holder: string | null; title: string | null; ready: boolean; yes: boolean };
 }
 
 /**
@@ -970,6 +988,24 @@ function extractSkillCommand(
     return { search: { query, limit } };
   }
   if (sub === 'browse') return { browse: true };
+  const text = (v: unknown): string | null => (typeof v === 'string' ? v : null);
+  if (sub === 'new' && args[2]) {
+    return { create: { name: args[2], description: text(opts.description) ?? '', instructionsFile: text(opts.instructionsFile), overwrite: opts.overwrite === true } };
+  }
+  if (sub === 'add' && args[2]) return { add: { path: args[2], overwrite: opts.overwrite === true } };
+  if (sub === 'publish' && args[2]) {
+    const licence = text(opts.licence);
+    return {
+      publish: {
+        target: args[2],
+        licence: licence === 'MIT' || licence === 'Apache-2.0' ? licence : null,
+        holder: text(opts.holder),
+        title: text(opts.title),
+        ready: opts.ready === true,
+        yes: opts.yes === true,
+      },
+    };
+  }
   return {};
 }
 

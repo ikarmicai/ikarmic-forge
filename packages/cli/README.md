@@ -32,6 +32,9 @@ forge skill install <repo-link> --skill pdf,docx   # only these (or --all; with 
 forge skill update [name]              # re-read the source of what you installed (--force replaces a copy you edited)
 forge skill remove <name> --yes        # delete a skill from ~/.forge/skills
 forge skill browse                     # print the marketplace catalog
+forge skill new <name> --description "…" --instructions-file notes.md   # write your own skill into ~/.forge/skills
+forge skill add <folder|zip>           # copy a skill folder or zip into ~/.forge/skills
+forge skill publish <name|folder>      # share it: a pull request to the Forge skills repository (asks first; needs GITHUB_TOKEN)
 
 forge hook list                        # every configured hook
 forge hook test PreToolUse run_command # dispatch a synthetic event

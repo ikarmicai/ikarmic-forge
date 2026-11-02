@@ -4,6 +4,25 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.5.1] - 2026-11-02
+
+Two defaults change in this release: a chat run has no step limit unless you set `forge.maxSteps`, and Forge reads `FORGE.md` and `AGENTS.md` but no longer `CLAUDE.md` or `CONVENTIONS.md` (it says so when one is there).
+
+### Added
+- **Create, add and share your own skills.** Settings → Skills has Installed, Catalog and Add tabs. Add takes a link, a file, a folder or a zip, and has a Create a skill form. Share opens a pull request to `ikarmicai/forge-skills` under your GitHub account, after a card that shows what is sent; Forge checks the skill first and adds an MIT or Apache-2.0 licence if it has none.
+- **`forge skill new`, `add` and `publish`** do the same from the terminal.
+- **Three new agents: Design, Testing and DevOps,** and a new app or feature starts in Plan mode, with Undo.
+- **Skills are folders** (`SKILL.md` with `scripts/`, `references/`, `assets/`); Add skill takes GitHub and GitLab links, asks which skill, and keeps installed ones up to date; skills installed for Claude Code or Cursor are used too.
+
+### Changed
+- **One Models and providers page** in Settings; the chat toolbar shows its tools as icons; a flatter chat.
+- **The skills catalog ships with Forge,** and the online list adds to it.
+- **Tighter permissions and safer file changes:** an allow rule covers one command; Forge does not overwrite a file it has not read; a key in a message is held back unless you choose to send it.
+
+### Fixed
+- A failed side check (commit, language server, lint, pull-request checks) is shown as failed; a run that ended at a limit says why in words; `fetch_url` keeps to a page's main content.
+- `forge session list --limit`, `checkpoint prune --keep` and other flags no longer stop with "unknown option"; on Windows, a command that failed after talking to GitHub no longer crashes with exit code 127.
+
 ## [5.5.0] - 2026-10-29
 
 ### Added

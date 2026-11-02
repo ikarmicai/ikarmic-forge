@@ -29,7 +29,7 @@ describe('getSettingsHtml', () => {
 
   it('tells the user what to do when a list is empty', () => {
     expect(html).toContain('No custom agents yet. Select New agent to add one.');
-    expect(html).toContain('Browse the catalog to install one.');
+    expect(html).toContain('Install one from the catalog, add your own, or write one here.');
     expect(html).not.toContain('--vscode-testing-iconPassed');
   });
 
