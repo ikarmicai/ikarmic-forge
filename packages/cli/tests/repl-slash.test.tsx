@@ -445,7 +445,7 @@ describe('REPL session and model commands', () => {
     await send('/architect');
     await waitFor((f) => f.includes('usage: /architect <task>'));
     await send('/architect add a feature');
-    await waitFor((f) => f.includes('approve (a)') || f.includes('plan') );
+    await waitFor((f) => f.includes('Done: Plan ready')); // not a bare "plan": an earlier message on screen already has it
     expect(modelsUsed.at(-1)).toBe('openai:gpt-4o'); // the plan was made by the main model
     await send('a');
     await waitFor((f) => f.includes('openai:gpt-4o-mini is applying it'));
@@ -478,11 +478,11 @@ describe('REPL session and model commands', () => {
     await send('/editor-model mini');
     await waitFor((f) => f.includes('editor model → openai:gpt-4o-mini'));
     await send('/architect do it');
-    await waitFor((f) => f.includes('Done: Plan ready') || f.includes('plan'));
+    await waitFor((f) => f.includes('Done: Plan ready'));
     await send('c');
     await waitFor((f) => f.includes('plan cancelled'));
     await send('/plan do it plainly');
-    await waitFor((f) => f.includes('plan'));
+    await waitFor((f) => (f.match(/Done: Plan ready/g) ?? []).length >= 2); // the first plan's line is still on screen
     await send('a');
     await waitFor((f) => f.includes('plan approved: executing'));
     await waitFor((f) => (f.match(/Done: Completed/g) ?? []).length >= 1);
