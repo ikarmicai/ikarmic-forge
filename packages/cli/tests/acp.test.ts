@@ -127,6 +127,22 @@ describe('ACP tools and permissions', () => {
     expect(allowed).toBe(true);
   });
 
+  // A permission rule's ask holds with approvals off, so the editor's prompt says why (RB-159).
+  it('puts the reason a permission rule asks into the permission title', async () => {
+    const h = harness(async (config, o) => {
+      o.onEvent({ type: 'tool_call', id: 'r1', name: 'run_command', args: { command: 'cat ../x' } } as AgentEvent);
+      await config.approve!({ id: 'r1', name: 'run_command', args: { command: 'cat ../x' }, destructive: true, description: '', askedBecause: { kind: 'outside_path', target: '../x' } } as never);
+      return { reason: 'completed', messages: [], finalText: '' } as unknown as AgentRunResult;
+    });
+    await h.send(req(1, 'session/new', { cwd: '/w' }));
+    const done = h.send(req(2, 'session/prompt', { sessionId: 's1', prompt: 'go' }));
+    await new Promise((r) => setTimeout(r, 20));
+    const ask = h.out.find((m) => m.method === 'session/request_permission')!;
+    expect(ask.params.toolCall.title).toContain('Asks because it names a path outside the project: ../x');
+    await h.send({ jsonrpc: '2.0', id: ask.id, result: { outcome: { outcome: 'selected', optionId: 'reject' } } });
+    await done;
+  });
+
   it('reject, cancelled outcome, client error and closed transport all mean "no"', async () => {
     const answers: boolean[] = [];
     const h = harness(async (config) => {

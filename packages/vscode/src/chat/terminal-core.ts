@@ -25,6 +25,14 @@ export interface TerminalRunDeps {
   waitForIntegration(t: TerminalLike, ms: number): Promise<boolean>;
   /** Subscribe to the end of one execution; the listener gets the exit code (undefined = unknown). */
   onExecutionEnd(exec: ShellExecutionLike, listener: (exitCode: number | undefined) => void): { dispose(): void };
+  /**
+   * A line to run once in each new terminal before the first command, its output kept from the model; undefined
+   * for none. Windows PowerShell terminals need UTF-8 output, or piped output arrives in the OEM code page and a
+   * command line with a non-ASCII character never reports its end (RB-160).
+   */
+  setupCommand?(): string | undefined;
+  /** How long to wait for the setup line's end before running the command anyway. */
+  setupWaitMs?: number;
 }
 
 export interface TerminalRunResult {
@@ -52,6 +60,7 @@ export function createTerminalRunner(deps: TerminalRunDeps): (req: {
   interruptOnTimeout?: boolean;
 }) => Promise<TerminalRunResult | null> {
   let previousStillRunning = false;
+  const prepared = new WeakSet<TerminalLike>();
 
   return async ({ command, cwd, timeoutMs, signal, interruptOnTimeout }) => {
     const terminal = deps.ensureTerminal(cwd, { fresh: previousStillRunning });
@@ -59,6 +68,26 @@ export function createTerminalRunner(deps: TerminalRunDeps): (req: {
     if (!terminal.shellIntegration && !(await deps.waitForIntegration(terminal, INTEGRATION_WAIT_MS))) return null;
     const integration = terminal.shellIntegration;
     if (!integration) return null;
+
+    if (!prepared.has(terminal)) {
+      prepared.add(terminal);
+      const setup = deps.setupCommand?.();
+      if (setup) {
+        const exec = integration.executeCommand(setup);
+        let sub: { dispose(): void } | undefined;
+        let timer: NodeJS.Timeout | undefined;
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            sub = deps.onExecutionEnd(exec, () => resolve());
+          }),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, deps.setupWaitMs ?? INTEGRATION_WAIT_MS);
+          }),
+        ]);
+        clearTimeout(timer);
+        sub?.dispose();
+      }
+    }
 
     const exec = integration.executeCommand(command);
     let output = '';

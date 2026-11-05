@@ -142,3 +142,46 @@ describe('createTerminalRunner', () => {
     expect((await createTerminalRunner(h.deps)({ command: 'x', cwd: '/w', timeoutMs: 0 }))!.exitCode).toBe(0);
   });
 });
+
+// Live CRM run, 2026-11-05: in the Windows PowerShell terminal a program's output piped into a cmdlet came back in the
+// OEM code page (a check mark read as three other characters), and a command line with a non-ASCII character never
+// got its end event, so it "timed out" after 60 s. One encoding line, run once per terminal, fixes both (RB-160).
+describe('terminal setup', () => {
+  const SETUP = '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8';
+  const sameTerminal = (h: ReturnType<typeof harness>) => {
+    let t: TerminalLike | undefined;
+    const ensure = h.deps.ensureTerminal;
+    h.deps.ensureTerminal = (cwd, o) => (o.fresh || !t ? (t = ensure(cwd, o)) : t);
+  };
+
+  it('runs the setup line once, before the first command, and keeps its output from the model', async () => {
+    const h = harness([{ chunks: ['setup noise'], endsWith: 0 }, { chunks: ['one'], endsWith: 0 }, { chunks: ['two'], endsWith: 0 }]);
+    sameTerminal(h);
+    const run = createTerminalRunner({ ...h.deps, setupCommand: () => SETUP });
+    expect((await run({ command: 'a', cwd: '/w', timeoutMs: 5000 }))!.stdout).toBe('one');
+    expect((await run({ command: 'b', cwd: '/w', timeoutMs: 5000 }))!.stdout).toBe('two');
+    expect(h.commands).toEqual([SETUP, 'a', 'b']);
+  });
+
+  it('runs it again in the fresh terminal that follows a command still running', async () => {
+    const h = harness([{ chunks: [''], endsWith: 0 }, { chunks: ['server'], endsWith: 'never' }, { chunks: [''], endsWith: 0 }, { chunks: ['next'], endsWith: 0 }]);
+    sameTerminal(h);
+    const run = createTerminalRunner({ ...h.deps, setupCommand: () => SETUP });
+    await run({ command: 'serve', cwd: '/w', timeoutMs: 30 });
+    expect((await run({ command: 'b', cwd: '/w', timeoutMs: 5000 }))!.stdout).toBe('next');
+    expect(h.commands).toEqual([SETUP, 'serve', SETUP, 'b']);
+  });
+
+  it('does not hold the command when the setup line never reports its end', async () => {
+    const h = harness([{ chunks: [''], endsWith: 'never' }, { chunks: ['ran'], endsWith: 0 }]);
+    sameTerminal(h);
+    const run = createTerminalRunner({ ...h.deps, setupCommand: () => SETUP, setupWaitMs: 30 });
+    expect((await run({ command: 'a', cwd: '/w', timeoutMs: 5000 }))!.stdout).toBe('ran');
+  });
+
+  it('runs nothing extra when there is no setup line (bash, cmd, macOS, Linux)', async () => {
+    const h = harness([{ chunks: ['x'], endsWith: 0 }]);
+    await createTerminalRunner({ ...h.deps, setupCommand: () => undefined })({ command: 'a', cwd: '/w', timeoutMs: 5000 });
+    expect(h.commands).toEqual(['a']);
+  });
+});

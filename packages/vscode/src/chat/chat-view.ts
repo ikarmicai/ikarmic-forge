@@ -150,6 +150,7 @@ import { createVsCodeCommandRunner } from './terminal-runner.js';
 import { parseSpecCommand } from '../specs/spec-command.js';
 import type { RunMode, RunOutcome } from '../specs/spec-controller.js';
 import { changedFilesFromToolResult } from '../specs/spec-paths.js';
+import { approvalReason } from './approval-reason.js';
 import { findRunFile, newRunReview, runReviewMessage, settleRunFiles, type RunReview } from './run-review.js';
 import { ChatWakeups } from './chat-wakeups.js';
 import { SemanticUi } from '../semantic-ui.js';
@@ -2179,6 +2180,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         new Promise<ApprovalDecision>((resolve) => {
           this.pendingApprovals.set(req.id, resolve);
           this.pendingApprovalArgs.set(req.id, { name: req.name, args: req.args });
+          const askWhy = approvalReason(req.askedBecause);
           this.post({
             type: 'approval_request',
             id: req.id,
@@ -2189,6 +2191,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
             reviewable: isHunkReviewable(req.name),
             allowable: this.canAlwaysAllow(req.name, req.args),
             ...(req.preview ? { preview: req.preview } : {}),
+            ...(askWhy ? { askWhy } : {}),
           });
         }),
       ...(this.hooksBus ? { hooks: this.hooksBus } : {}),
@@ -2472,8 +2475,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         const saved = await session.recordTurn(result, runModel, workspaceRoot);
         if (!saved.ok) this.post({ type: 'warning', message: t('Session not saved: {0}', saved.error) });
       }
-      // Keep the newest checkpoints only (core default: 20) so sessions don't grow without bound.
-      if (cfg.checkpoints.enabled && !generating) await this.checkpointStore(session).prune().catch(() => undefined);
+      // Keep the newest checkpoints only (core default: 20) so sessions don't grow without bound, but all of this
+      // run's: its changed-files bar lists and undoes from them, and a long run makes more than 20.
+      if (cfg.checkpoints.enabled && !generating) await this.checkpointStore(session).prune(undefined, runStartedAtIso).catch(() => undefined);
       // cancel() clears this.controller before the aborted run unwinds, so a new run can
       // already be active by now. Only the run that still owns the controller may reset
       // shared state; otherwise the new run becomes uncancellable and its approvals vanish.

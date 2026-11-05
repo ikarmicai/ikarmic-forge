@@ -135,25 +135,8 @@ export const CHAT_CSS = `  :root {
   #panel .trow input[type="checkbox"] { margin: 4px 0 0; flex: none; }
   #panel .search { width: 100%; margin: 0 0 6px; background: var(--bg-raised); color: var(--ink-strong); border: 1px solid var(--line-control); border-radius: var(--radius-xs); padding: 4px 8px; font: inherit; }
   #panel .title { font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; }
-  .run-review { flex: 1 1 100%; min-width: 0; margin: var(--space-2xs) 0 0; border: 1px solid var(--line-control); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; font-size: var(--size-caption); color: var(--ink-body); }
-  .run-review[hidden] { display: none; }
-  .run-review .rv-head, .run-review .rv-file { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-xs); padding: var(--space-2xs) var(--space-xs); }
-  .run-review .rv-files { border-top: 1px solid var(--line-subtle); max-height: 30vh; overflow-y: auto; }
-  .run-review .rv-file + .rv-file { border-top: 1px solid var(--line-subtle); }
-  .run-review .rv-sp { flex: 1 1 0; }
-  .run-review .rv-add { color: var(--success); font-weight: 600; white-space: nowrap; }
-  .run-review .rv-del { color: var(--danger); font-weight: 600; white-space: nowrap; }
-  .run-review .rv-name { flex: 1 1 120px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font: inherit; color: var(--ink-strong); cursor: pointer; overflow-wrap: anywhere; }
-  .run-review .rv-name:hover { color: var(--ion-text); text-decoration: underline; }
-  .run-review .rv-dir { color: var(--ink-muted); }
-  .run-review .rv-done { padding: var(--space-2xs) var(--space-xs); color: var(--ink-muted); }
+  #run-review { flex: 1 1 100%; margin: var(--space-2xs) 0 0; }
   .turn-actions .ik-btn--link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
-  .run-review .ik-btn--link { padding: 0 6px; min-height: 24px; font-size: inherit; }
-  .run-review .rv-toggle { margin-left: 0; color: var(--ink-body); }
-  .run-review .rv-chev { flex: none; display: inline-flex; align-items: center; background: none; border: 0; padding: var(--space-2xs); border-radius: var(--radius-xs); color: var(--ink-muted); cursor: pointer; }
-  .run-review .rv-chev:hover { background: var(--ion-tint); color: var(--ink-strong); }
-  .run-review .rv-chev svg { transition: transform .14s; }
-  .run-review .rv-chev[aria-expanded="true"] svg { transform: rotate(180deg); }
   .cmd-card { border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-sunken); }
   .cmd-card pre { margin: 0; padding: 6px 8px; overflow-x: auto; background: var(--bg-canvas); border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: var(--size-caption); line-height: 1.5; white-space: pre; }
   .cmd-card pre code { background: none; padding: 0; font: inherit; }
@@ -371,6 +354,7 @@ export const CHAT_CSS = `  :root {
   .approval .note { width: 100%; resize: vertical; min-height: 44px; border: 1px solid var(--line-control); border-radius: var(--radius-xs); background: var(--bg-raised); color: var(--ink-body); font: 12px var(--font-sans); padding: 6px 8px; }
   .approval .note:focus { border-color: var(--focus-ring); }
   .approval .fb-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .approval .why { padding: 0 12px; font-size: var(--size-caption); color: var(--ink-body); overflow-wrap: anywhere; }
   .approval .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px 12px; }
   .approval .bar .sp { flex: 1; }
   .approval .acts { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -595,7 +579,7 @@ export function chatHtml(
   <div id="chipbar">
   <div id="goal-chip" hidden><span class="gtext" id="goal-text"></span><button type="button" class="ik-btn ik-btn--link" id="goal-toggle">Pause</button><button type="button" class="ik-btn ik-btn--link" id="goal-clear">Clear</button></div>
   <div id="todo-chip" class="s-idle" hidden><button type="button" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"><svg class="st-ic st-idle" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--line-control)" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><svg class="st-ic st-doing todo-spin" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ion)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="var(--line-subtle)"/><path d="M8 2a6 6 0 0 1 6 6"/></svg><svg class="st-ic st-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--success)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="m5.5 8.2 1.8 1.8 3.3-3.6"/></svg><span class="sum" id="todo-sum"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><div id="todo-bar" aria-hidden="true"></div><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
-  <div id="run-review" class="run-review" role="region" aria-label="Changed files" hidden></div>
+  <div id="run-review" class="ik-review" role="region" aria-label="Changed files" hidden></div>
   </div>
   <div class="composer">
     <div class="cchips">
@@ -1410,7 +1394,7 @@ export function chatHtml(
   }
   // The minimize control, the same chevron as the task list's: points down when the files are hidden, up when shown.
   function rvChevron(open, onClick) {
-    const b = rvButton('rv-chev', '', onClick);
+    const b = rvButton('ik-review__chev', '', onClick);
     const label = open ? 'Hide files' : 'Show files';
     b.title = label; b.setAttribute('aria-label', label); b.setAttribute('aria-expanded', String(open));
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1436,37 +1420,42 @@ export function chatHtml(
       const parts = [];
       if (kept) parts.push('Kept ' + filesText(kept));
       if (undone) parts.push('Undid ' + filesText(undone));
-      box.appendChild(rvSpan('rv-done', parts.join(' \u00b7 ')));
+      box.appendChild(rvSpan('ik-review__done', parts.join(' \u00b7 ')));
       return;
     }
     let added = 0; let removed = 0;
     files.forEach((f) => { added += f.added; removed += f.removed; });
-    const head = document.createElement('div'); head.className = 'rv-head';
+    const head = document.createElement('div'); head.className = 'ik-review__head';
     const flip = () => { runReviewOpen = !runReviewOpen; showRunChanges(msg); };
-    const toggle = rvButton('ik-btn ik-btn--link rv-toggle', filesText(files.length) + ' changed', flip);
+    const toggle = rvButton('ik-btn ik-btn--link ik-review__toggle', filesText(files.length) + ' changed', flip);
     toggle.setAttribute('aria-expanded', String(runReviewOpen));
     head.appendChild(toggle);
-    head.appendChild(rvSpan('rv-add', '+' + added));
-    head.appendChild(rvSpan('rv-del', minus + removed));
-    head.appendChild(rvSpan('rv-sp', ''));
-    head.appendChild(rvButton('ik-btn ik-btn--primary', 'Keep all', () => vscode.postMessage({ type: 'keep_run' })));
-    head.appendChild(rvButton('ik-btn ik-btn--secondary', 'Undo all', () => vscode.postMessage({ type: 'revert_run' })));
-    head.appendChild(rvChevron(runReviewOpen, flip));
+    head.appendChild(rvSpan('ik-review__add', '+' + added));
+    head.appendChild(rvSpan('ik-review__del', minus + removed));
+    head.appendChild(rvSpan('ik-review__spacer', ''));
+    // The actions wrap as one group, so a narrow chat never leaves one button alone on a line.
+    const headActions = rvSpan('ik-review__actions', '');
+    headActions.appendChild(rvButton('ik-btn ik-btn--primary', 'Keep all', () => vscode.postMessage({ type: 'keep_run' })));
+    headActions.appendChild(rvButton('ik-btn ik-btn--secondary', 'Undo all', () => vscode.postMessage({ type: 'revert_run' })));
+    headActions.appendChild(rvChevron(runReviewOpen, flip));
+    head.appendChild(headActions);
     box.appendChild(head);
     if (runReviewOpen) {
-      const list = document.createElement('div'); list.className = 'rv-files';
+      const list = document.createElement('div'); list.className = 'ik-review__rows';
       files.forEach((f) => {
-        const row = document.createElement('div'); row.className = 'rv-file';
+        const row = document.createElement('div'); row.className = 'ik-review__row';
         const slash = f.path.lastIndexOf('/');
-        const name = rvButton('rv-name', '', () => vscode.postMessage({ type: 'open_run_file', path: f.path }));
+        const name = rvButton('ik-review__name', '', () => vscode.postMessage({ type: 'open_run_file', path: f.path }));
         name.title = f.path;
-        name.appendChild(rvSpan('rv-dir', slash >= 0 ? f.path.slice(0, slash + 1) : ''));
+        name.appendChild(rvSpan('ik-review__dir', slash >= 0 ? f.path.slice(0, slash + 1) : ''));
         name.appendChild(document.createTextNode(slash >= 0 ? f.path.slice(slash + 1) : f.path));
         row.appendChild(name);
-        row.appendChild(rvSpan('rv-add', '+' + f.added));
-        row.appendChild(rvSpan('rv-del', minus + f.removed));
-        row.appendChild(rvButton('ik-btn ik-btn--secondary', 'Keep', () => vscode.postMessage({ type: 'keep_file', path: f.path })));
-        row.appendChild(rvButton('ik-btn ik-btn--link', 'Undo', () => vscode.postMessage({ type: 'revert_file', path: f.path })));
+        const actions = rvSpan('ik-review__actions', '');
+        actions.appendChild(rvSpan('ik-review__add', '+' + f.added));
+        actions.appendChild(rvSpan('ik-review__del', minus + f.removed));
+        actions.appendChild(rvButton('ik-btn ik-btn--secondary', 'Keep', () => vscode.postMessage({ type: 'keep_file', path: f.path })));
+        actions.appendChild(rvButton('ik-btn ik-btn--link', 'Undo', () => vscode.postMessage({ type: 'revert_file', path: f.path })));
+        row.appendChild(actions);
         list.appendChild(row);
       });
       box.appendChild(list);
@@ -2445,7 +2434,7 @@ export function chatHtml(
     btn.addEventListener('click', (e) => e.preventDefault());
   }
 
-  function appendApproval(id, name, args, destructive, previewable, allowable, preview, reviewable) {
+  function appendApproval(id, name, args, destructive, previewable, allowable, preview, reviewable, askWhy) {
     let copy = null;
     if (UI) {
       try { copy = UI.approvalCopy(name, args, !!destructive); } catch (err) { console.warn('[forge] approvalCopy failed', err); }
@@ -2472,6 +2461,7 @@ export function chatHtml(
         '</span>' +
         (asCommand ? '<div class="cmd"><span class="p" aria-hidden="true">$</span><code>' + escapeHtml(copy.target) + '</code></div>' : '') +
       '</div>' +
+      (askWhy ? '<div class="why">' + escapeHtml(askWhy) + '</div>' : '') +
       '<div class="bar">' +
         (asCommand ? '<button type="button" class="ik-btn ik-btn--link showcmd" aria-expanded="false">Show full command</button>' : '') +
         (previewable && reviewable !== false ? '<button type="button" class="ik-btn ik-btn--link hunks">Review changes</button>' : '') +
@@ -3184,7 +3174,7 @@ export function chatHtml(
         appendToolResult(msg.id, msg.name, msg.result, msg.isError);
         break;
       case 'approval_request':
-        appendApproval(msg.id, msg.name, msg.args, msg.destructive, msg.previewable, msg.allowable, msg.preview, msg.reviewable).then((d) => {
+        appendApproval(msg.id, msg.name, msg.args, msg.destructive, msg.previewable, msg.allowable, msg.preview, msg.reviewable, msg.askWhy).then((d) => {
           if (d === '__host__') return;
           vscode.postMessage(d.note
             ? { type: 'approval_response', id: msg.id, approved: d.approved, note: d.note }

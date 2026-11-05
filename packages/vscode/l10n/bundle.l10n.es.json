@@ -559,5 +559,8 @@
   "{0} was deleted by this run, so there is nothing to open.": "{0} fue eliminado por esta ejecución, así que no hay nada que abrir.",
   "Put {0} back to how it was before this run? Edits you made yourself since then in that file will be lost.": "¿Devolver {0} a como estaba antes de esta ejecución? Se perderán las ediciones que hiciste tú mismo en ese archivo desde entonces.",
   "Could not undo {0} file(s): no saved copy of how they were.": "No se pudo deshacer {0} archivo(s): no hay copia guardada de cómo estaban.",
-  "Retrying. Files the earlier attempt changed stay changed; use Undo all or a checkpoint to undo them.": "Reintentando. Los archivos que cambió el intento anterior siguen cambiados; usa Deshacer todo o un punto de control para deshacerlos."
+  "Retrying. Files the earlier attempt changed stay changed; use Undo all or a checkpoint to undo them.": "Reintentando. Los archivos que cambió el intento anterior siguen cambiados; usa Deshacer todo o un punto de control para deshacerlos.",
+  "Asks because it names a path outside the project: {0}": "Pregunta porque nombra una ruta fuera del proyecto: {0}",
+  "Asks because {0} may hold secrets.": "Pregunta porque {0} puede contener secretos.",
+  "Asks because a permission rule says to ask before: {0}": "Pregunta porque una regla de permisos pide preguntar antes de: {0}"
 }

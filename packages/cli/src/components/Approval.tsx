@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 
-import { toolLabel, type ApprovalRequest } from '@ikarmic/forge-core';
+import { askedBecauseText, toolLabel, type ApprovalRequest } from '@ikarmic/forge-core';
 
 export interface ApprovalProps {
   request: ApprovalRequest;
@@ -27,6 +27,8 @@ export function Approval({ request, onResolve }: ApprovalProps): React.ReactElem
   const argPreview = JSON.stringify(request.args);
   const argSummary = argPreview.length > 200 ? argPreview.slice(0, 197) + '...' : argPreview;
   const previewLines = request.preview ? request.preview.split(/\r?\n/).slice(0, 14) : [];
+  // A permission rule's ask holds with approvals off, so say why (RB-159).
+  const reason = askedBecauseText(request.askedBecause);
 
   return (
     <Box flexDirection="column" marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1}>
@@ -46,6 +48,11 @@ export function Approval({ request, onResolve }: ApprovalProps): React.ReactElem
       <Box marginLeft={2} marginTop={1}>
         <Text color="gray">{argSummary}</Text>
       </Box>
+      {reason && (
+        <Box marginLeft={2} marginTop={1}>
+          <Text>{reason}</Text>
+        </Box>
+      )}
       {previewLines.length > 0 && (
         <Box marginLeft={2} marginTop={1} flexDirection="column">
           {previewLines.map((line, i) => (

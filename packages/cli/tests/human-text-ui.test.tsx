@@ -28,4 +28,12 @@ describe('the terminal shows words', () => {
     expect(lastFrame()).toContain('Run command');
     expect(lastFrame()).not.toContain('run_command');
   });
+
+  // A permission rule's ask holds with approvals off, so the prompt says why, in words, not `outside_path` (RB-159).
+  it('an approval a permission rule forced says why', () => {
+    const request = { id: 'a', name: 'run_command', args: { command: 'cat ../x' }, destructive: true, askedBecause: { kind: 'outside_path', target: '../x' } } as never;
+    const { lastFrame } = render(<Approval request={request} onResolve={() => undefined} />);
+    expect(lastFrame()).toContain('Asks because it names a path outside the project: ../x');
+    expect(lastFrame()).not.toContain('outside_path');
+  });
 });

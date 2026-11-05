@@ -21,6 +21,12 @@ interface IntegrationWindow {
 
 const TERMINAL_NAME = 'Forge';
 
+/** The encoding line for a Windows terminal whose shell is PowerShell; nothing for any other shell or platform. */
+export function powershellSetup(platform: NodeJS.Platform, shell: string): string | undefined {
+  if (platform !== 'win32') return undefined;
+  return /(?:^|[\\/])(?:pwsh|powershell)(?:\.exe)?$/i.test(shell.trim()) ? '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8' : undefined;
+}
+
 export function createVsCodeCommandRunner(): { runner: CommandRunner; dispose(): void } {
   let terminal: vscode.Terminal | undefined;
   const win = vscode.window as unknown as IntegrationWindow;
@@ -51,6 +57,9 @@ export function createVsCodeCommandRunner(): { runner: CommandRunner; dispose():
         });
       });
     },
+
+    // PowerShell in a Windows terminal decodes piped program output with the OEM code page (RB-160).
+    setupCommand: () => powershellSetup(process.platform, vscode.env.shell),
 
     onExecutionEnd(exec, listener) {
       if (!win.onDidEndTerminalShellExecution) return { dispose: () => undefined };

@@ -163,7 +163,7 @@ describe('design system: components', () => {
   });
 
   it('uses only the documented fixed lengths; any other size is a token or a new, deliberate entry here', () => {
-    const allowed = new Set(['1px', '2px', '3px', '4px', '12px', '14px', '20px', '72px', '230px', '280px', '440px']);
+    const allowed = new Set(['1px', '2px', '3px', '4px', '12px', '14px', '20px', '72px', '120px', '230px', '280px', '440px']); // 120px: the review row's file name shrinks to it before its buttons wrap
     const found = new Set<string>();
     for (const m of css.matchAll(/(?<![\w-])-?(\d+(?:\.\d+)?)px/g)) if (!allowed.has(`${m[1]}px`)) found.add(`${m[1]}px`);
     expect([...found]).toEqual([]);

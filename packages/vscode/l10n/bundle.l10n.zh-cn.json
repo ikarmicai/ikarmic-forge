@@ -559,5 +559,8 @@
   "{0} was deleted by this run, so there is nothing to open.": "{0} 已被本次运行删除，因此没有可打开的内容。",
   "Put {0} back to how it was before this run? Edits you made yourself since then in that file will be lost.": "要将 {0} 恢复到本次运行之前的状态吗？此后你自己在该文件中所做的修改将会丢失。",
   "Could not undo {0} file(s): no saved copy of how they were.": "无法撤销 {0} 个文件：没有保存它们原来的副本。",
-  "Retrying. Files the earlier attempt changed stay changed; use Undo all or a checkpoint to undo them.": "正在重试。上一次尝试修改的文件保持不变；可使用“全部撤销”或检查点来撤销。"
+  "Retrying. Files the earlier attempt changed stay changed; use Undo all or a checkpoint to undo them.": "正在重试。上一次尝试修改的文件保持不变；可使用“全部撤销”或检查点来撤销。",
+  "Asks because it names a path outside the project: {0}": "需要确认，因为它指向项目之外的路径：{0}",
+  "Asks because {0} may hold secrets.": "需要确认，因为 {0} 可能包含机密信息。",
+  "Asks because a permission rule says to ask before: {0}": "需要确认，因为权限规则要求在此之前询问：{0}"
 }

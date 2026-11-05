@@ -8,7 +8,7 @@
  * session/cancel; agent -> client: session/update (message, thought, tool_call,
  * tool_call_update) and session/request_permission.
  */
-import { makeAttachment, type AgentConfig, type AgentEvent, type AgentRunResult, type ApprovalRequest, type Attachment } from '@ikarmic/forge-core';
+import { askedBecauseText, makeAttachment, type AgentConfig, type AgentEvent, type AgentRunResult, type ApprovalRequest, type Attachment } from '@ikarmic/forge-core';
 
 export const ACP_PROTOCOL_VERSION = 1;
 
@@ -174,10 +174,13 @@ export class AcpServer {
   }
 
   private async askPermission(sessionId: string, req: ApprovalRequest, title: string | undefined): Promise<boolean> {
+    // A permission rule's ask holds with approvals off, so the editor's prompt says why (RB-159).
+    const reason = askedBecauseText(req.askedBecause);
+    const shown = reason ? `${title ?? req.name} (${reason})` : (title ?? req.name);
     try {
       const res = (await this.request('session/request_permission', {
         sessionId,
-        toolCall: { toolCallId: req.id, title: title ?? req.name, kind: toolKind(req.name), status: 'pending', rawInput: req.args as Json },
+        toolCall: { toolCallId: req.id, title: shown, kind: toolKind(req.name), status: 'pending', rawInput: req.args as Json },
         options: [
           { optionId: 'allow', name: 'Allow', kind: 'allow_once' },
           { optionId: 'reject', name: 'Reject', kind: 'reject_once' },

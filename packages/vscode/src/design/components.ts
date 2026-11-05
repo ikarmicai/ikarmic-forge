@@ -110,6 +110,27 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 .ik-note--danger { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-tint); }
 .ik-note--success { border-color: color-mix(in srgb, var(--success) 45%, transparent); background: var(--success-tint); }
 
+/* Review: the files a run changed, each kept or undone. Closed it is one line (count, +/-, actions, chevron); the
+   chevron opens one row per file. Lines added and removed carry a + or a minus sign, so the colour only repeats it. */
+.ik-review { min-width: 0; border: var(--border-hairline) solid var(--line-control); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; font: var(--text-caption); color: var(--ink-body); }
+.ik-review__head, .ik-review__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-xs); padding: var(--space-2xs) var(--space-xs); }
+.ik-review__rows { border-top: var(--border-hairline) solid var(--line-subtle); max-height: 20vh; overflow-y: auto; }
+.ik-review__row + .ik-review__row { border-top: var(--border-hairline) solid var(--line-subtle); }
+.ik-review__spacer { flex: 1 1 0; }
+.ik-review__actions { display: inline-flex; align-items: center; gap: var(--space-xs); margin-left: auto; }
+.ik-review__add { color: var(--success); font-weight: 600; white-space: nowrap; }
+.ik-review__del { color: var(--danger); font-weight: 600; white-space: nowrap; }
+.ik-review__name { flex: 1 1 120px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: var(--ink-strong); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.ik-review__name:hover { color: var(--ion-text); text-decoration: underline; }
+.ik-review__dir { color: var(--ink-muted); }
+.ik-review__done { padding: var(--space-2xs) var(--space-xs); color: var(--ink-muted); }
+.ik-review .ik-btn--link { padding: 0 var(--space-2xs); font-size: inherit; }
+.ik-review__toggle.ik-btn--link { color: var(--ink-body); }
+.ik-review__chev { flex: none; display: inline-flex; align-items: center; padding: var(--space-2xs); border: 0; border-radius: var(--radius-xs); background: none; color: var(--ink-muted); cursor: pointer; }
+.ik-review__chev:hover { background: var(--ion-tint); color: var(--ink-strong); }
+.ik-review__chev svg { transition: transform .14s; }
+.ik-review__chev[aria-expanded="true"] svg { transform: rotate(180deg); }
+
 /* Progress: indeterminate while a version works. */
 .ik-bar { height: 3px; border-radius: var(--radius-pill); background: var(--ion-tint); overflow: hidden; }
 .ik-bar > span { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--ion); animation: ik-slide 1.4s ease-in-out infinite; }
@@ -134,10 +155,10 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 .ik-tabs [role="tab"]:hover { color: var(--ink-strong); }
 .ik-tabs [role="tab"][aria-selected="true"] { color: var(--ink-strong); border-bottom-color: var(--ion); }
 
-@media (prefers-reduced-motion: reduce) { .ik-bar > span { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ik-bar > span { animation: none; } .ik-review__chev svg { transition: none; } }
 
 @media (forced-colors: active) {
-  .ik-btn, .ik-badge, .ik-input, .ik-textarea, .ik-select, .ik-seg, .ik-chip, .ik-card, .ik-inset, .ik-note, .ik-menu, .ik-combo__list, .ik-drawer, .ik-dialog, .ik-code { border: var(--border-hairline) solid ButtonText; }
+  .ik-btn, .ik-badge, .ik-input, .ik-textarea, .ik-select, .ik-seg, .ik-chip, .ik-card, .ik-inset, .ik-note, .ik-menu, .ik-combo__list, .ik-drawer, .ik-dialog, .ik-code, .ik-review { border: var(--border-hairline) solid ButtonText; }
   .ik-seg input:checked + span, .ik-chip:has(input:checked), .ik-inset--selected, .ik-card--selected, .ik-navitem[aria-current="true"], .ik-tabs [role="tab"][aria-selected="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .ik-root :focus-visible { outline-color: Highlight; }
 }

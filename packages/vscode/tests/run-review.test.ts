@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { chatHtml } from '../src/chat/html.js';
@@ -70,7 +73,7 @@ describe('chat page run review bar', () => {
   it('has a minimize chevron like the task list, with words for both states', () => {
     expect(fn).toContain("'Hide files'");
     expect(fn).toContain("'Show files'");
-    expect(fn).toContain('rv-chev');
+    expect(fn).toContain('ik-review__chev');
   });
 
   it('handles the run_changes message with the file list', () => {
@@ -96,5 +99,17 @@ describe('chat page run review bar', () => {
   it('uses design-system buttons, not bare ones', () => {
     expect(fn).toContain('ik-btn ik-btn--primary');
     expect(fn).toContain('ik-btn ik-btn--link');
+  });
+});
+
+describe('the end-of-run prune keeps the run under review', () => {
+  // A prune to the newest 20 checkpoints with no start time dropped the oldest checkpoints of a long run, so its
+  // bar missed files and an Undo put a file back to a middle version. Every checkpoint prune in the extension must
+  // pass the start of the run whose bar it serves.
+  it('passes the run start to every checkpoint prune', () => {
+    const src = readFileSync(join(__dirname, '..', 'src', 'chat', 'chat-view.ts'), 'utf8');
+    const calls = src.match(/checkpointStore\([^)]*\)\.prune\([^)]*\)/g) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) expect(call).toMatch(/\.prune\([^)]*,\s*runStartedAtIso\)/);
   });
 });
