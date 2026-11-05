@@ -35,7 +35,8 @@
       "body-parser": ">=2.4.0",
       "fast-uri": ">=3.1.9",
       "qs": ">=6.16.1",
-      "node-ical>uuid": "^11.1.1"
+      "node-ical>uuid": "^11.1.1",
+      "minimatch@>=7.0.0 <11.0.1": ">=11.0.1"
     }
   },
   "packageManager": "pnpm@10.33.2"

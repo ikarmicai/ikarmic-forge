@@ -61,6 +61,21 @@ describe('SessionFollower', () => {
     expect(external[0]!.messages).toHaveLength(3);
   });
 
+  // RB-156: a save redacts secret-looking lines (a `.env` example in a plan), so the file differs from memory by design.
+  // That read as another window's edit, and the chat reloaded itself after the turn, dropping the cards on screen.
+  it('does not mistake its own redacted save for a change made elsewhere', async () => {
+    const reply = 'Add a .env.example:\n```\nPORT=3000\nSESSION_SECRET=change-me-to-a-long-random-string\n```\n\nSize: large';
+    const local = { history: [user('plan it')] as Session['messages'] | undefined };
+    await saveSession(session(local.history!), dir);
+    const external = make(local);
+    await new Promise((r) => setTimeout(r, 100));
+
+    local.history = [user('plan it'), assistant(reply)];
+    await saveSession(session(local.history), dir);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(external).toEqual([]);
+  });
+
   it('holds back while a local run is in flight', async () => {
     const local = { history: [user('hi')] as Session['messages'] | undefined };
     await saveSession(session(local.history!), dir);

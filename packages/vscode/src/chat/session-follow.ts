@@ -3,7 +3,7 @@
  * CLI, or another VS Code window) continues the same session. vscode-free so
  * it is unit-testable.
  */
-import { watchSession, type Session } from '@ikarmic/forge-core';
+import { maskMessages, watchSession, type Session } from '@ikarmic/forge-core';
 
 type History = NonNullable<Session['messages']>;
 
@@ -59,7 +59,8 @@ export class SessionFollower {
 }
 
 function sameHistory(local: History | undefined, disk: History): boolean {
-  const a = local ?? [];
+  // The file holds the masked form (a secret-looking line is redacted on save), so memory must be masked to match (RB-156).
+  const a = maskMessages(local ?? []);
   if (a.length !== disk.length) return false;
   return a.length === 0 || JSON.stringify(a[a.length - 1]) === JSON.stringify(disk[disk.length - 1]);
 }
