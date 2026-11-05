@@ -14,6 +14,7 @@ import {
   redact,
   shellEnv,
   resolveModelAlias,
+  killTree as killWindowsTree,
 } from '@ikarmic/forge-core';
 import type { LanguageModel } from 'ai';
 import type { ModelAliases, ModelConfig, ProviderName } from '@ikarmic/forge-core';
@@ -94,23 +95,26 @@ export interface ShellResult {
 const MAX_CAPTURE_CHARS = 1_000_000;
 const MAX_CONTEXT_CHARS = 8000;
 
-/** Kill `child` and everything it started (a shell leaves grandchildren holding the output pipes). */
-function killTree(child: ChildProcess): void {
-  if (child.pid === undefined) return;
+/**
+ * Kill `child` and everything it started (a shell leaves grandchildren holding the output pipes). Windows also sweeps what
+ * `taskkill /T` misses (RB-155); the promise ends when that is done.
+ */
+function killTree(child: ChildProcess, startedAtMs: number): Promise<void> {
+  if (child.pid === undefined) return Promise.resolve();
+  if (process.platform === 'win32') return killWindowsTree(child, undefined, startedAtMs);
   try {
-    if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
-    } else {
-      process.kill(-child.pid, 'SIGKILL'); // the child leads its own process group (detached)
-    }
+    process.kill(-child.pid, 'SIGKILL'); // the child leads its own process group (detached)
   } catch {
     child.kill('SIGKILL');
   }
+  return Promise.resolve();
 }
 
 /** Run a shell command for `/run` and `/test`: the user typed it, so no approval, but with a timeout. */
 export function runShell(command: string, cwd: string, timeoutMs = 120_000): Promise<ShellResult> {
   return new Promise((resolve) => {
+    const started = Date.now();
+    let timedOut = false;
     const child = spawn(command, { cwd, shell: true, windowsHide: true, detached: process.platform !== 'win32', env: shellEnv(process.env) });
     let output = '';
     let settled = false;
@@ -126,11 +130,12 @@ export function runShell(command: string, cwd: string, timeoutMs = 120_000): Pro
     child.stdout.on('data', take);
     child.stderr.on('data', take);
     const timer = setTimeout(() => {
-      killTree(child);
-      finish({ exitCode: null, output, timedOut: true });
+      timedOut = true;
+      void killTree(child, started).then(() => finish({ exitCode: null, output, timedOut: true }));
     }, timeoutMs);
     child.on('error', (err) => finish({ exitCode: null, output: `${output}${err.message}`, timedOut: false }));
-    child.on('close', (code) => finish({ exitCode: code, output, timedOut: false }));
+    // The shell can close while the sweep is still running: a command we stopped is a timeout, whatever code it ended with.
+    child.on('close', (code) => finish(timedOut ? { exitCode: null, output, timedOut: true } : { exitCode: code, output, timedOut: false }));
   });
 }
 
