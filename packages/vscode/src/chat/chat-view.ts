@@ -72,8 +72,6 @@ import {
   getModelWindowTokens,
   windowIsGuess,
   runArchitect,
-  humanize,
-  runReasonLabel,
   saveSession,
   SPEC_READONLY_TOOLS,
   stripSteering,
@@ -152,6 +150,7 @@ import { createVsCodeCommandRunner } from './terminal-runner.js';
 import { parseSpecCommand } from '../specs/spec-command.js';
 import type { RunMode, RunOutcome } from '../specs/spec-controller.js';
 import { changedFilesFromToolResult } from '../specs/spec-paths.js';
+import { findRunFile, newRunReview, runReviewMessage, settleRunFiles, type RunReview } from './run-review.js';
 import { ChatWakeups } from './chat-wakeups.js';
 import { SemanticUi } from '../semantic-ui.js';
 
@@ -173,7 +172,8 @@ import { pushPrompt, userPrompts } from './prompt-history.js';
 import { approvalLevelOf, autoApproveFor, startingLevel, storedApprovalOf, whyRan, type ApprovalLevel } from './approval-level.js';
 import { followUpAfterSuggestion, requestOfFollowUp, savePlan } from './plan-file.js';
 import { shouldAutoPlan } from './auto-plan.js';
-import { offerSpecAfterPlan, planSize, runAfterCard } from './plan-size.js';
+import { offerSpecAfterPlan, runAfterCard } from './plan-size.js';
+import { runEndLine } from './run-end-log.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
 
@@ -282,8 +282,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   private lastTurn: { text: string; attachments: Attachment[]; historyBefore: ChatHistory | undefined; transcriptBefore: ChatHistory; planDeclined: boolean } | undefined;
   /** Files pasted, dropped or picked for the next message. */
   private readonly attachments = new PendingAttachments();
-  /** The newest run that changed files; the only one "Revert this run" can undo. */
-  private latestRun: { startedAtIso: string; count: number } | undefined;
+  /** The newest run that changed files and the files of it still waiting for Keep or Undo; no older run can be undone. */
+  private latestRun: RunReview | undefined;
   /** Hash of the detected check list the user declined this session; not offered again until it changes. */
   private declinedVerifyHash: string | undefined;
   private readonly keepAwake = new KeepAwake();
@@ -1396,7 +1396,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         this.session.pruneFeedback(kept.filter((i) => i.role === 'user').length);
         this.post({ type: 'transcript', items: kept, feedback: { ...this.session.feedback } });
         this.post({ type: 'user_message', text: msg.text?.trim() || last.text, retry: true });
-        this.post({ type: 'notice', message: t('Retrying. Files the earlier attempt changed stay changed; use Revert this run or a checkpoint to undo them.') });
+        this.post({ type: 'notice', message: t('Retrying. Files the earlier attempt changed stay changed; use Undo all or a checkpoint to undo them.') });
         // The files that went with the message go again.
         await this.withOverrides(edited, () => this.runChat(text, approvalLevelOf(msg.level, msg.auto), last.attachments, edited?.modeId, last.historyBefore, last.planDeclined));
         return;
@@ -1416,7 +1416,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       }
       case 'revert_run':
-        await this.revertLatestRun();
+        await this.revertRunFiles();
         return;
       case 'allow_command':
         await this.rememberCommand(msg.id);
@@ -1542,6 +1542,16 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       case 'open_diff':
         await this.openDiff(msg.id);
         return;
+      case 'open_run_file':
+        await this.openRunFile(msg.path);
+        return;
+      case 'keep_file':
+      case 'keep_run':
+        this.keepRunFiles(msg.type === 'keep_file' ? msg.path : undefined);
+        return;
+      case 'revert_file':
+        await this.revertRunFiles(msg.path);
+        return;
       case 'review_hunks':
         await this.reviewHunks(msg.id);
         return;
@@ -1622,12 +1632,14 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       case 'voice_os_dictation':
         if (process.platform !== 'win32' && process.platform !== 'darwin') {
+          this.post({ type: 'voice_os_failed' });
           this.post({ type: 'warning', message: t('Voice typing is not built in on this system. Use your system dictation, if it has one, to speak into the chat box.') });
           return;
         }
         try {
           await (process.platform === 'darwin' ? pressMacDictation() : pressWinH());
         } catch (e) {
+          this.post({ type: 'voice_os_failed' });
           this.post({ type: 'warning', message: process.platform === 'darwin' ? (e as Error).message : t('Could not start Windows voice typing: {0}. Press Win+H yourself while the chat box has focus.', (e as Error).message) });
         }
         return;
@@ -1872,9 +1884,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     // stopped (the live Plan spec of 2026-11-02 could not say which gate held back the spec offer).
     if (outcome) {
       const mode = modeId ?? this.modeId;
-      this.log?.info(
-        `Chat run ended: ${runReasonLabel(outcome.reason)}. Mode: ${humanize(mode)}. Answer: ${outcome.finalText.length} characters${mode === 'plan' ? `, plan size ${planSize(outcome.finalText) ?? 'not stated'}` : ''}. Spec offered: ${offer ? 'yes' : 'no'}.`
-      );
+      this.log?.info(runEndLine(outcome, mode, offer));
     }
     if (outcome && offer) {
       this.pendingLarge = { text: `${text}\n\nPlan from the Plan agent:\n${outcome.finalText}`, level, attachments: [], afterPlan: true };
@@ -2474,8 +2484,12 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           this.post({ type: 'model', provider: runModel.provider, model: runModel.model });
           this.post({ type: 'task_finished' });
           if (!generating && cfg.checkpoints.enabled && changedFiles.size > 0) {
-            this.latestRun = { startedAtIso: runStartedAtIso, count: changedFiles.size };
-            this.post({ type: 'run_changes', count: changedFiles.size });
+            try {
+              this.latestRun = newRunReview(runStartedAtIso, await this.checkpointStore(session).runChanges(runStartedAtIso));
+              this.postRunReview();
+            } catch (err) {
+              this.post({ type: 'warning', message: t('Could not list the files this run changed: {0}', (err as Error).message) });
+            }
           }
         }
         this.controller = undefined;
@@ -2522,29 +2536,73 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /** Undo everything the latest run changed, by restoring its checkpoints newest first. */
-  private async revertLatestRun(): Promise<void> {
+  /** Tell the page which files of the latest run still wait for Keep or Undo, and how many were decided. */
+  private postRunReview(): void {
+    if (this.latestRun) this.post(runReviewMessage(this.latestRun));
+  }
+
+  /** Accept the run's changes to one file, or to every file still waiting. The edits are already on disk, so only the bar changes. */
+  private keepRunFiles(relPath?: string): void {
+    const run = this.latestRun;
+    if (!run) return;
+    const paths = relPath === undefined ? run.files.map((f) => f.path) : findRunFile(run, relPath) ? [relPath] : [];
+    if (paths.length === 0) return;
+    this.latestRun = settleRunFiles(run, paths, 'kept');
+    this.postRunReview();
+  }
+
+  /** Open a file the latest run changed (only a path of that run, resolved inside the workspace). */
+  private async openRunFile(relPath: unknown): Promise<void> {
+    const file = findRunFile(this.latestRun, relPath);
+    if (!file) return;
+    const abs = resolveInsideWorkspace(this.workspaceRoot(), file.path);
+    if (!abs) {
+      this.post({ type: 'warning', message: t('Refusing to open a path outside the workspace: {0}', file.path) });
+      return;
+    }
+    if (file.status === 'deleted') {
+      this.post({ type: 'warning', message: t('{0} was deleted by this run, so there is nothing to open.', file.path) });
+      return;
+    }
+    try {
+      await vscode.window.showTextDocument(vscode.Uri.file(abs), { preview: false });
+    } catch (err) {
+      this.post({ type: 'warning', message: t('Could not open {0}: {1}', file.path, (err as Error).message) });
+    }
+  }
+
+  /** Undo the latest run's changes to one file, or to every file still waiting, by restoring the copies saved before its first edit to each. */
+  private async revertRunFiles(relPath?: string): Promise<void> {
     const run = this.latestRun;
     if (!run || this.controller || this.starting) return;
+    const targets = relPath === undefined ? run.files : run.files.filter((f) => f.path === relPath);
+    if (targets.length === 0) return;
     const sessionCwd = this.session.cwd;
     if (sessionCwd && !sameDir(sessionCwd, this.workspaceRoot())) {
       this.post({ type: 'warning', message: t('This session started in {0}, not the open workspace. Open that folder to revert its changes.', sessionCwd) });
       return;
     }
     const choice = await vscode.window.showWarningMessage(
-      t('Revert {0} file(s) to how they were before this run? Edits you made yourself since then in those files will be lost.', run.count),
+      relPath === undefined
+        ? t('Revert {0} file(s) to how they were before this run? Edits you made yourself since then in those files will be lost.', targets.length)
+        : t('Put {0} back to how it was before this run? Edits you made yourself since then in that file will be lost.', relPath),
       { modal: true },
       t('Revert')
     );
     if (choice !== t('Revert')) return;
+    const store = this.checkpointStore();
+    const done: string[] = [];
     try {
-      const results = await this.checkpointStore().restoreSince(run.startedAtIso);
-      const touched = new Set(results.flatMap((r) => [...r.modified, ...r.restored, ...r.removed])).size;
-      this.latestRun = undefined;
-      this.post({ type: 'run_reverted', count: touched });
+      for (const f of targets) {
+        if (await store.restoreFileSince(run.startedAtIso, f.path)) done.push(f.path);
+      }
+      const missing = targets.length - done.length;
+      if (missing > 0) this.post({ type: 'warning', message: t('Could not undo {0} file(s): no saved copy of how they were.', missing) });
     } catch (err) {
       this.post({ type: 'warning', message: t('Could not revert: {0}', (err as Error).message) });
     }
+    this.latestRun = settleRunFiles(run, done, 'undone');
+    this.postRunReview();
   }
 
   /**
@@ -2621,6 +2679,10 @@ type ChatMessage =
   | { type: 'plan_implement' }
   | { type: 'message_feedback'; turn: number; rating: 'up' | 'down' | null; note?: string }
   | { type: 'revert_run' }
+  | { type: 'keep_run' }
+  | { type: 'keep_file'; path: string }
+  | { type: 'revert_file'; path: string }
+  | { type: 'open_run_file'; path: string }
   | { type: 'allow_command'; id: string }
   | { type: 'work_load'; panel: string }
   | { type: 'work_act'; panel: string; action: unknown }
@@ -2663,7 +2725,7 @@ type ChatMessage =
   | { type: 'cmd_copy'; command: string };
 
 const CHAT_TYPES = new Set([
-  'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'secret_choice', 'blocked_choice', 'plan_implement', 'message_feedback', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
+  'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'secret_choice', 'blocked_choice', 'plan_implement', 'message_feedback', 'revert_run', 'keep_run', 'keep_file', 'revert_file', 'open_run_file', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
   'review_hunks', 'condense', 'mention_query', 'retry_last', 'attach_file', 'attach_uris', 'pick_attachments', 'enhance_prompt', 'remove_attachment', 'copy_resume', 'open_settings', 'open_agent_manager_window', 'list_models', 'select_model', 'toggle_favourite_model', 'bg_stop', 'bg_stop_all', 'bg_dismiss', 'work_load', 'work_act',
   'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'voice_os_dictation', 'run_action', 'goal_command', 'question_answer', 'auto_plan_undo', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
 ]);
@@ -2675,6 +2737,7 @@ function isChatMessage(msg: unknown): msg is ChatMessage {
   if ((m.type === 'set_mode' || m.type === 'open_diff' || m.type === 'review_hunks' || m.type === 'copy_resume' || m.type === 'allow_command') && typeof m.id !== 'string') return false;
   if (m.type === 'suggest_choice' && !['spec', 'plan', 'go', 'never'].includes(m.choice as string)) return false;
   if (m.type === 'auto_plan_undo' && typeof m.id !== 'string') return false;
+  if ((m.type === 'keep_file' || m.type === 'revert_file' || m.type === 'open_run_file') && typeof m.path !== 'string') return false;
   if (m.type === 'secret_choice' && !['hide', 'keep'].includes(m.choice as string)) return false;
   if (m.type === 'blocked_choice' && !['go', 'stay'].includes(m.choice as string)) return false;
   if (m.type === 'message_feedback' && !(Number.isInteger(m.turn) && (m.turn as number) >= 1 && (m.rating === null || m.rating === 'up' || m.rating === 'down') && (m.note === undefined || typeof m.note === 'string'))) return false;

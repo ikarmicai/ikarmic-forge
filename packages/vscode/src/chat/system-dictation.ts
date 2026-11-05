@@ -60,7 +60,8 @@ export function macDictationFailure(stderr: string): string {
     return `Allow VS Code to control this computer: System Settings, Privacy & Security, Accessibility, turn on VS Code, then try again. ${MANUAL}`;
   }
   if (/menu item not found|1728|Can.t get menu/i.test(stderr)) {
-    return `Could not find Start Dictation in the Edit menu. Turn Dictation on in System Settings, Keyboard, then try again. ${MANUAL}`;
+    // The script finds the menu and the item by their English names, so a Mac set to another language lands here too.
+    return `Could not find Start Dictation in the Edit menu. Turn Dictation on in System Settings, Keyboard, then try again. Forge looks for the item by its English name, so it cannot find it when macOS is set to another language. ${MANUAL}`;
   }
   const detail = stderr.replace(/\s*\(-?\d+\)\s*$/m, '').trim();
   return `Could not start dictation: ${detail || 'unknown reason'}. ${MANUAL}`;

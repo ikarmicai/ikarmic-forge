@@ -135,8 +135,25 @@ export const CHAT_CSS = `  :root {
   #panel .trow input[type="checkbox"] { margin: 4px 0 0; flex: none; }
   #panel .search { width: 100%; margin: 0 0 6px; background: var(--bg-raised); color: var(--ink-strong); border: 1px solid var(--line-control); border-radius: var(--radius-xs); padding: 4px 8px; font: inherit; }
   #panel .title { font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; }
-  .run-footer { font-size: var(--size-caption); color: var(--ink-muted); padding: 0 0 8px; margin-top: -2px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
-  .turn-actions .ik-btn--link, .run-footer .ik-btn--link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
+  .run-review { flex: 1 1 100%; min-width: 0; margin: var(--space-2xs) 0 0; border: 1px solid var(--line-control); border-radius: var(--radius-md); background: var(--bg-raised); overflow: hidden; font-size: var(--size-caption); color: var(--ink-body); }
+  .run-review[hidden] { display: none; }
+  .run-review .rv-head, .run-review .rv-file { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-xs); padding: var(--space-2xs) var(--space-xs); }
+  .run-review .rv-files { border-top: 1px solid var(--line-subtle); max-height: 30vh; overflow-y: auto; }
+  .run-review .rv-file + .rv-file { border-top: 1px solid var(--line-subtle); }
+  .run-review .rv-sp { flex: 1 1 0; }
+  .run-review .rv-add { color: var(--success); font-weight: 600; white-space: nowrap; }
+  .run-review .rv-del { color: var(--danger); font-weight: 600; white-space: nowrap; }
+  .run-review .rv-name { flex: 1 1 120px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font: inherit; color: var(--ink-strong); cursor: pointer; overflow-wrap: anywhere; }
+  .run-review .rv-name:hover { color: var(--ion-text); text-decoration: underline; }
+  .run-review .rv-dir { color: var(--ink-muted); }
+  .run-review .rv-done { padding: var(--space-2xs) var(--space-xs); color: var(--ink-muted); }
+  .turn-actions .ik-btn--link { padding: 0 6px; margin-left: -6px; min-height: 24px; font-size: inherit; }
+  .run-review .ik-btn--link { padding: 0 6px; min-height: 24px; font-size: inherit; }
+  .run-review .rv-toggle { margin-left: 0; color: var(--ink-body); }
+  .run-review .rv-chev { flex: none; display: inline-flex; align-items: center; background: none; border: 0; padding: var(--space-2xs); border-radius: var(--radius-xs); color: var(--ink-muted); cursor: pointer; }
+  .run-review .rv-chev:hover { background: var(--ion-tint); color: var(--ink-strong); }
+  .run-review .rv-chev svg { transition: transform .14s; }
+  .run-review .rv-chev[aria-expanded="true"] svg { transform: rotate(180deg); }
   .cmd-card { border: 1px solid var(--line-subtle); border-radius: var(--radius-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-sunken); }
   .cmd-card pre { margin: 0; padding: 6px 8px; overflow-x: auto; background: var(--bg-canvas); border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: var(--size-caption); line-height: 1.5; white-space: pre; }
   .cmd-card pre code { background: none; padding: 0; font: inherit; }
@@ -190,7 +207,7 @@ export const CHAT_CSS = `  :root {
   #bg-strip .bgrow.stopped .dot { background: var(--ink-muted); }
   #goal-chip { flex: 1 1 220px; min-width: 0; }
   #todo-chip { flex: 0 1 auto; }
-  #todo-chip:has(#todo-list:not([hidden])) { flex-basis: 100%; }
+  #todo-chip:has(#todo-list:not([hidden])), #chipbar.has-review #todo-chip { flex-basis: 100%; }
   #goal-chip { padding: 2px 8px; font-size: var(--size-caption); color: var(--ink-muted); }
   #goal-chip[hidden], #todo-chip[hidden] { display: none; }
   #goal-chip { display: flex; align-items: center; gap: 8px; }
@@ -578,6 +595,7 @@ export function chatHtml(
   <div id="chipbar">
   <div id="goal-chip" hidden><span class="gtext" id="goal-text"></span><button type="button" class="ik-btn ik-btn--link" id="goal-toggle">Pause</button><button type="button" class="ik-btn ik-btn--link" id="goal-clear">Clear</button></div>
   <div id="todo-chip" class="s-idle" hidden><button type="button" id="todo-toggle" aria-expanded="false" aria-controls="todo-list"><svg class="st-ic st-idle" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--line-control)" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><svg class="st-ic st-doing todo-spin" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--ion)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="var(--line-subtle)"/><path d="M8 2a6 6 0 0 1 6 6"/></svg><svg class="st-ic st-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--success)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="m5.5 8.2 1.8 1.8 3.3-3.6"/></svg><span class="sum" id="todo-sum"></span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><div id="todo-bar" aria-hidden="true"></div><ul id="todo-list" hidden aria-label="Task checklist"></ul></div>
+  <div id="run-review" class="run-review" role="region" aria-label="Changed files" hidden></div>
   </div>
   <div class="composer">
     <div class="cchips">
@@ -1377,26 +1395,82 @@ export function chatHtml(
     autoscroll();
   }
 
-  // Footer under a run that changed files: one click puts them back (the host decides what "this run" is).
-  function removeRunFooter() { const f = messagesEl.querySelector('.run-footer'); if (f) f.remove(); }
+  // The bar docked above the message box after a run that changed files: each file can be kept or undone, and the host says which still wait.
+  let runReviewOpen = false; // collapsed to one line; the chevron opens the list of files
+  const runReviewEl = document.getElementById('run-review');
+  const chipbarEl = document.getElementById('chipbar');
+  function removeRunFooter() { runReviewEl.textContent = ''; runReviewEl.hidden = true; chipbarEl.classList.remove('has-review'); }
   function filesText(n) { return n + (n === 1 ? ' file' : ' files'); }
-  function showRunChanges(count) {
-    removeRunFooter();
-    const div = document.createElement('div');
-    div.className = 'run-footer';
-    const text = document.createElement('span');
-    text.textContent = 'Changed ' + filesText(count) + ' · ';
-    const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'ik-btn ik-btn--link'; btn.textContent = 'Revert this run';
-    btn.addEventListener('click', () => vscode.postMessage({ type: 'revert_run' }));
-    div.appendChild(text); div.appendChild(btn);
-    messagesEl.appendChild(div);
-    autoscroll();
+  function rvSpan(cls, text) { const s = document.createElement('span'); if (cls) s.className = cls; s.textContent = text; return s; }
+  function rvButton(cls, text, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = cls; b.textContent = text;
+    b.addEventListener('click', onClick);
+    return b;
   }
-  function showRunReverted(count) {
-    const footer = messagesEl.querySelector('.run-footer');
-    if (!footer) return;
-    footer.textContent = 'Reverted ' + filesText(count);
+  // The minimize control, the same chevron as the task list's: points down when the files are hidden, up when shown.
+  function rvChevron(open, onClick) {
+    const b = rvButton('rv-chev', '', onClick);
+    const label = open ? 'Hide files' : 'Show files';
+    b.title = label; b.setAttribute('aria-label', label); b.setAttribute('aria-expanded', String(open));
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '16'); svg.setAttribute('height', '16'); svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.5');
+    svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round'); svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'm4 6 4 4 4-4');
+    svg.appendChild(path); b.appendChild(svg);
+    return b;
+  }
+  function showRunChanges(msg) {
+    removeRunFooter();
+    const files = msg.files || [];
+    const kept = msg.kept || 0;
+    const undone = msg.undone || 0;
+    if (!files.length && !kept && !undone) return;
+    const minus = String.fromCharCode(8722);
+    const box = runReviewEl;
+    box.hidden = false;
+    chipbarEl.classList.add('has-review'); // the task chip is as wide as this bar
+    if (!files.length) {
+      const parts = [];
+      if (kept) parts.push('Kept ' + filesText(kept));
+      if (undone) parts.push('Undid ' + filesText(undone));
+      box.appendChild(rvSpan('rv-done', parts.join(' \u00b7 ')));
+      return;
+    }
+    let added = 0; let removed = 0;
+    files.forEach((f) => { added += f.added; removed += f.removed; });
+    const head = document.createElement('div'); head.className = 'rv-head';
+    const flip = () => { runReviewOpen = !runReviewOpen; showRunChanges(msg); };
+    const toggle = rvButton('ik-btn ik-btn--link rv-toggle', filesText(files.length) + ' changed', flip);
+    toggle.setAttribute('aria-expanded', String(runReviewOpen));
+    head.appendChild(toggle);
+    head.appendChild(rvSpan('rv-add', '+' + added));
+    head.appendChild(rvSpan('rv-del', minus + removed));
+    head.appendChild(rvSpan('rv-sp', ''));
+    head.appendChild(rvButton('ik-btn ik-btn--primary', 'Keep all', () => vscode.postMessage({ type: 'keep_run' })));
+    head.appendChild(rvButton('ik-btn ik-btn--secondary', 'Undo all', () => vscode.postMessage({ type: 'revert_run' })));
+    head.appendChild(rvChevron(runReviewOpen, flip));
+    box.appendChild(head);
+    if (runReviewOpen) {
+      const list = document.createElement('div'); list.className = 'rv-files';
+      files.forEach((f) => {
+        const row = document.createElement('div'); row.className = 'rv-file';
+        const slash = f.path.lastIndexOf('/');
+        const name = rvButton('rv-name', '', () => vscode.postMessage({ type: 'open_run_file', path: f.path }));
+        name.title = f.path;
+        name.appendChild(rvSpan('rv-dir', slash >= 0 ? f.path.slice(0, slash + 1) : ''));
+        name.appendChild(document.createTextNode(slash >= 0 ? f.path.slice(slash + 1) : f.path));
+        row.appendChild(name);
+        row.appendChild(rvSpan('rv-add', '+' + f.added));
+        row.appendChild(rvSpan('rv-del', minus + f.removed));
+        row.appendChild(rvButton('ik-btn ik-btn--secondary', 'Keep', () => vscode.postMessage({ type: 'keep_file', path: f.path })));
+        row.appendChild(rvButton('ik-btn ik-btn--link', 'Undo', () => vscode.postMessage({ type: 'revert_file', path: f.path })));
+        list.appendChild(row);
+      });
+      box.appendChild(list);
+    }
   }
 
   function appendStatusLine(text) {
@@ -1470,6 +1544,7 @@ export function chatHtml(
 
   function renderTranscript(items) {
     stickToBottom = true; // a loaded chat opens at its end
+    removeRunFooter(); // the changed-files bar belongs to the chat that was on screen
     messagesEl.textContent = '';
     streamingEl = null;
     streamText = '';
@@ -2687,13 +2762,19 @@ export function chatHtml(
     voiceStatusEl.className = isError ? 'error' : '';
   }
 
+  // The key that goes with Shift+Space is Cmd on a Mac, Ctrl elsewhere (the shortcut handler accepts both).
+  const voiceTip = /Mac/i.test(navigator.platform || '') ? 'Voice input (Cmd+Shift+Space)' : 'Voice input (Ctrl+Shift+Space)';
+
+  // The system's voice typing cannot be asked whether it is on: the page remembers its own presses, and a failed press, a sent message or a new press clears it.
+  let osDictating = false;
   function syncMicButton() {
     if (!voice) {
       // VS Code refuses the microphone to webviews, so the mic hands off to the system's own voice typing.
       micBtn.disabled = !voiceEnabled;
       micBtn.hidden = !voiceEnabled;
-      micBtn.classList.remove('recording');
-      micBtn.title = 'Voice typing';
+      micBtn.classList.toggle('recording', osDictating);
+      micBtn.setAttribute('aria-pressed', String(osDictating));
+      micBtn.title = osDictating ? 'Stop voice typing' : 'Voice typing';
       return;
     }
     const s = voice.getState();
@@ -2703,7 +2784,7 @@ export function chatHtml(
     // Hide a control that cannot work here rather than show a dead icon with only a tooltip.
     micBtn.hidden = !voice.isSupported();
     micBtn.title = voice.isSupported()
-      ? (listening ? 'Stop voice input' : 'Voice input (Ctrl+Shift+Space)')
+      ? (listening ? 'Stop voice input' : voiceTip)
       : 'Voice input not supported in this environment';
   }
 
@@ -2767,9 +2848,10 @@ export function chatHtml(
 
   function toggleVoice() {
     if (!voice) {
-      // Voice typing writes into whatever has focus, so the chat box must have it first.
+      // Voice typing writes into whatever has focus, so the chat box must have it first. The lit mic says it is on; press it again to stop.
       inputEl.focus();
-      setVoiceStatus('Speak now: voice typing writes into the box. Press the mic button again to stop.');
+      osDictating = !osDictating;
+      syncMicButton();
       vscode.postMessage({ type: 'voice_os_dictation' });
       return;
     }
@@ -3066,7 +3148,13 @@ export function chatHtml(
         // The forge.startVoiceInput command toggles, so one shortcut starts and stops.
         toggleVoice();
         break;
+      case 'voice_os_failed':
+        osDictating = false;
+        syncMicButton();
+        break;
       case 'task_started':
+        osDictating = false;
+        syncMicButton();
         removeRunFooter();
         setTaskRunning(true);
         appendAssistantStart();
@@ -3354,10 +3442,7 @@ export function chatHtml(
         showSecretFound();
         break;
       case 'run_changes':
-        showRunChanges(msg.count);
-        break;
-      case 'run_reverted':
-        showRunReverted(msg.count);
+        showRunChanges(msg);
         break;
     }
   });

@@ -13,7 +13,13 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const dir = __dirname;
-const BARE_WORD = /\.includes\(\s*'(?:plan|spec|done|approve|ready|model|editor)'\s*\)/;
+// Any single bare word, either quote, any case: the typed input and earlier messages are on screen too, so a lone word
+// such as 'mini' (waited on right after sending `/models mini`) is already there on the first look. Wait for something
+// only the awaited step prints (a model id, a "Done: ..." line).
+const BARE_WORD = /\.includes\(\s*(['"])[A-Za-z]+\1\s*\)/;
+// A bare word is fine when the same wait also needs a specific phrase (a space, a digit or a punctuation mark in it),
+// joined with &&: that phrase is only on screen once the step has run.
+const SPECIFIC_PHRASE = /&&.*\.includes\(\s*(['"])(?![A-Za-z]+\1)[^'"]+\1\s*\)|\.includes\(\s*(['"])(?![A-Za-z]+\2)[^'"]+\2\s*\).*&&/;
 
 describe('REPL tests wait for text that is not already on screen', () => {
   const files = readdirSync(dir).filter((f) => /^repl.*\.test\.tsx?$/.test(f));
@@ -27,7 +33,7 @@ describe('REPL tests wait for text that is not already on screen', () => {
       const hits = readFileSync(path.join(dir, file), 'utf8')
         .split(/\r?\n/)
         .map((text, i) => ({ line: i + 1, text }))
-        .filter((l) => /waitFor\(/.test(l.text) && BARE_WORD.test(l.text))
+        .filter((l) => /waitFor\(/.test(l.text) && BARE_WORD.test(l.text) && !SPECIFIC_PHRASE.test(l.text))
         .map((l) => `${file}:${l.line}: ${l.text.trim()}`);
       expect(hits).toEqual([]);
     });

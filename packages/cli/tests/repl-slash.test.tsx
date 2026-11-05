@@ -104,7 +104,7 @@ describe('REPL slash commands (D)', () => {
   it('/models lists aliases and known models', async () => {
     const { send, waitFor } = await setup();
     await send('/models mini');
-    const frame = await waitFor((f) => f.includes('mini'));
+    const frame = await waitFor((f) => f.includes('gpt-4o-mini'));
     expect(frame).toContain('gpt-4o-mini');
   }, 20_000);
 
