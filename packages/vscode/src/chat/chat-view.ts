@@ -72,6 +72,8 @@ import {
   getModelWindowTokens,
   windowIsGuess,
   runArchitect,
+  humanize,
+  runReasonLabel,
   saveSession,
   SPEC_READONLY_TOOLS,
   stripSteering,
@@ -119,6 +121,7 @@ import { cleanName, decodeDataUrl, PendingAttachments } from './pending-attachme
 import { createMentionResolvers, findMentionFiles } from './mention-resolvers.js';
 import { mentionSuggestions, resolveMentions, stripContextBlocks } from './mentions.js';
 import { startAutoCommit, describeCommit } from './auto-commit.js';
+import { pressMacDictation } from './system-dictation.js';
 import { GoalController } from './goal-controller.js';
 import { restrictedIgnoredList } from '../restricted-notice.js';
 import { mcpSlashEntries, planMcpPrompt } from './mcp-prompt-plan.js';
@@ -170,7 +173,7 @@ import { pushPrompt, userPrompts } from './prompt-history.js';
 import { approvalLevelOf, autoApproveFor, startingLevel, storedApprovalOf, whyRan, type ApprovalLevel } from './approval-level.js';
 import { followUpAfterSuggestion, requestOfFollowUp, savePlan } from './plan-file.js';
 import { shouldAutoPlan } from './auto-plan.js';
-import { offerSpecAfterPlan, runAfterCard } from './plan-size.js';
+import { offerSpecAfterPlan, planSize, runAfterCard } from './plan-size.js';
 import { PROPOSED_SCHEME, type ProposedContentProvider } from './proposed-content-provider.js';
 import { t } from '../l10n.js';
 
@@ -191,6 +194,28 @@ const VERIFY_APPROVED_KEY = 'forge.verify.approved';
  * the extension reloads.
  */
 const execFileAsync = promisify(execFile);
+
+/**
+ * Press Win+H so Windows voice typing writes into the focused chat box. VS Code refuses the microphone
+ * to webviews, so the system's own dictation is the input. Uses the system PowerShell by absolute path
+ * with a neutral cwd, never one found through the workspace (RB-24), and ends it after 10 seconds.
+ */
+async function pressWinH(): Promise<void> {
+  const script = [
+    "Add-Type -Namespace ForgeVoice -Name Keys -MemberDefinition '[DllImport(\"user32.dll\")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e);'",
+    '[ForgeVoice.Keys]::keybd_event(0x5B, 0, 0, [UIntPtr]::Zero)',
+    '[ForgeVoice.Keys]::keybd_event(0x48, 0, 0, [UIntPtr]::Zero)',
+    '[ForgeVoice.Keys]::keybd_event(0x48, 0, 2, [UIntPtr]::Zero)',
+    '[ForgeVoice.Keys]::keybd_event(0x5B, 0, 2, [UIntPtr]::Zero)',
+  ].join('; ');
+  const exe = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const encoded = Buffer.from(script, 'utf16le').toString('base64');
+  await execFileAsync(exe, ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
+    cwd: process.env.SystemRoot ?? 'C:\\Windows',
+    windowsHide: true,
+    timeout: 10_000,
+  });
+}
 
 const FAVOURITE_MODELS_KEY = 'forge.favouriteModels';
 const PROMPT_HISTORY_KEY = 'forge.promptHistory';
@@ -1595,6 +1620,17 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       case 'voice_unsupported':
         return;
+      case 'voice_os_dictation':
+        if (process.platform !== 'win32' && process.platform !== 'darwin') {
+          this.post({ type: 'warning', message: t('Voice typing is not built in on this system. Use your system dictation, if it has one, to speak into the chat box.') });
+          return;
+        }
+        try {
+          await (process.platform === 'darwin' ? pressMacDictation() : pressWinH());
+        } catch (e) {
+          this.post({ type: 'warning', message: process.platform === 'darwin' ? (e as Error).message : t('Could not start Windows voice typing: {0}. Press Win+H yourself while the chat box has focus.', (e as Error).message) });
+        }
+        return;
     }
   }
 
@@ -1832,6 +1868,14 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           suggestSpec: vscode.workspace.getConfiguration('forge').get<boolean>('suggestSpec', true),
         })
       : false;
+    // Output > Forge: how every chat run ended, so a missing card or an empty answer can be told apart from a model that
+    // stopped (the live Plan spec of 2026-11-02 could not say which gate held back the spec offer).
+    if (outcome) {
+      const mode = modeId ?? this.modeId;
+      this.log?.info(
+        `Chat run ended: ${runReasonLabel(outcome.reason)}. Mode: ${humanize(mode)}. Answer: ${outcome.finalText.length} characters${mode === 'plan' ? `, plan size ${planSize(outcome.finalText) ?? 'not stated'}` : ''}. Spec offered: ${offer ? 'yes' : 'no'}.`
+      );
+    }
     if (outcome && offer) {
       this.pendingLarge = { text: `${text}\n\nPlan from the Plan agent:\n${outcome.finalText}`, level, attachments: [], afterPlan: true };
       this.post({ type: 'suggest_spec', afterPlan: true });
@@ -2608,6 +2652,7 @@ type ChatMessage =
   | { type: 'voice_stopped'; reason: 'user' | 'silence' | 'error' }
   | { type: 'voice_error'; code: string; message: string }
   | { type: 'voice_unsupported' }
+  | { type: 'voice_os_dictation' }
   | { type: 'run_action'; runId: string; index: number; action: 'review' | 'merge' | 'discard' | 'clear' }
   | { type: 'goal_command'; args: string }
   | { type: 'question_answer'; id: string; answer: string }
@@ -2620,7 +2665,7 @@ type ChatMessage =
 const CHAT_TYPES = new Set([
   'ready', 'user_input', 'approval_response', 'cancel', 'suggest_choice', 'secret_choice', 'blocked_choice', 'plan_implement', 'message_feedback', 'revert_run', 'allow_command', 'new_chat', 'set_mode', 'open_diff',
   'review_hunks', 'condense', 'mention_query', 'retry_last', 'attach_file', 'attach_uris', 'pick_attachments', 'enhance_prompt', 'remove_attachment', 'copy_resume', 'open_settings', 'open_agent_manager_window', 'list_models', 'select_model', 'toggle_favourite_model', 'bg_stop', 'bg_stop_all', 'bg_dismiss', 'work_load', 'work_act',
-  'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'run_action', 'goal_command', 'question_answer', 'auto_plan_undo', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
+  'voice_started', 'voice_stopped', 'voice_error', 'voice_unsupported', 'voice_os_dictation', 'run_action', 'goal_command', 'question_answer', 'auto_plan_undo', 'slash_list', 'slash_run', 'cmd_insert', 'cmd_copy', 'set_approval_default', 'chat_focused', 'chat_blurred',
 ]);
 
 function isChatMessage(msg: unknown): msg is ChatMessage {

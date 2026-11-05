@@ -542,5 +542,7 @@
   "Press Save on a row to store its key. A key can also come from an environment variable such as OPENAI_API_KEY; the row says so. Untick a provider to skip it in auto-detect and leave it out of the model lists; that saves with the page's Save button.": "在某一行按“保存”即可保存其密钥。密钥也可以来自环境变量，例如 OPENAI_API_KEY；该行会注明。取消勾选某个提供商，可在自动检测中跳过它，并从模型列表中隐藏；该设置通过页面的“保存”按钮保存。",
   "Add any OpenAI-compatible service, or start from a preset. A model on it is written provider:model, such as groq:llama-3.3-70b-versatile. Press Save provider to apply it.": "添加任何与 OpenAI 兼容的服务，或从预设开始。其中的模型写作 提供商:模型，例如 groq:llama-3.3-70b-versatile。按“保存提供商”即可应用。",
   "Restore checkpoint": "恢复检查点",
-  "Agent Manager in new window": "在新窗口中打开智能体管理器"
+  "Agent Manager in new window": "在新窗口中打开智能体管理器",
+  "Could not start Windows voice typing: {0}. Press Win+H yourself while the chat box has focus.": "无法启动 Windows 语音输入：{0}。请在聊天输入框获得焦点时自行按 Win+H。",
+  "Voice typing is not built in on this system. Use your system dictation, if it has one, to speak into the chat box.": "此系统未内置语音输入。如果系统带有听写功能，请使用它向聊天输入框说话。"
 }

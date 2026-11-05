@@ -542,5 +542,7 @@
   "Press Save on a row to store its key. A key can also come from an environment variable such as OPENAI_API_KEY; the row says so. Untick a provider to skip it in auto-detect and leave it out of the model lists; that saves with the page's Save button.": "Pulsa Guardar en una fila para guardar su clave. Una clave también puede venir de una variable de entorno como OPENAI_API_KEY; la fila lo indica. Desmarca un proveedor para omitirlo en la detección automática y dejarlo fuera de las listas de modelos; eso se guarda con el botón Guardar de la página.",
   "Add any OpenAI-compatible service, or start from a preset. A model on it is written provider:model, such as groq:llama-3.3-70b-versatile. Press Save provider to apply it.": "Añade cualquier servicio compatible con OpenAI o empieza desde un ajuste preestablecido. Un modelo en él se escribe proveedor:modelo, como groq:llama-3.3-70b-versatile. Pulsa Guardar proveedor para aplicarlo.",
   "Restore checkpoint": "Restaurar punto de control",
-  "Agent Manager in new window": "Administrador de agentes en una ventana nueva"
+  "Agent Manager in new window": "Administrador de agentes en una ventana nueva",
+  "Could not start Windows voice typing: {0}. Press Win+H yourself while the chat box has focus.": "No se pudo iniciar el dictado por voz de Windows: {0}. Pulsa Win+H tú mismo mientras el cuadro del chat tenga el foco.",
+  "Voice typing is not built in on this system. Use your system dictation, if it has one, to speak into the chat box.": "El dictado por voz no está integrado en este sistema. Usa el dictado de tu sistema, si lo tiene, para hablar en el cuadro del chat."
 }

@@ -2689,9 +2689,11 @@ export function chatHtml(
 
   function syncMicButton() {
     if (!voice) {
-      micBtn.disabled = true;
-      micBtn.hidden = true;
+      // VS Code refuses the microphone to webviews, so the mic hands off to the system's own voice typing.
+      micBtn.disabled = !voiceEnabled;
+      micBtn.hidden = !voiceEnabled;
       micBtn.classList.remove('recording');
+      micBtn.title = 'Voice typing';
       return;
     }
     const s = voice.getState();
@@ -2764,7 +2766,13 @@ export function chatHtml(
   }
 
   function toggleVoice() {
-    if (!voice) return;
+    if (!voice) {
+      // Voice typing writes into whatever has focus, so the chat box must have it first.
+      inputEl.focus();
+      setVoiceStatus('Speak now: voice typing writes into the box. Press the mic button again to stop.');
+      vscode.postMessage({ type: 'voice_os_dictation' });
+      return;
+    }
     const s = voice.getState();
     if (s === 'listening' || s === 'starting') {
       voice.stop();
@@ -2773,7 +2781,9 @@ export function chatHtml(
     }
   }
 
-  voice = buildVoiceController();
+  // The webview speech engine cannot get the microphone in VS Code (permission denied), so it is not built.
+  let voiceEnabled = true;
+  voice = null;
   syncMicButton();
   micBtn.addEventListener('click', () => toggleVoice());
 
@@ -3048,10 +3058,9 @@ export function chatHtml(
         break;
       case 'voice_config':
         // Latest voice settings from the host, merged into the controller.
-        if (voice && msg.config) {
-          voice.updateConfig(msg.config);
-          syncMicButton();
-        }
+        if (msg.config) voiceEnabled = msg.config.enabled !== false;
+        if (voice && msg.config) voice.updateConfig(msg.config);
+        syncMicButton();
         break;
       case 'voice_start':
         // The forge.startVoiceInput command toggles, so one shortcut starts and stops.
