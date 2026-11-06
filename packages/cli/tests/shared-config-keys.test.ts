@@ -56,3 +56,30 @@ describe('the CLI honours the same user config keys as VS Code', () => {
     expect(cfg.subAgentModel).toMatchObject({ provider: 'openai', model: 'gpt-4o-mini' });
   });
 });
+
+// Live "Build a CRM" run in the terminal app, 2026-11-06: the run stopped after 10 minutes of wall clock, mid-work,
+// and the model said it could not look at the page it built (no browser tools). The VS Code chat has neither limit.
+describe('the terminal app runs like the VS Code chat', () => {
+  const build = async (...flags: string[]) =>
+    toAgentConfig(parseOptions(argv('--cwd', cwd, ...flags, 'task')).options, { provider: 'openai', model: 'gpt-4o' }, async () => false);
+
+  it('has no wall-clock limit unless --max-duration sets one', async () => {
+    expect(parseOptions(argv('task')).options.maxDurationMs).toBeNull();
+    expect((await build()).maxDurationMs).toBe(Number.POSITIVE_INFINITY);
+    expect((await build('--max-duration', '5000')).maxDurationMs).toBe(5000);
+  });
+
+  it('has no step limit unless --max-iterations sets one', async () => {
+    expect(parseOptions(argv('task')).options.maxIterations).toBeNull();
+    expect((await build()).maxIterations).toBe(Number.POSITIVE_INFINITY);
+    expect((await build('--max-iterations', '30')).maxIterations).toBe(30);
+  });
+
+  it('has the browser tools unless --no-browser, and still accepts --browser', async () => {
+    expect(parseOptions(argv('task')).options.browser).toBe(true);
+    expect(parseOptions(argv('--browser', 'task')).options.browser).toBe(true);
+    expect(parseOptions(argv('--no-browser', 'task')).options.browser).toBe(false);
+    expect((await build()).browser).toBe(true);
+    expect((await build('--no-browser')).browser).toBeUndefined();
+  });
+});

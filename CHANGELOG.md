@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Keep or Undo each changed file** in a bar above the message box, including files a command created, changed or deleted.
+- **The terminal app lists what each run changed**; `/changes` shows it again and `/revert <file>` or `/revert all` puts files back.
 - **Voice typing on macOS** from the mic button; the mic lights up while it is on.
 
 ### Changed
@@ -15,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - A run with more than 20 edits lists every file, and Undo puts each back as the run found it.
-- Autonomous no longer asks for a command that only prints a URL path, and an ask says why; Windows terminal output reaches the model in UTF-8; a timed-out command no longer keeps running on Windows.
+- Autonomous no longer asks for a command that only prints a URL path, or for a program run by its full path, and an ask says why; Windows terminal output reaches the model in UTF-8; a timed-out command no longer keeps running on Windows.
+- The mic hands one press to the system's voice typing and no longer shows an on or off state that could go backwards; Ctrl+Shift+Space works in the chat box again.
 - A secret-looking line no longer reloads the chat; a plan is kept when the model's last step has no text; project memory stays inside the project.
 
 ## [5.5.1] - 2026-11-02

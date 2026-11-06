@@ -31,7 +31,7 @@ export function Header(props: HeaderProps): React.ReactElement {
         </Text>
         <Text> · </Text>
         <Text>
-          step {iteration}/{maxIterations}
+          {Number.isFinite(maxIterations) ? `step ${iteration}/${maxIterations}` : `step ${iteration}`}
         </Text>
         <Text> · </Text>
         <Text color={statusColor}>{status.toUpperCase()}</Text>

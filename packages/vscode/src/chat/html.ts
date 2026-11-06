@@ -1461,8 +1461,9 @@ export function chatHtml(
         }
         const actions = rvSpan('ik-review__actions', '');
         // No counts for a file a command changed that has no earlier copy: there is nothing to count against.
-        // A binary file has no lines: say so rather than "+0 −0".
+        // A binary file has no lines, and a text file over 1 MiB is not diffed: say so rather than "+0 −0".
         if (f.binary) actions.appendChild(rvSpan('ik-muted', 'Binary'));
+        else if (f.large) actions.appendChild(rvSpan('ik-muted', 'Large file'));
         else if (!(f.byCommand && f.undoable === false)) {
           actions.appendChild(rvSpan('ik-review__add', '+' + f.added));
           actions.appendChild(rvSpan('ik-review__del', minus + f.removed));
@@ -2769,16 +2770,19 @@ export function chatHtml(
   // The key that goes with Shift+Space is Cmd on a Mac, Ctrl elsewhere (the shortcut handler accepts both).
   const voiceTip = /Mac/i.test(navigator.platform || '') ? 'Voice input (Cmd+Shift+Space)' : 'Voice input (Ctrl+Shift+Space)';
 
-  // The system's voice typing cannot be asked whether it is on: the page remembers its own presses, and a failed press, a sent message or a new press clears it.
-  let osDictating = false;
+  // The system's voice typing cannot be asked whether it is on, and it closes by itself (a pause, Esc, its own button),
+  // so the mic shows no on or off state of its own: each press hands one press of the system's voice typing key over,
+  // whose own panel shows whether it listens. A guessed state went backwards (found by the person, 2026-11-06).
+  const voiceTypingTip = /Mac/i.test(navigator.platform || '') ? 'Voice typing (Cmd+Shift+Space)' : 'Voice typing (Ctrl+Shift+Space)';
+  let systemDictation = true;
   function syncMicButton() {
     if (!voice) {
-      // VS Code refuses the microphone to webviews, so the mic hands off to the system's own voice typing.
-      micBtn.disabled = !voiceEnabled;
-      micBtn.hidden = !voiceEnabled;
-      micBtn.classList.toggle('recording', osDictating);
-      micBtn.setAttribute('aria-pressed', String(osDictating));
-      micBtn.title = osDictating ? 'Stop voice typing' : 'Voice typing';
+      // VS Code refuses the microphone to webviews, so the mic hands off to the system's own voice typing; where the
+      // system has none Forge can start, the mic is hidden rather than shown dead.
+      const usable = voiceEnabled && systemDictation;
+      micBtn.disabled = !usable;
+      micBtn.hidden = !usable;
+      micBtn.title = voiceTypingTip;
       return;
     }
     const s = voice.getState();
@@ -2852,10 +2856,8 @@ export function chatHtml(
 
   function toggleVoice() {
     if (!voice) {
-      // Voice typing writes into whatever has focus, so the chat box must have it first. The lit mic says it is on; press it again to stop.
+      // Voice typing writes into whatever has focus, so the chat box must have it first. A second press stops it again.
       inputEl.focus();
-      osDictating = !osDictating;
-      syncMicButton();
       vscode.postMessage({ type: 'voice_os_dictation' });
       return;
     }
@@ -3145,20 +3147,15 @@ export function chatHtml(
       case 'voice_config':
         // Latest voice settings from the host, merged into the controller.
         if (msg.config) voiceEnabled = msg.config.enabled !== false;
+        if (typeof msg.systemDictation === 'boolean') systemDictation = msg.systemDictation;
         if (voice && msg.config) voice.updateConfig(msg.config);
         syncMicButton();
         break;
       case 'voice_start':
-        // The forge.startVoiceInput command toggles, so one shortcut starts and stops.
+        // The forge.startVoiceInput command (Ctrl+Shift+Space): one hand-off per press, like the mic.
         toggleVoice();
         break;
-      case 'voice_os_failed':
-        osDictating = false;
-        syncMicButton();
-        break;
       case 'task_started':
-        osDictating = false;
-        syncMicButton();
         removeRunFooter();
         setTaskRunning(true);
         appendAssistantStart();
@@ -3521,13 +3518,8 @@ export function chatHtml(
     }
   });
 
-  // Ctrl+Shift+Space (Cmd+Shift+Space on Mac) toggles voice input from anywhere in the page.
-  document.addEventListener('keydown', (e) => {
-    if (e.key === ' ' && e.shiftKey && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      toggleVoice();
-    }
-  });
+  // Ctrl+Shift+Space (Cmd+Shift+Space on Mac) is VS Code's keybinding for forge.startVoiceInput, which reaches the page
+  // as 'voice_start'. The page has no key handler of its own: with both, one press handed off twice and did nothing.
 
   vscode.postMessage({ type: 'ready' });
 </script>

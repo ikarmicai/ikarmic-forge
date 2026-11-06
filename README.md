@@ -72,7 +72,7 @@ Bedrock, Vertex and Azure are never auto-selected from ambient credentials; choo
 - **Model router**: `--cheap-model <id>` / `forge.router.cheapModel` sends read-only exploration steps to a cheaper model and keeps the main model for planning and edits.
 - **Verify loop**: `--verify "pnpm test"` (repeatable) / `forge.verify.commands` runs your checks after the agent edits files and feeds failures back so it can fix them.
 - **Semantic search**: `--semantic-search` / `forge.semanticSearch` adds `codebase_search`. It works offline by default; set `FORGE_EMBED_PROVIDER=openai|ollama` for embedding-based ranking. Symbol tools now cover Python, Go, Rust and Java as well as TS/JS.
-- **Browser**: `--browser` / `forge.browser.enabled` (on by default in VS Code) lets the agent open a page (for example your dev server), take a screenshot and read console errors. Needs Chrome, Edge or Chromium (`FORGE_CHROME_PATH` overrides). Clicking and typing need approval.
+- **Browser**: on by default (`--no-browser` in the terminal app, `forge.browser.enabled` in VS Code) lets the agent open a page (for example your dev server), take a screenshot and read console errors. Needs Chrome, Edge or Chromium (`FORGE_CHROME_PATH` overrides). Clicking and typing need approval.
 - **Agent-task hooks**: a hook of `"type": "agent"` runs an agent task instead of a shell command (for example on `FileChanged`). It runs unattended with file read/write tools only.
 
 ### VS Code
@@ -196,8 +196,8 @@ Options:
   -a, --auto                        run autonomously without approval prompts
   --allow-destructive               allow destructive tools in --auto mode
   -c, --cwd <path>                  working directory for file tools
-  --max-iterations <n>              max agent iterations (default: 50)
-  --max-duration <ms>               max wall-clock ms (default: 600000)
+  --max-iterations <n>              stop a run after this many model steps (default: no limit)
+  --max-duration <ms>               stop a run after this many ms of wall clock (default: no limit)
   --system <prompt>                 override the default system prompt
   --mcp-config <path>               path to a forge.mcp.json file
   --resume [id]                     resume a saved session by id (or omit the value for "latest")
@@ -388,6 +388,7 @@ Slash commands in the REPL (`/help` lists them; `/help <question>` answers a que
 | `/copy`, `/copy-context` | copy the last reply, or the whole conversation as Markdown, to the clipboard |
 | `/plan <task>`, `/spec <task>`, `/editor-model <model>`, `/architect <task>` | plan before acting; with an editor model, the main model plans and the editor model applies the approved plan |
 | `/commit`, `/undo`, `/diff` | commit pending changes with a drafted message, undo Forge's last unpushed commit, show uncommitted changes |
+| `/changes`, `/revert <file>`, `/revert all` | list the files the last run changed (by the edit tools and by commands, also printed after each run), and put them back as the run found them |
 | `/map`, `/map-refresh` | show the repo map, or re-parse every file first |
 | `/load <file>`, `/save-script <file>` | replay commands and messages from a file; write the model and attached files as such a file |
 | `/ok`, `/reset`, `/clear`, `/compact`, `/rewind`, `/tokens`, `/settings`, `/report` | say "go ahead", detach files and clear the conversation, wipe the transcript, compact now, restore checkpoints, show context use, show settings, print a prefilled issue link (diagnostics only) |

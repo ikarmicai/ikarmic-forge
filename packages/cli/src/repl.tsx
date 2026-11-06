@@ -13,7 +13,6 @@ import {
   formatSteeringLine,
   type ForgeConfigFile,
   type ModelConfig,
-  defaultSessionDir,
   generateSessionId,
   expandCustomCommand,
   formatCustomCommands,
@@ -80,6 +79,7 @@ import {
 import type { GitWorkflow } from './git-workflow.js';
 import { Header } from './components/Header.js';
 import { Spinner } from './components/Spinner.js';
+import { formatRunChanges, revertRunChanges, runChangesAfter, snapshotForRun, type RunChanges } from './run-changes.js';
 import { sessionCheckpointStore, sessionCheckpointsConfig } from './session-checkpoints.js';
 import { getUnifiedDiffText, summarizeResult as summarizeToolResult } from './tool-display.js';
 
@@ -116,11 +116,12 @@ export interface ReplServices {
 /** The text of `/help`. */
 function replHelpText(sessionId: string): string {
   return [
-    'Slash commands: /help [question] /clear /reset /save [label] /plan <task> /spec <task> /compact /rewind /ok /model /weak-model /models /add /read-only /drop /ls /run /test /lint /tokens /settings /commit /undo /diff /map /map-refresh /copy /copy-context /paste /web /editor /report /reasoning-effort /think-tokens /editor-model /architect /load /save-script /retry /edit-last /sessions /exit /quit.',
+    'Slash commands: /help [question] /clear /reset /save [label] /plan <task> /spec <task> /compact /rewind /ok /model /weak-model /models /add /read-only /drop /ls /run /test /lint /tokens /settings /changes /revert /commit /undo /diff /map /map-refresh /copy /copy-context /paste /web /editor /report /reasoning-effort /think-tokens /editor-model /architect /load /save-script /retry /edit-last /sessions /exit /quit.',
     '/retry [new text] runs your last message again (or an edited one) in place of the last turn; /edit-last opens it in your editor first. Files the dropped turn changed stay changed: /undo or /rewind reverts them.',
     '/sessions [words] lists recent sessions, or searches all of them; resume one with forge --resume <id>. Messages typed while a turn runs wait in a queue and run in order.',
     'Custom commands: a Markdown file in .forge/commands/<name>.md (project) or ~/.forge/commands/<name>.md becomes /<name> [args]; $ARGUMENTS and $1..$9 in it are filled in.',
     '/commit commits all pending changes with a drafted message; /undo reverts the last Forge commit; /diff shows uncommitted changes.',
+    '/changes lists the files the last run changed, with the edit tools and with commands; /revert <file> or /revert all puts them back as the run found them.',
     '/model [id|alias|provider:model] switches (or shows) the model; /weak-model sets the cheap model; /models [query] lists aliases and known models.',
     '/add <files> and /read-only <files> attach files to every turn (images and PDFs go to the model as they are); /drop [files] detaches; /ls lists them. /run <cmd> (or !<cmd>) runs a command and shows the model its output on the next turn; /test [cmd] and /lint [files] send failures to the model to fix; with no argument they run your --test-cmd / --lint-cmd commands.',
     '/ok says "go ahead"; /reset detaches files and clears the conversation; /tokens shows context use; /settings shows the effective settings.',
@@ -246,6 +247,8 @@ export function Repl({
   // History sent to the agent: seeded from the resumed session if any,
   // otherwise starts empty (the agent creates the system prompt on turn 1).
   const historyRef = useRef<ModelMessage[]>(initialHistory ?? []);
+  /** What the last run changed, for /changes and /revert. */
+  const latestRunRef = useRef<RunChanges | undefined>(undefined);
   const agentConfigRef = useRef(baseConfig);
   /** The model in use; `/model` changes it for the rest of the session. */
   const [model, setModel] = useState<ModelConfig>(initialModel);
@@ -310,7 +313,7 @@ export function Repl({
       if (task === '/save' || task.startsWith('/save ')) {
         const label = task.replace(/^\/save\s*/, '').trim();
         if (label) setCurrentLabel(label);
-        const savedPath = await persistSession({
+        const savedPath = await persistSession(sessionDir, {
           id: currentSessionId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -864,7 +867,7 @@ export function Repl({
             say(
               [
                 `model: ${describeModel(model)}${weakModel ? `   weak model: ${describeModel(weakModel)}` : ''}`,
-                `mode: ${c.auto ? 'autonomous' : 'interactive'}   max iterations: ${c.maxIterations ?? 50}   cwd: ${cwd}`,
+                `mode: ${c.auto ? 'autonomous' : 'interactive'}   step limit: ${c.maxIterations === undefined ? 50 : Number.isFinite(c.maxIterations) ? c.maxIterations : 'none'}   cwd: ${cwd}`,
                 `repo map: ${c.repoMap?.tokens ? `${c.repoMap.tokens} tokens` : 'off'}   auto-lint: ${c.autoLint ? 'on' : 'off'}   auto-commit: ${gitWorkflow ? 'on' : 'off'}`,
                 `verify: ${c.verify?.commands.length ? c.verify.commands.join(' && ') : 'off'}`,
                 `attached files: ${chatFilesRef.current.size}   session: ${currentSessionId}`,
@@ -951,6 +954,18 @@ export function Repl({
         } catch (err) {
           say(`${task}: ${(err as Error).message}`, true);
         }
+        return;
+      }
+      if (task === '/changes' || task === '/revert' || task.startsWith('/revert ')) {
+        const say = (text: string, isError?: boolean) =>
+          setMessages((m) => [...m, { kind: 'status', id: cryptoId(), text, ...(isError ? { isError } : {}) }]);
+        if (task === '/changes') {
+          say(formatRunChanges(latestRunRef.current));
+          return;
+        }
+        const result = await revertRunChanges(latestRunRef.current, task.slice('/revert'.length));
+        latestRunRef.current = result.run;
+        say(result.text, result.isError);
         return;
       }
       if (task === '/commit' || task === '/undo' || task === '/diff') {
@@ -1174,6 +1189,15 @@ export function Repl({
       }
 
       const agent = new Agent(localConfig);
+      // What this run changes, for /changes and /revert: the edit tools' checkpoints, plus the workspace before and after
+      // for what commands change (RB-161). Plan and spec runs change nothing.
+      const runCwd = localConfig.cwd ?? process.cwd();
+      const reviewRun = !options.planMode && !options.specMode && localConfig.checkpoints ? localConfig.checkpoints.store : null;
+      const before = reviewRun ? await snapshotForRun(runCwd) : null;
+      if (before && 'warning' in before) setMessages((m) => [...m, { kind: 'status', id: cryptoId(), text: before.warning, isError: true }]);
+      const runStartedAtIso = new Date().toISOString();
+      const sessionAtStart = { input: tokensRef.current.input, output: tokensRef.current.output, cost: costRef.current };
+      let runUsage = { input: 0, output: 0 };
       const gitRun = gitWorkflow && !options.planMode && !options.specMode ? gitWorkflow : null;
       if (gitRun) {
         const saved = await gitRun.before().catch(() => null);
@@ -1339,14 +1363,16 @@ export function Repl({
               case 'approval_requested':
                 break;
               case 'usage':
-                tokensRef.current.input = event.inputTokens;
-                tokensRef.current.output = event.outputTokens;
-                setInputTokens(event.inputTokens);
-                setOutputTokens(event.outputTokens);
+                // The event counts this run; the session's totals are what earlier runs used plus this one.
+                runUsage = { input: event.inputTokens, output: event.outputTokens };
+                tokensRef.current.input = sessionAtStart.input + event.inputTokens;
+                tokensRef.current.output = sessionAtStart.output + event.outputTokens;
+                setInputTokens(tokensRef.current.input);
+                setOutputTokens(tokensRef.current.output);
                 break;
               case 'cost':
-                costRef.current = event.runningCostUsd;
-                setCostUsd(event.runningCostUsd);
+                costRef.current = sessionAtStart.cost + event.runningCostUsd;
+                setCostUsd(costRef.current);
                 break;
               case 'cache_stats':
                 setCacheHits(event.hits);
@@ -1408,8 +1434,9 @@ export function Repl({
                     kind: 'status',
                     id: cryptoId(),
                     text: `Done: ${runReasonLabel(event.reason)}`,
-                    inputTokens,
-                    outputTokens,
+                    // This run's tokens: React state here is still what it was when the run started.
+                    inputTokens: runUsage.input,
+                    outputTokens: runUsage.output,
                   },
                 ]);
                 break;
@@ -1431,6 +1458,20 @@ export function Repl({
 
       notify?.(agentRunResult ? `Forge finished: ${runReasonLabel(agentRunResult.reason)} - waiting for you` : 'Forge stopped - waiting for you');
 
+      // Taken before the automatic commit, which would make the files clean in git and hide them.
+      if (reviewRun) {
+        const after = before && 'snapshot' in before ? await snapshotForRun(runCwd, before.snapshot) : null;
+        if (after && 'warning' in after) setMessages((m) => [...m, { kind: 'status', id: cryptoId(), text: after.warning, isError: true }]);
+        try {
+          const snapshots = before && 'snapshot' in before && after && 'snapshot' in after ? { before: before.snapshot, after: after.snapshot } : undefined;
+          const changes = await runChangesAfter(reviewRun, runCwd, runStartedAtIso, snapshots);
+          latestRunRef.current = changes;
+          if (changes) setMessages((m) => [...m, { kind: 'status', id: cryptoId(), text: formatRunChanges(changes) }]);
+        } catch (err) {
+          setMessages((m) => [...m, { kind: 'status', id: cryptoId(), text: `Could not list the files this run changed: ${(err as Error).message}`, isError: true }]);
+        }
+      }
+
       if (gitRun && agentRunResult?.reason === 'completed') {
         const commit = await gitRun.after(task).catch(() => null);
         if (commit) setMessages((m) => [...m, { kind: 'status', id: cryptoId(), text: formatCommitLine(commit) }]);
@@ -1441,7 +1482,7 @@ export function Repl({
         historyRef.current =
           attached.block || attached.attachments.length > 0 ? agentRunResult.messages.map(stripAttachedFiles) : agentRunResult.messages;
         if (historyRef.current.length > 0 && !options.planMode && !options.specMode) {
-          const savedPath = await persistSession({
+          const savedPath = await persistSession(sessionDir, {
             id: currentSessionId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -1770,9 +1811,12 @@ function shortVal(v: unknown): string {
   return s.length > 40 ? s.slice(0, 37) + '…' : s;
 }
 
-async function persistSession(s: Session): Promise<string | null> {
+/** Save to the folder the REPL lists sessions from (its sessionDir), never to whatever FORGE_SESSION_DIR says by then. */
+async function persistSession(dir: string, s: Session): Promise<string | null> {
   try {
-    return await saveSession(s, defaultSessionDir());
+    // Every save passes "now" as createdAt; the session's first save keeps it, so its start date is not lost.
+    const first = await loadSession(s.id, dir).catch(() => null);
+    return await saveSession(first ? { ...s, createdAt: first.createdAt } : s, dir);
   } catch {
     return null;
   }

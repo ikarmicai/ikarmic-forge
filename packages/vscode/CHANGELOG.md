@@ -15,17 +15,21 @@ and the project follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **Keep or Undo each changed file.** After a run that changed files, a bar above the message box reads "N files changed +added −removed" with Keep all and Undo all, and a list where each file has its own line counts, Keep and Undo, and opens on click. It replaces the "Revert this run" line in the conversation, and folds away with a chevron like the task list.
-- **Files that commands changed are in the bar too.** A file a command created, changed or deleted (`npm init`, a scaffolder, a formatter) is listed with a Command badge, its line counts and Undo, in a git repository and in a folder without git, also when an edit tool changed it afterwards. An image or other binary file reads "Binary". A file over 1 MiB, or past 16 MiB of copies, is listed without Undo (RB-161).
+- **Files that commands changed are in the bar too.** A file a command created, changed or deleted (`npm init`, a scaffolder, a formatter) is listed with a Command badge, its line counts and Undo, in a git repository and in a folder without git, also when an edit tool changed it afterwards. An image or other binary file reads "Binary"; a text file over 1 MiB shows its line count when a command created it, or "Large file". A changed file over 1 MiB, or past 16 MiB of copies, is listed without Undo (RB-161).
+- **The terminal app lists what each run changed.** After a run, the REPL prints "N files changed +added −removed" with one line per file, the edit tools' and the commands'. `/changes` shows it again; `/revert <file>` or `/revert all` puts files back as the run found them, with the same code as the VS Code bar.
 - **Voice typing on macOS.** The mic button starts the system's Dictation on macOS, as it starts Win+H on Windows, and lights up while voice typing is on (RB-152).
 - **Output → Forge says how each chat run ended**, in words: the reason, the mode and the length of the answer.
 
 ### Changed
 
-- **The browser tools are on by default in VS Code** (`forge.browser.enabled`). The agent opens your dev server in Forge's own browser to look at what it built, instead of starting Chrome from the shell, which Autonomous asks about each time. Turn it off in Settings, or with the `disableBrowser` policy.
+- **The browser tools are on by default in VS Code** (`forge.browser.enabled`). The agent opens your dev server in Forge's own browser to look at what it built, instead of starting Chrome from the shell, which Autonomous asks about each time. Turn it off in Settings, or with the `disableBrowser` policy. The terminal app has them by default too (`--no-browser` leaves them out; `--browser` still works).
+- **No time or step limit in the terminal app.** A run no longer stops after 10 minutes of wall clock or 50 steps, as in the VS Code chat; `--max-duration <ms>` and `--max-iterations <n>` still set one. The live "Build a CRM" run in the terminal app was cut off mid-work by each in turn. A run that does reach a limit now asks you to carry on in words, instead of naming a Continue button the terminal app does not have.
 
 ### Fixed
 
+- **The mic no longer goes backwards.** It hands one press to the system's voice typing and keeps no on or off state of its own, which went wrong whenever Windows closed voice typing by itself. Ctrl+Shift+Space works in the chat box again (it pressed Win+H twice), a failed start says what to do instead of showing a PowerShell command line, and on a system with no voice typing Forge can start the mic is hidden (RB-163).
 - After a run with more than 20 file edits, the bar lists every file, and Undo puts each one back as the run found it (RB-157).
+- Autonomous no longer asks for a program run by its full path outside the project (`& "C:\Program Files\Google\Chrome\Application\chrome.exe" ...`). A path outside the project that the program is given still asks, and now also as a flag's value (`--out=C:\elsewhere`), which was not checked before.
 - Autonomous no longer asks for a command that only prints a URL path (`GET / -> 200`) or uses a Windows switch (`cmd /c`). An ask that still happens says why (RB-159).
 - On Windows, command output in the VS Code terminal reaches the model in UTF-8, and a command with a non-ASCII character no longer "times out" (RB-160).
 - On Windows, a timed-out command's program no longer keeps running and holding its folder (RB-155).
@@ -33,6 +37,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - A plan written next to a tool call is kept when the model's next step has no text (RB-150).
 - Project memory is no longer read from, or written to, a folder above the project (RB-151).
 - A spec design with its own `##` headings is no longer cut down to its title (RB-31).
+- A retry after a lost connection says why ("Cannot connect to API: ECONNRESET") instead of "Cannot connect to API: )".
+- The terminal app keeps a saved session's start date and adds each run's tokens and cost to the session's totals; every save used to overwrite them, and the Done line read "↑0 ↓0".
 - `minimatch` is pinned to 11.0.1 or later for a security alert.
 
 ## [5.5.1] - 2026-11-02

@@ -39,7 +39,7 @@ export function macDictationCommand(): SystemCommand {
   return { file: '/usr/bin/osascript', args: ['-e', MAC_DICTATION_SCRIPT], cwd: '/', timeoutMs: 10_000 };
 }
 
-type Run = (file: string, args: string[], options: { cwd: string; timeout: number }) => Promise<unknown>;
+type Run = (file: string, args: string[], options: { cwd: string; timeout: number; windowsHide?: boolean }) => Promise<unknown>;
 
 /** Start or stop macOS dictation. A failure is thrown as words for the person (see {@link macDictationFailure}). */
 export async function pressMacDictation(run: Run = promisify(execFile)): Promise<void> {
@@ -66,3 +66,39 @@ export function macDictationFailure(stderr: string): string {
   const detail = stderr.replace(/\s*\(-?\d+\)\s*$/m, '').trim();
   return `Could not start dictation: ${detail || 'unknown reason'}. ${MANUAL}`;
 }
+
+/**
+ * Press Win+H so Windows voice typing writes into the focused chat box: the system PowerShell by absolute path, in a
+ * neutral folder, ended after 10 seconds, never one found through the workspace (RB-24). A fixed script: nothing the
+ * chat holds reaches it.
+ */
+export function windowsDictationCommand(systemRoot = process.env.SystemRoot ?? 'C:\\Windows'): SystemCommand {
+  const script = [
+    "Add-Type -Namespace ForgeVoice -Name Keys -MemberDefinition '[DllImport(\"user32.dll\")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e);'",
+    '[ForgeVoice.Keys]::keybd_event(0x5B, 0, 0, [UIntPtr]::Zero)',
+    '[ForgeVoice.Keys]::keybd_event(0x48, 0, 0, [UIntPtr]::Zero)',
+    '[ForgeVoice.Keys]::keybd_event(0x48, 0, 2, [UIntPtr]::Zero)',
+    '[ForgeVoice.Keys]::keybd_event(0x5B, 0, 2, [UIntPtr]::Zero)',
+  ].join('; ');
+  return {
+    file: `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`,
+    args: ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+    cwd: systemRoot,
+    timeoutMs: 10_000,
+  };
+}
+
+/** Press Win+H. A failure is thrown with what went wrong in `detail`, for the log; the host tells the person in words (RB-122). */
+export async function pressWindowsDictation(run: Run = promisify(execFile)): Promise<void> {
+  const c = windowsDictationCommand();
+  try {
+    await run(c.file, c.args, { cwd: c.cwd, timeout: c.timeoutMs, windowsHide: true });
+  } catch (e) {
+    const err = e as { stderr?: unknown; message?: unknown; killed?: unknown };
+    const detail = err.killed ? 'PowerShell did not finish within 10 seconds' : String(err.stderr || '').trim() || 'PowerShell failed';
+    throw Object.assign(new Error(`Could not press Win+H: ${detail}`), { detail });
+  }
+}
+
+/** Where the mic can hand off: Windows and macOS have system voice typing Forge can start; elsewhere the mic is hidden. */
+export const hasSystemDictation = (platform: NodeJS.Platform = process.platform): boolean => platform === 'win32' || platform === 'darwin';

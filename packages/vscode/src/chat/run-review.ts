@@ -51,15 +51,8 @@ export function runReviewMessage(run: RunReview): RunReviewMessage {
   return { type: 'run_changes', files: run.files, kept: run.kept, undone: run.undone };
 }
 
-/**
- * The edit tools' rows and the rows for files commands changed, in one list sorted by path. A path in both keeps the
- * command's row: `commandChanges` lists a path the edit tools have only when a command changed it before their first
- * edit, so their earlier copy is not how the run found it.
- */
-export function mergeRunFiles(fromTools: RunFileChange[], fromCommands: RunFileChange[]): RunFileChange[] {
-  const have = new Set(fromCommands.map((f) => f.path));
-  return [...fromCommands, ...fromTools.filter((f) => !have.has(f.path))].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-}
+/** Lives in core, shared with the terminal app's /changes. */
+export { mergeRunFiles } from '@ikarmic/forge-core';
 
 /** What Undo may act on: the waiting files that can be put back (all of them, or the one at `relPath`). A file a command changed has no earlier copy and is never a target. */
 export function undoTargets(run: RunReview, relPath?: string): RunFileChange[] {

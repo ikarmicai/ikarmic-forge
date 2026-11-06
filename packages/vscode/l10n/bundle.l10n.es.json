@@ -131,8 +131,6 @@
   "Attach context": "Adjuntar contexto",
   "Voice input (Ctrl+Shift+Space)": "Entrada de voz (Ctrl+Mayús+Espacio)",
   "Voice input (Cmd+Shift+Space)": "Entrada de voz (Cmd+Mayús+Espacio)",
-  "Voice typing": "Dictado por voz",
-  "Stop voice typing": "Detener el dictado por voz",
   "Voice input": "Entrada de voz",
   "Send message": "Enviar mensaje",
   "Send": "Enviar",
@@ -544,7 +542,6 @@
   "Add any OpenAI-compatible service, or start from a preset. A model on it is written provider:model, such as groq:llama-3.3-70b-versatile. Press Save provider to apply it.": "Añade cualquier servicio compatible con OpenAI o empieza desde un ajuste preestablecido. Un modelo en él se escribe proveedor:modelo, como groq:llama-3.3-70b-versatile. Pulsa Guardar proveedor para aplicarlo.",
   "Restore checkpoint": "Restaurar punto de control",
   "Agent Manager in new window": "Administrador de agentes en una ventana nueva",
-  "Could not start Windows voice typing: {0}. Press Win+H yourself while the chat box has focus.": "No se pudo iniciar el dictado por voz de Windows: {0}. Pulsa Win+H tú mismo mientras el cuadro del chat tenga el foco.",
   "Voice typing is not built in on this system. Use your system dictation, if it has one, to speak into the chat box.": "El dictado por voz no está integrado en este sistema. Usa el dictado de tu sistema, si lo tiene, para hablar en el cuadro del chat.",
   "Keep all": "Conservar todo",
   "Undo all": "Deshacer todo",
@@ -560,6 +557,7 @@
   "Deleted by a command": "Eliminado por un comando",
   "Deleted by a command, so there is no earlier copy to restore": "Eliminado por un comando, así que no hay una copia anterior que restaurar",
   "Binary": "Binario",
+  "Large file": "Archivo grande",
   "Left {0} file(s) in place: git has them now (for example in the automatic commit), so Undo would not be safe.": "Se dejaron {0} archivo(s): git ya los tiene (por ejemplo en la confirmación automática), así que deshacer no sería seguro.",
   "Left {0} file(s) in place: they are not plain files inside the workspace.": "Se dejaron {0} archivo(s): no son archivos normales dentro del espacio de trabajo.",
   "Could not list the files this run changed: {0}": "No se pudo listar los archivos que cambió esta ejecución: {0}",
@@ -571,5 +569,8 @@
   "Retrying. Files the earlier attempt changed stay changed; use Undo all or a checkpoint to undo them.": "Reintentando. Los archivos que cambió el intento anterior siguen cambiados; usa Deshacer todo o un punto de control para deshacerlos.",
   "Asks because it names a path outside the project: {0}": "Pregunta porque nombra una ruta fuera del proyecto: {0}",
   "Asks because {0} may hold secrets.": "Pregunta porque {0} puede contener secretos.",
-  "Asks because a permission rule says to ask before: {0}": "Pregunta porque una regla de permisos pide preguntar antes de: {0}"
+  "Asks because a permission rule says to ask before: {0}": "Pregunta porque una regla de permisos pide preguntar antes de: {0}",
+  "Voice typing (Ctrl+Shift+Space)": "Dictado por voz (Ctrl+Mayús+Espacio)",
+  "Voice typing (Cmd+Shift+Space)": "Dictado por voz (Cmd+Mayús+Espacio)",
+  "Could not start Windows voice typing. Press Win+H yourself while the chat box has focus. The details are in Output, Forge.": "No se pudo iniciar el dictado por voz de Windows. Pulsa Win+H tú mismo con el cuadro del chat activo. Los detalles están en Salida, Forge."
 }

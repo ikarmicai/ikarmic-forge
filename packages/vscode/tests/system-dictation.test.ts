@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { chatHtml } from '../src/chat/html.js';
 import { WEBVIEW_STRINGS } from '../src/chat/webview-i18n.js';
-import { MAC_DICTATION_SCRIPT, macDictationCommand, macDictationFailure, pressMacDictation } from '../src/chat/system-dictation.js';
+import { hasSystemDictation, MAC_DICTATION_SCRIPT, macDictationCommand, macDictationFailure, pressMacDictation, pressWindowsDictation, windowsDictationCommand } from '../src/chat/system-dictation.js';
 
 describe('macDictationCommand', () => {
   it('runs the system osascript by absolute path with a fixed script and a neutral folder', () => {
@@ -83,35 +83,75 @@ describe('chat page words for voice typing', () => {
   });
 });
 
-describe('the mic shows that voice typing is on', () => {
+// Found by the person, 2026-11-06: the lit mic went backwards whenever Windows closed voice typing by itself, the
+// shortcut did nothing in the chat (the page and VS Code both toggled, so Win+H was pressed twice), and a failed press
+// showed the PowerShell command line. The system cannot be asked whether voice typing is on, so the mic does not guess.
+describe('the mic hands one press to the system and keeps no on or off state', () => {
   const html = chatHtml({ strings: {} } as never);
-  const toggle = html.slice(html.indexOf('function toggleVoice'), html.indexOf('function toggleVoice') + 900);
-  const sync = html.slice(html.indexOf('function syncMicButton'), html.indexOf('function syncMicButton') + 1400);
+  const toggle = html.slice(html.indexOf('function toggleVoice'), html.indexOf('function toggleVoice') + 600);
+  const sync = html.slice(html.indexOf('function syncMicButton'), html.indexOf('function syncMicButton') + 900);
 
-  it('highlights the mic itself instead of writing a sentence under the box', () => {
-    expect(html).not.toContain('Speak now');
-    expect(toggle).not.toContain('setVoiceStatus');
-    expect(toggle).toContain('osDictating = !osDictating');
-    expect(sync).toContain("classList.toggle('recording', osDictating)");
-    expect(sync).toContain("setAttribute('aria-pressed', String(osDictating))");
-    expect(sync).toContain("'Stop voice typing'");
+  it('has no guessed state that a press flips', () => {
+    expect(html).not.toContain('osDictating');
+    expect(sync).not.toContain("classList.toggle('recording', osDictating)");
+    expect(toggle).toContain("vscode.postMessage({ type: 'voice_os_dictation' })");
+    expect(toggle).toContain('inputEl.focus()');
   });
 
-  it('switches the highlight off when starting failed or a message was sent', () => {
-    expect(html).toContain("case 'voice_os_failed':");
-    const sent = html.slice(html.indexOf("case 'task_started':"), html.indexOf("case 'task_started':") + 200);
-    expect(sent).toContain('osDictating = false');
+  it('has no key handler of its own for the shortcut, which VS Code already sends as voice_start', () => {
+    expect(html).not.toMatch(/e\.key === ' ' && e\.shiftKey/);
+    expect(html).toContain("case 'voice_start':");
   });
 
-  it('has both labels in the translated strings', () => {
-    expect(WEBVIEW_STRINGS).toContain('Voice typing');
-    expect(WEBVIEW_STRINGS).toContain('Stop voice typing');
+  it('names the shortcut in the tooltip, Cmd on a Mac, and both texts are translated', () => {
+    expect(html).toMatch(/\/Mac\/i\.test\(navigator\.platform[^)]*\)\s*\?\s*'Voice typing \(Cmd\+Shift\+Space\)'\s*:\s*'Voice typing \(Ctrl\+Shift\+Space\)'/);
+    expect(WEBVIEW_STRINGS).toContain('Voice typing (Ctrl+Shift+Space)');
+    expect(WEBVIEW_STRINGS).toContain('Voice typing (Cmd+Shift+Space)');
   });
 
-  it('tells the page when the host could not press the system key', () => {
+  it('hides the mic on a system with no voice typing Forge can start', () => {
+    expect(sync).toContain('voiceEnabled && systemDictation');
+    expect(html).toContain("if (typeof msg.systemDictation === 'boolean') systemDictation = msg.systemDictation;");
+    expect(hasSystemDictation('win32')).toBe(true);
+    expect(hasSystemDictation('darwin')).toBe(true);
+    expect(hasSystemDictation('linux')).toBe(false);
+  });
+
+  it('logs each hand-off, so the count can be checked, and the host waits for the chat to have focus first', () => {
     const host = readFileSync(new URL('../src/chat/chat-view.ts', import.meta.url), 'utf8');
-    const start = host.indexOf("case 'voice_os_dictation':");
-    const block = host.slice(start, start + 1400);
-    expect((block.match(/voice_os_failed/g) ?? []).length).toBe(2); // the unsupported system, and a press that threw
+    const block = host.slice(host.indexOf("case 'voice_os_dictation':"), host.indexOf("case 'voice_os_dictation':") + 1600);
+    expect(block).toContain('Voice typing: hand-off');
+    expect(block).not.toContain('voice_os_failed');
+    const toggleHost = host.slice(host.indexOf('async toggleVoice()'), host.indexOf('async toggleVoice()') + 700);
+    expect(toggleHost).toContain("await vscode.commands.executeCommand('forge.chatView.focus');");
+  });
+});
+
+describe('Windows voice typing', () => {
+  it('runs the system PowerShell by absolute path with a fixed script in the Windows folder', () => {
+    const c = windowsDictationCommand('C:\\Windows');
+    expect(c.file).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
+    expect(c.args.slice(0, 3)).toEqual(['-NoProfile', '-NonInteractive', '-EncodedCommand']);
+    expect(Buffer.from(c.args[3]!, 'base64').toString('utf16le')).toContain('keybd_event(0x5B');
+    expect(c.cwd).toBe('C:\\Windows');
+    expect(c.timeoutMs).toBe(10_000);
+  });
+
+  it('keeps the command line out of the message and in the detail for the log', async () => {
+    const failed = Object.assign(new Error('Command failed: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -EncodedCommand QQBkAGQA'), { stderr: 'Add-Type : access denied' });
+    const err = (await pressWindowsDictation(async () => { throw failed; }).catch((e: unknown) => e)) as Error & { detail: string };
+    expect(err.message).not.toMatch(/EncodedCommand|powershell.exe|QQBkAGQA/);
+    expect(err.detail).toBe('Add-Type : access denied');
+  });
+
+  it('says a press that took too long in words', async () => {
+    const killed = Object.assign(new Error('Command failed'), { killed: true });
+    const err = (await pressWindowsDictation(async () => { throw killed; }).catch((e: unknown) => e)) as Error & { detail: string };
+    expect(err.detail).toBe('PowerShell did not finish within 10 seconds');
+  });
+
+  it('tells the person what to do, with no command line, in words the page can translate', () => {
+    const host = readFileSync(new URL('../src/chat/chat-view.ts', import.meta.url), 'utf8');
+    expect(host).toContain("t('Could not start Windows voice typing. Press Win+H yourself while the chat box has focus. The details are in Output, Forge.')");
   });
 });

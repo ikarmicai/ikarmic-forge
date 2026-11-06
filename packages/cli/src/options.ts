@@ -202,8 +202,8 @@ export function buildProgram(): Command {
     .option('-a, --auto', 'run autonomously without approval prompts', false)
     .option('--allow-destructive', 'allow destructive tools (e.g. run_command) in --auto mode', false)
     .option('-c, --cwd <path>', 'working directory for file tools', process.cwd())
-    .option('--max-iterations <n>', 'max agent iterations', (v) => parseInt(v, 10), 50)
-    .option('--max-duration <ms>', 'max wall-clock ms', (v) => parseInt(v, 10), 10 * 60 * 1000)
+    .option('--max-iterations <n>', 'stop a run after this many model steps (default: no limit)', (v) => parseInt(v, 10))
+    .option('--max-duration <ms>', 'stop a run after this many ms of wall clock (default: no limit)', (v) => parseInt(v, 10))
     .option('--max-cost <usd>', 'stop the run once its cost reaches this many USD', (v) => parseFloat(v))
     .option('--loop-guard <n>', 'stop the run after this many identical tool calls in a row (off by default)', (v) => parseInt(v, 10))
     .option('--sandbox-allow-host <host>', 'with --sandbox: a host fetch_url, repo_clone, the browser and GitHub may still reach (repeatable; *.example.com or *)', (v: string, prev: string[] = []) => [...prev, v])
@@ -238,7 +238,8 @@ export function buildProgram(): Command {
     .option('--yes', 'confirm a subcommand that changes or deletes saved data (checkpoint restore, spec cancel, spec sync)')
     .option('--github', 'add GitHub pull-request tools: read a PR\'s reviews, comments and checks, and open a PR (always asks first). Token from GITHUB_TOKEN, GH_TOKEN or `gh auth token`')
     .option('--web-search [provider]', `add a web_search tool (${WEB_SEARCH_PROVIDERS.join(', ')}; default: from TAVILY_API_KEY, BRAVE_API_KEY or SEARXNG_URL). Queries go to that service`)
-    .option('--browser', 'add browser tools: open a URL, screenshot, read console errors (needs Chrome/Edge/Chromium; FORGE_CHROME_PATH overrides)')
+    .option('--browser', 'browser tools (on by default; kept so older scripts still run)')
+    .option('--no-browser', 'leave out the browser tools (open a URL, screenshot, read console errors; they need Chrome, Edge or Chromium, and FORGE_CHROME_PATH overrides the path)')
     .option('--semantic-search', 'add the codebase_search tool (set FORGE_EMBED_PROVIDER=openai|ollama for meaning-based ranking)')
     .option('--cheap-model <id>', 'route read-only exploration steps to this cheaper model (id, alias, or provider:model)')
     .option('--no-cache-prompts', 'do not add prompt-cache breakpoints for Anthropic models')
@@ -550,7 +551,7 @@ export function parseOptions(argv: string[]): {
     aiComments: opts.aiComments === true,
     noProjectInstructions: opts.projectInstructions === false,
     semanticSearch: opts.semanticSearch === true,
-    browser: opts.browser === true,
+    browser: opts.browser !== false,
     github: opts.github === true,
     audit: opts.audit === true,
     verbose: opts.verbose === true,
@@ -1267,8 +1268,10 @@ export async function toAgentConfig(
       ? { subAgentModel: applyResolved(model, resolveModelAlias(sharedConfig.config.subagentModel, sharedConfig.config.aliases, model.provider)) }
       : {}),
     allowDestructive: options.allowDestructive,
-    maxIterations: options.maxIterations ?? undefined,
-    maxDurationMs: options.maxDurationMs ?? undefined,
+    // No step limit unless --max-iterations sets one, like the VS Code chat (core's own default is 50).
+    maxIterations: options.maxIterations ?? Number.POSITIVE_INFINITY,
+    // No wall-clock limit unless --max-duration sets one, like the VS Code chat (core's own default is 10 minutes).
+    maxDurationMs: options.maxDurationMs ?? Number.POSITIVE_INFINITY,
     ...(options.maxCostUsd !== null ? { maxCostUsd: options.maxCostUsd } : {}),
     ...(options.loopGuardThreshold !== null ? { loopGuardThreshold: options.loopGuardThreshold } : {}),
     ...(options.commandSandbox !== 'off' ? { commandSandbox: sandboxConfigFor(options) } : {}),

@@ -110,6 +110,10 @@ describe('chat page run review bar', () => {
     expect(fn).toContain("if (f.binary) actions.appendChild(rvSpan('ik-muted', 'Binary'));");
   });
 
+  it('says "Large file" for a text file over 1 MiB that is not diffed, instead of "+0 −0"', () => {
+    expect(fn).toContain("else if (f.large) actions.appendChild(rvSpan('ik-muted', 'Large file'));");
+  });
+
   it('docks the bar above the message box, outside the scrolling conversation', () => {
     const bar = html.indexOf('id="run-review"');
     expect(bar).toBeGreaterThan(html.indexOf('<div id="chipbar">'));

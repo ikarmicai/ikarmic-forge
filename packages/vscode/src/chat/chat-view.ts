@@ -26,10 +26,9 @@ import {
   type AgentDef,
   buildLlmSummarizer,
   CheckpointStore,
-  commandChanges,
-  removeCreated,
-  restoreEarlier,
+  listRunChanges,
   snapshotWorkspace,
+  undoRunFile,
   compactMessages,
   defaultSessionDir,
   detectProjectChecks,
@@ -124,7 +123,7 @@ import { cleanName, decodeDataUrl, PendingAttachments } from './pending-attachme
 import { createMentionResolvers, findMentionFiles } from './mention-resolvers.js';
 import { mentionSuggestions, resolveMentions, stripContextBlocks } from './mentions.js';
 import { startAutoCommit, describeCommit } from './auto-commit.js';
-import { pressMacDictation } from './system-dictation.js';
+import { hasSystemDictation, pressMacDictation, pressWindowsDictation } from './system-dictation.js';
 import { GoalController } from './goal-controller.js';
 import { restrictedIgnoredList } from '../restricted-notice.js';
 import { mcpSlashEntries, planMcpPrompt } from './mcp-prompt-plan.js';
@@ -156,7 +155,7 @@ import { parseSpecCommand } from '../specs/spec-command.js';
 import type { RunMode, RunOutcome } from '../specs/spec-controller.js';
 import { changedFilesFromToolResult } from '../specs/spec-paths.js';
 import { approvalReason } from './approval-reason.js';
-import { findRunFile, mergeRunFiles, newRunReview, runReviewMessage, settleRunFiles, undoTargets, type RunReview } from './run-review.js';
+import { findRunFile, newRunReview, runReviewMessage, settleRunFiles, undoTargets, type RunReview } from './run-review.js';
 import { ChatWakeups } from './chat-wakeups.js';
 import { SemanticUi } from '../semantic-ui.js';
 
@@ -201,27 +200,8 @@ const VERIFY_APPROVED_KEY = 'forge.verify.approved';
  */
 const execFileAsync = promisify(execFile);
 
-/**
- * Press Win+H so Windows voice typing writes into the focused chat box. VS Code refuses the microphone
- * to webviews, so the system's own dictation is the input. Uses the system PowerShell by absolute path
- * with a neutral cwd, never one found through the workspace (RB-24), and ends it after 10 seconds.
- */
-async function pressWinH(): Promise<void> {
-  const script = [
-    "Add-Type -Namespace ForgeVoice -Name Keys -MemberDefinition '[DllImport(\"user32.dll\")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e);'",
-    '[ForgeVoice.Keys]::keybd_event(0x5B, 0, 0, [UIntPtr]::Zero)',
-    '[ForgeVoice.Keys]::keybd_event(0x48, 0, 0, [UIntPtr]::Zero)',
-    '[ForgeVoice.Keys]::keybd_event(0x48, 0, 2, [UIntPtr]::Zero)',
-    '[ForgeVoice.Keys]::keybd_event(0x5B, 0, 2, [UIntPtr]::Zero)',
-  ].join('; ');
-  const exe = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-  const encoded = Buffer.from(script, 'utf16le').toString('base64');
-  await execFileAsync(exe, ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
-    cwd: process.env.SystemRoot ?? 'C:\\Windows',
-    windowsHide: true,
-    timeout: 10_000,
-  });
-}
+/** The voice settings for the page, and whether this system has voice typing the mic can start (hidden where it has none). */
+const voiceConfigMessage = (voice: unknown) => ({ type: 'voice_config', config: voice, systemDictation: hasSystemDictation() });
 
 const FAVOURITE_MODELS_KEY = 'forge.favouriteModels';
 const PROMPT_HISTORY_KEY = 'forge.promptHistory';
@@ -626,10 +606,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       // Also push the voice config so the webview's controller picks up
       // any changes (settings UI edits, etc.) without waiting for a
       // `ready` round-trip.
-      this.view?.webview.postMessage({
-        type: 'voice_config',
-        config: cfg.voice,
-      });
+      this.view?.webview.postMessage(voiceConfigMessage(cfg.voice));
       // Same for display config (block-default/detail/reasoning-visibility)
       //: read from the shared config file since `cfg` (readConfig()) only
       // covers VS Code-local settings, not ~/.forge/config.json.
@@ -1636,19 +1613,27 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         return;
       case 'voice_unsupported':
         return;
-      case 'voice_os_dictation':
-        if (process.platform !== 'win32' && process.platform !== 'darwin') {
-          this.post({ type: 'voice_os_failed' });
+      case 'voice_os_dictation': {
+        if (!hasSystemDictation()) {
           this.post({ type: 'warning', message: t('Voice typing is not built in on this system. Use your system dictation, if it has one, to speak into the chat box.') });
           return;
         }
+        const keys = process.platform === 'darwin' ? 'the Dictation item of the Edit menu' : 'Win+H';
+        // Each press is one hand-off, logged so a person (and the UI spec) can see how many were made.
+        if (process.env.FORGE_VOICE_DRY_RUN === '1') {
+          this.log?.info(`Voice typing: hand-off (${keys}), dry run: nothing pressed.`);
+          return;
+        }
+        this.log?.info(`Voice typing: hand-off (${keys}).`);
         try {
-          await (process.platform === 'darwin' ? pressMacDictation() : pressWinH());
+          await (process.platform === 'darwin' ? pressMacDictation() : pressWindowsDictation());
         } catch (e) {
-          this.post({ type: 'voice_os_failed' });
-          this.post({ type: 'warning', message: process.platform === 'darwin' ? (e as Error).message : t('Could not start Windows voice typing: {0}. Press Win+H yourself while the chat box has focus.', (e as Error).message) });
+          const detail = (e as { detail?: string }).detail;
+          if (detail) this.log?.warn(`Voice typing: ${detail}`);
+          this.post({ type: 'warning', message: process.platform === 'darwin' ? (e as Error).message : t('Could not start Windows voice typing. Press Win+H yourself while the chat box has focus. The details are in Output, Forge.') });
         }
         return;
+      }
     }
   }
 
@@ -1668,14 +1653,15 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
    * first so the user sees the mic button highlight; the webview handles
    * the actual start/stop via `voice_start`.
    */
-  toggleVoice(): void {
+  async toggleVoice(): Promise<void> {
     if (!this.view) {
       vscode.window.setStatusBarMessage(t('Forge: open the chat first, then start voice input.'), 4000);
       return;
     }
-    void vscode.commands.executeCommand('workbench.view.extension.forge');
-    void vscode.commands.executeCommand('forge.chatView.focus');
-    this.view.webview.postMessage({ type: 'voice_start' });
+    // The chat must have focus before the system's voice typing starts, or it types into the editor that had it.
+    await vscode.commands.executeCommand('workbench.view.extension.forge');
+    await vscode.commands.executeCommand('forge.chatView.focus');
+    await this.view.webview.postMessage({ type: 'voice_start' });
   }
 
   /**
@@ -1686,7 +1672,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
   async announceVoiceConfig(): Promise<void> {
     try {
       const cfg = readConfig();
-      this.view?.webview.postMessage({ type: 'voice_config', config: cfg.voice });
+      this.view?.webview.postMessage(voiceConfigMessage(cfg.voice));
     } catch {
       // No view yet: extension just installed; harmless.
     }
@@ -2498,11 +2484,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           this.post({ type: 'task_finished' });
           if (!generating && cfg.checkpoints.enabled && (changedFiles.size > 0 || cmdAfter)) {
             try {
-              const store = this.checkpointStore(session);
-              const fromTools = changedFiles.size > 0 ? await store.runChanges(runStartedAtIso) : [];
-              const toolStart = changedFiles.size > 0 ? await store.runFirstHashes(runStartedAtIso) : new Map<string, string | null>();
-              const fromCommands = cmdBefore && cmdAfter ? await commandChanges(workspaceRoot, cmdBefore, cmdAfter, toolStart) : undefined;
-              this.latestRun = newRunReview(runStartedAtIso, mergeRunFiles(fromTools, fromCommands?.files ?? []), fromCommands?.earlier);
+              const listed = await listRunChanges(this.checkpointStore(session), workspaceRoot, runStartedAtIso, cmdBefore && cmdAfter ? { before: cmdBefore, after: cmdAfter } : undefined);
+              this.latestRun = newRunReview(runStartedAtIso, listed.files, cmdBefore && cmdAfter ? listed.earlier : undefined);
               this.postRunReview();
             } catch (err) {
               this.post({ type: 'warning', message: t('Could not list the files this run changed: {0}', (err as Error).message) });
@@ -2627,16 +2610,10 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
       let tracked = 0;
       let refused = 0;
       for (const f of targets) {
-        const earlier = f.byCommand && f.status !== 'created' ? run.earlier?.get(f.path) : undefined;
-        if (earlier) {
-          if ((await restoreEarlier(this.workspaceRoot(), f.path, earlier)) === 'restored') done.push(f.path);
-          else refused++;
-        } else if (f.byCommand && f.status === 'created') {
-          const res = await removeCreated(this.workspaceRoot(), f.path);
-          if (res === 'removed' || res === 'gone') done.push(f.path);
-          else if (res === 'tracked') tracked++;
-          else refused++;
-        } else if (await store.restoreFileSince(run.startedAtIso, f.path)) done.push(f.path);
+        const res = await undoRunFile(store, this.workspaceRoot(), run.startedAtIso, f, run.earlier);
+        if (res === 'done') done.push(f.path);
+        else if (res === 'tracked') tracked++;
+        else if (res === 'refused') refused++;
       }
       if (tracked > 0) this.post({ type: 'warning', message: t('Left {0} file(s) in place: git has them now (for example in the automatic commit), so Undo would not be safe.', tracked) });
       if (refused > 0) this.post({ type: 'warning', message: t('Left {0} file(s) in place: they are not plain files inside the workspace.', refused) });
