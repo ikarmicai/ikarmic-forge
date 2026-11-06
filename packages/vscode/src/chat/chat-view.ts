@@ -26,6 +26,10 @@ import {
   type AgentDef,
   buildLlmSummarizer,
   CheckpointStore,
+  commandChanges,
+  removeCreated,
+  restoreEarlier,
+  snapshotWorkspace,
   compactMessages,
   defaultSessionDir,
   detectProjectChecks,
@@ -91,6 +95,7 @@ import {
   type ProviderName,
   type TodoItem,
   type ToolDefinition,
+  type WorkspaceSnapshot,
 } from '@ikarmic/forge-core';
 
 import { readConfig, resolveModel } from '../config.js';
@@ -151,7 +156,7 @@ import { parseSpecCommand } from '../specs/spec-command.js';
 import type { RunMode, RunOutcome } from '../specs/spec-controller.js';
 import { changedFilesFromToolResult } from '../specs/spec-paths.js';
 import { approvalReason } from './approval-reason.js';
-import { findRunFile, newRunReview, runReviewMessage, settleRunFiles, type RunReview } from './run-review.js';
+import { findRunFile, mergeRunFiles, newRunReview, runReviewMessage, settleRunFiles, undoTargets, type RunReview } from './run-review.js';
 import { ChatWakeups } from './chat-wakeups.js';
 import { SemanticUi } from '../semantic-ui.js';
 
@@ -2202,6 +2207,9 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: 'task_started' });
     this.latestRun = undefined;
     const runStartedAtIso = new Date().toISOString();
+    // A command leaves no checkpoint: files it creates or changes are found by comparing the workspace before and after the run.
+    const cmdBefore = cfg.checkpoints.enabled && !generating ? await this.snapshotCommands(workspaceRoot) : null;
+    let cmdAfter: WorkspaceSnapshot | null = null;
     this.post({ type: 'model', provider: runModel.provider, model: runModel.model });
 
     const startedAt = Date.now();
@@ -2462,6 +2470,7 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           onEvent,
         });
       }
+      if (cmdBefore) cmdAfter = await this.snapshotCommands(workspaceRoot, cmdBefore);
       if (autoCommit && result?.reason === 'completed') {
         const commit = await autoCommit.finish(task);
         if (commit) this.post({ type: 'notice', message: t('Committed {0}', describeCommit(commit)) });
@@ -2487,9 +2496,13 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
         if (session === this.session) {
           this.post({ type: 'model', provider: runModel.provider, model: runModel.model });
           this.post({ type: 'task_finished' });
-          if (!generating && cfg.checkpoints.enabled && changedFiles.size > 0) {
+          if (!generating && cfg.checkpoints.enabled && (changedFiles.size > 0 || cmdAfter)) {
             try {
-              this.latestRun = newRunReview(runStartedAtIso, await this.checkpointStore(session).runChanges(runStartedAtIso));
+              const store = this.checkpointStore(session);
+              const fromTools = changedFiles.size > 0 ? await store.runChanges(runStartedAtIso) : [];
+              const toolStart = changedFiles.size > 0 ? await store.runFirstHashes(runStartedAtIso) : new Map<string, string | null>();
+              const fromCommands = cmdBefore && cmdAfter ? await commandChanges(workspaceRoot, cmdBefore, cmdAfter, toolStart) : undefined;
+              this.latestRun = newRunReview(runStartedAtIso, mergeRunFiles(fromTools, fromCommands?.files ?? []), fromCommands?.earlier);
               this.postRunReview();
             } catch (err) {
               this.post({ type: 'warning', message: t('Could not list the files this run changed: {0}', (err as Error).message) });
@@ -2575,11 +2588,25 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /** Undo the latest run's changes to one file, or to every file still waiting, by restoring the copies saved before its first edit to each. */
+  /** The workspace now, for finding files a command changed (after a run: taken like `before`). Null, with a notice in words, when there are too many files. */
+  private async snapshotCommands(workspaceRoot: string, before?: WorkspaceSnapshot): Promise<WorkspaceSnapshot | null> {
+    try {
+      return await snapshotWorkspace(workspaceRoot, before ? { like: before } : {});
+    } catch (err) {
+      this.post({ type: 'warning', message: (err as Error).message });
+      return null;
+    }
+  }
+
+  /**
+   * Undo the latest run's changes to one file, or to every file still waiting: restore the copy saved before the first
+   * edit, delete a file a command created (it did not exist before), or write back the copy of a file a command changed
+   * or deleted. A file a command changed with no copy (over the budget) is not a target.
+   */
   private async revertRunFiles(relPath?: string): Promise<void> {
     const run = this.latestRun;
     if (!run || this.controller || this.starting) return;
-    const targets = relPath === undefined ? run.files : run.files.filter((f) => f.path === relPath);
+    const targets = undoTargets(run, relPath);
     if (targets.length === 0) return;
     const sessionCwd = this.session.cwd;
     if (sessionCwd && !sameDir(sessionCwd, this.workspaceRoot())) {
@@ -2597,10 +2624,23 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
     const store = this.checkpointStore();
     const done: string[] = [];
     try {
+      let tracked = 0;
+      let refused = 0;
       for (const f of targets) {
-        if (await store.restoreFileSince(run.startedAtIso, f.path)) done.push(f.path);
+        const earlier = f.byCommand && f.status !== 'created' ? run.earlier?.get(f.path) : undefined;
+        if (earlier) {
+          if ((await restoreEarlier(this.workspaceRoot(), f.path, earlier)) === 'restored') done.push(f.path);
+          else refused++;
+        } else if (f.byCommand && f.status === 'created') {
+          const res = await removeCreated(this.workspaceRoot(), f.path);
+          if (res === 'removed' || res === 'gone') done.push(f.path);
+          else if (res === 'tracked') tracked++;
+          else refused++;
+        } else if (await store.restoreFileSince(run.startedAtIso, f.path)) done.push(f.path);
       }
-      const missing = targets.length - done.length;
+      if (tracked > 0) this.post({ type: 'warning', message: t('Left {0} file(s) in place: git has them now (for example in the automatic commit), so Undo would not be safe.', tracked) });
+      if (refused > 0) this.post({ type: 'warning', message: t('Left {0} file(s) in place: they are not plain files inside the workspace.', refused) });
+      const missing = targets.length - done.length - tracked - refused;
       if (missing > 0) this.post({ type: 'warning', message: t('Could not undo {0} file(s): no saved copy of how they were.', missing) });
     } catch (err) {
       this.post({ type: 'warning', message: t('Could not revert: {0}', (err as Error).message) });

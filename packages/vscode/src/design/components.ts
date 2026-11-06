@@ -117,7 +117,7 @@ body.ik-root { margin: 0; font: var(--text-body); color: var(--ink-body); backgr
 .ik-review__rows { border-top: var(--border-hairline) solid var(--line-subtle); max-height: 20vh; overflow-y: auto; }
 .ik-review__row + .ik-review__row { border-top: var(--border-hairline) solid var(--line-subtle); }
 .ik-review__spacer { flex: 1 1 0; }
-.ik-review__actions { display: inline-flex; align-items: center; gap: var(--space-xs); margin-left: auto; }
+.ik-review__actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-xs); min-width: 0; max-width: 100%; margin-left: auto; }
 .ik-review__add { color: var(--success); font-weight: 600; white-space: nowrap; }
 .ik-review__del { color: var(--danger); font-weight: 600; white-space: nowrap; }
 .ik-review__name { flex: 1 1 120px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: var(--ink-strong); text-align: left; cursor: pointer; overflow-wrap: anywhere; }

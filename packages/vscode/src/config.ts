@@ -222,7 +222,7 @@ export function readConfig(): ExtensionConfig {
       ).map(([k, v]) => [k.toLowerCase(), v])
     ),
     browser: {
-      enabled: cfg.get<boolean>('browser.enabled') ?? false,
+      enabled: cfg.get<boolean>('browser.enabled') ?? true,
       headless: cfg.get<boolean>('browser.headless') ?? true,
     },
     audit: { enabled: cfg.get<boolean>('audit.enabled') ?? false },

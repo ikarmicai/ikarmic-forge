@@ -1450,11 +1450,25 @@ export function chatHtml(
         name.appendChild(rvSpan('ik-review__dir', slash >= 0 ? f.path.slice(0, slash + 1) : ''));
         name.appendChild(document.createTextNode(slash >= 0 ? f.path.slice(slash + 1) : f.path));
         row.appendChild(name);
+        // A file a command made or changed: say so, since it was not an edit Forge made.
+        if (f.byCommand) {
+          const tag = rvSpan('ik-badge ik-badge--outline', 'Command');
+          // Whole sentences: the page's translation swaps exact strings.
+          tag.title = f.status === 'created' ? 'Created by a command'
+            : f.undoable === false ? (f.status === 'deleted' ? 'Deleted by a command, so there is no earlier copy to restore' : 'Changed by a command, so there is no earlier copy to restore')
+            : f.status === 'deleted' ? 'Deleted by a command' : 'Changed by a command';
+          row.appendChild(tag);
+        }
         const actions = rvSpan('ik-review__actions', '');
-        actions.appendChild(rvSpan('ik-review__add', '+' + f.added));
-        actions.appendChild(rvSpan('ik-review__del', minus + f.removed));
+        // No counts for a file a command changed that has no earlier copy: there is nothing to count against.
+        // A binary file has no lines: say so rather than "+0 −0".
+        if (f.binary) actions.appendChild(rvSpan('ik-muted', 'Binary'));
+        else if (!(f.byCommand && f.undoable === false)) {
+          actions.appendChild(rvSpan('ik-review__add', '+' + f.added));
+          actions.appendChild(rvSpan('ik-review__del', minus + f.removed));
+        }
         actions.appendChild(rvButton('ik-btn ik-btn--secondary', 'Keep', () => vscode.postMessage({ type: 'keep_file', path: f.path })));
-        actions.appendChild(rvButton('ik-btn ik-btn--link', 'Undo', () => vscode.postMessage({ type: 'revert_file', path: f.path })));
+        if (f.undoable !== false) actions.appendChild(rvButton('ik-btn ik-btn--link', 'Undo', () => vscode.postMessage({ type: 'revert_file', path: f.path })));
         row.appendChild(actions);
         list.appendChild(row);
       });

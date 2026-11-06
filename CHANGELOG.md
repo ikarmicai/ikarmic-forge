@@ -4,6 +4,20 @@ All notable changes to IKarmic Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [5.5.2] - 2026-11-06
+
+### Added
+- **Keep or Undo each changed file** in a bar above the message box, including files a command created, changed or deleted.
+- **Voice typing on macOS** from the mic button; the mic lights up while it is on.
+
+### Changed
+- **The browser tools are on by default in VS Code** (`forge.browser.enabled`), so the agent looks at its page in Forge's own browser instead of starting Chrome from the shell.
+
+### Fixed
+- A run with more than 20 edits lists every file, and Undo puts each back as the run found it.
+- Autonomous no longer asks for a command that only prints a URL path, and an ask says why; Windows terminal output reaches the model in UTF-8; a timed-out command no longer keeps running on Windows.
+- A secret-looking line no longer reloads the chat; a plan is kept when the model's last step has no text; project memory stays inside the project.
+
 ## [5.5.1] - 2026-11-02
 
 Two defaults change in this release: a chat run has no step limit unless you set `forge.maxSteps`, and Forge reads `FORGE.md` and `AGENTS.md` but no longer `CLAUDE.md` or `CONVENTIONS.md` (it says so when one is there).

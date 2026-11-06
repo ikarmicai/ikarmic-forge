@@ -2,7 +2,7 @@
   "name": "ikarmic-forge",
   "displayName": "IKarmic AI Forge",
   "description": "Open-source AI coding agent for VS Code. Agentic chat, inline autocomplete, MCP servers, skills and hooks, on any model: OpenAI, Anthropic, Google, Ollama.",
-  "version": "5.5.1",
+  "version": "5.5.2",
   "publisher": "ikarmic",
   "license": "AGPL-3.0-only",
   "icon": "resources/icon.png",
@@ -1010,7 +1010,7 @@
         },
         "forge.browser.enabled": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "%config.forge.browser.enabled.description%"
         },
         "forge.browser.headless": {
@@ -1252,7 +1252,7 @@
     "@ai-sdk/anthropic": "^4.0.0",
     "@ai-sdk/google": "^4.0.0",
     "@ai-sdk/openai": "^4.0.0",
-    "@ikarmic/forge-core": "^5.5.1",
+    "@ikarmic/forge-core": "^5.5.2",
     "ai": "^7.0.0"
   },
   "devDependencies": {

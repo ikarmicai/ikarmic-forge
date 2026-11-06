@@ -10,6 +10,31 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.5.2] - 2026-11-06
+
+### Added
+
+- **Keep or Undo each changed file.** After a run that changed files, a bar above the message box reads "N files changed +added −removed" with Keep all and Undo all, and a list where each file has its own line counts, Keep and Undo, and opens on click. It replaces the "Revert this run" line in the conversation, and folds away with a chevron like the task list.
+- **Files that commands changed are in the bar too.** A file a command created, changed or deleted (`npm init`, a scaffolder, a formatter) is listed with a Command badge, its line counts and Undo, in a git repository and in a folder without git, also when an edit tool changed it afterwards. An image or other binary file reads "Binary". A file over 1 MiB, or past 16 MiB of copies, is listed without Undo (RB-161).
+- **Voice typing on macOS.** The mic button starts the system's Dictation on macOS, as it starts Win+H on Windows, and lights up while voice typing is on (RB-152).
+- **Output → Forge says how each chat run ended**, in words: the reason, the mode and the length of the answer.
+
+### Changed
+
+- **The browser tools are on by default in VS Code** (`forge.browser.enabled`). The agent opens your dev server in Forge's own browser to look at what it built, instead of starting Chrome from the shell, which Autonomous asks about each time. Turn it off in Settings, or with the `disableBrowser` policy.
+
+### Fixed
+
+- After a run with more than 20 file edits, the bar lists every file, and Undo puts each one back as the run found it (RB-157).
+- Autonomous no longer asks for a command that only prints a URL path (`GET / -> 200`) or uses a Windows switch (`cmd /c`). An ask that still happens says why (RB-159).
+- On Windows, command output in the VS Code terminal reaches the model in UTF-8, and a command with a non-ASCII character no longer "times out" (RB-160).
+- On Windows, a timed-out command's program no longer keeps running and holding its folder (RB-155).
+- A reply with a secret-looking line no longer reloads the chat and drops its cards (RB-156).
+- A plan written next to a tool call is kept when the model's next step has no text (RB-150).
+- Project memory is no longer read from, or written to, a folder above the project (RB-151).
+- A spec design with its own `##` headings is no longer cut down to its title (RB-31).
+- `minimatch` is pinned to 11.0.1 or later for a security alert.
+
 ## [5.5.1] - 2026-11-02
 
 ### Added
@@ -270,7 +295,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Memory**, **steering files** and per-project instructions.
 - **Verification**: Forge runs your project's own typecheck, lint and tests after edits, with Ask/On/Off.
 
-[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.1...HEAD
+[Unreleased]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.2...HEAD
+[5.5.2]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.1...v5.5.2
 [5.5.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.5.0...v5.5.1
 [5.5.0]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.1...v5.5.0
 [5.4.1]: https://github.com/ikarmicai/ikarmic-forge/compare/v5.4.0...v5.4.1

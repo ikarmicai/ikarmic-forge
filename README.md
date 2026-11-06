@@ -2,7 +2,7 @@
 
 An all-in-one AI coding assistant. A shared agent engine that drives a polished terminal CLI today, and a VS Code extension tomorrow. One source of truth for the model loop, the tools, and the prompts: different surfaces on top.
 
-> **Status:** **v5.5.1**: CLI, VS Code extension and eval harness, open source under AGPL-3.0-only. The core engine (`@ikarmic/forge-core`) is proprietary and free to run with them.
+> **Status:** **v5.5.2**: CLI, VS Code extension and eval harness, open source under AGPL-3.0-only. The core engine (`@ikarmic/forge-core`) is proprietary and free to run with them.
 >
 > **Install:** `npm i -g ikarmic-forge` for the CLI, or the VS Code Marketplace / Open VSX listing for the extension. To build from source: `pnpm install && pnpm -r build`.
 
@@ -72,7 +72,7 @@ Bedrock, Vertex and Azure are never auto-selected from ambient credentials; choo
 - **Model router**: `--cheap-model <id>` / `forge.router.cheapModel` sends read-only exploration steps to a cheaper model and keeps the main model for planning and edits.
 - **Verify loop**: `--verify "pnpm test"` (repeatable) / `forge.verify.commands` runs your checks after the agent edits files and feeds failures back so it can fix them.
 - **Semantic search**: `--semantic-search` / `forge.semanticSearch` adds `codebase_search`. It works offline by default; set `FORGE_EMBED_PROVIDER=openai|ollama` for embedding-based ranking. Symbol tools now cover Python, Go, Rust and Java as well as TS/JS.
-- **Browser**: `--browser` / `forge.browser.enabled` lets the agent open a page (for example your dev server), take a screenshot and read console errors. Needs Chrome, Edge or Chromium (`FORGE_CHROME_PATH` overrides). Clicking and typing need approval.
+- **Browser**: `--browser` / `forge.browser.enabled` (on by default in VS Code) lets the agent open a page (for example your dev server), take a screenshot and read console errors. Needs Chrome, Edge or Chromium (`FORGE_CHROME_PATH` overrides). Clicking and typing need approval.
 - **Agent-task hooks**: a hook of `"type": "agent"` runs an agent task instead of a shell command (for example on `FileChanged`). It runs unattended with file read/write tools only.
 
 ### VS Code

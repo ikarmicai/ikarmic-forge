@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { chatHtml } from '../src/chat/html.js';
-import { findRunFile, newRunReview, runReviewMessage, settleRunFiles } from '../src/chat/run-review.js';
+import { findRunFile, mergeRunFiles, newRunReview, runReviewMessage, settleRunFiles, undoTargets } from '../src/chat/run-review.js';
 
 const FILES = [
   { path: 'src/a.ts', status: 'modified' as const, added: 3, removed: 1 },
@@ -53,9 +53,62 @@ describe('run review state', () => {
   });
 });
 
+describe('files a command changed, next to the files the edit tools changed', () => {
+  const cmdCreated = { path: 'out.txt', status: 'created' as const, added: 4, removed: 0, byCommand: true };
+  const cmdChanged = { path: 'src/c.ts', status: 'modified' as const, added: 0, removed: 0, byCommand: true, undoable: false };
+
+  // commandChanges lists a path the edit tools have only when a command changed it before their first edit (the live
+  // CRM run: a command moved a file, then edit_file changed it), so its row, counted from the start of the run, wins.
+  it('puts both lists in one, sorted by path, and keeps the command row when a path is in both', () => {
+    const dup = { ...cmdCreated, path: 'src/a.ts', added: 224 };
+    const merged = mergeRunFiles(FILES, [cmdChanged, dup, cmdCreated]);
+    expect(merged.map((f) => f.path)).toEqual(['out.txt', 'src/a.ts', 'src/b.ts', 'src/c.ts']);
+    expect(merged.find((f) => f.path === 'src/a.ts')).toEqual(dup);
+  });
+
+  it('undoes only files that have an earlier copy or did not exist', () => {
+    const run = newRunReview('t', mergeRunFiles(FILES, [cmdCreated, cmdChanged]))!;
+    expect(undoTargets(run).map((f) => f.path)).toEqual(['out.txt', 'src/a.ts', 'src/b.ts']);
+    expect(undoTargets(run, 'src/c.ts')).toEqual([]);
+    expect(undoTargets(run, 'out.txt').map((f) => f.path)).toEqual(['out.txt']);
+    expect(undoTargets(run, 'nope.ts')).toEqual([]);
+  });
+
+  it('keeps the earlier copies on the host: they survive Keep and Undo, and never go to the page', () => {
+    const cmdModified = { path: 'src/d.ts', status: 'modified' as const, added: 1, removed: 1, byCommand: true };
+    const earlier = new Map([['src/d.ts', Buffer.from('before')]]);
+    const run = newRunReview('t', [cmdModified, cmdCreated], earlier)!;
+    expect(undoTargets(run).map((f) => f.path)).toEqual(['src/d.ts', 'out.txt']);
+    expect(settleRunFiles(run, ['out.txt'], 'kept').earlier?.get('src/d.ts')?.toString()).toBe('before');
+    const msg = runReviewMessage(run);
+    expect(Object.keys(msg).sort()).toEqual(['files', 'kept', 'type', 'undone']);
+    expect(JSON.stringify(msg)).not.toContain('before');
+  });
+});
+
 describe('chat page run review bar', () => {
   const html = chatHtml();
   const fn = html.slice(html.indexOf('let runReviewOpen'), html.indexOf('function appendStatusLine'));
+
+  it('marks a file a command made or changed, and gives no Undo (or counts) for a file with no earlier copy', () => {
+    expect(fn).toContain('byCommand');
+    expect(fn).toContain("'ik-badge ik-badge--outline'");
+    expect(fn).toContain("'Command'");
+    expect(fn).toContain('undoable !== false');
+  });
+
+  it('says what the command did to the file in the badge tooltip', () => {
+    expect(fn).toContain("'Created by a command'");
+    expect(fn).toContain("'Changed by a command'");
+    expect(fn).toContain("'Deleted by a command'");
+    expect(fn).toContain("'Deleted by a command, so there is no earlier copy to restore'");
+    expect(fn).toContain("'Changed by a command, so there is no earlier copy to restore'");
+  });
+
+  // Live CRM run, 2026-11-06: screenshots a command saved read "+0 −0".
+  it('says "Binary" for a binary file instead of line counts', () => {
+    expect(fn).toContain("if (f.binary) actions.appendChild(rvSpan('ik-muted', 'Binary'));");
+  });
 
   it('docks the bar above the message box, outside the scrolling conversation', () => {
     const bar = html.indexOf('id="run-review"');
