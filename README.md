@@ -161,26 +161,19 @@ don't waste tokens.
 Multi-line completions can be accepted one line at a time with `Tab` (VS
 Code's `editor.action.inlineSuggest.acceptNextWord`).
 
-**Voice input** (v2.2): click the 🎤 button next to the Send button or hit
-`Ctrl+Shift+Space` / `Cmd+Shift+Space` to dictate your prompt. The browser's
-Web Speech API transcribes what you say directly into the chat input: no
-round-trip through our servers. Interim text streams in italic while the
-engine finalizes each utterance; final text commits in regular weight.
-Click 🎤 again (or hit the shortcut) to stop.
+**Voice input**: click the 🎤 button next to the Send button or press
+`Ctrl+Shift+Space` / `Cmd+Shift+Space` to dictate your prompt. VS Code does
+not give webviews the microphone, so the button starts your system's own
+voice typing in the chat box: Win+H on Windows, Dictation on macOS (allow
+VS Code under Accessibility the first time). Its language and behaviour are
+the system's. Press the button again, or use the system's own control, to
+stop. On a system with no voice typing Forge can start (Linux), the button
+is hidden. `forge.voice.enabled` (default `true`) hides it everywhere.
 
-| Setting | Default | What it does |
-| --- | --- | --- |
-| `forge.voice.enabled` | `true` | Master switch. When `false`, the mic button is hidden. |
-| `forge.voice.language` | `''` | BCP-47 code (e.g. `en-US`, `fr-FR`). Empty uses `navigator.language`. |
-| `forge.voice.autoSubmit` | `false` | Send the transcript automatically when the engine finalizes it. Off by default: typing wins. |
-| `forge.voice.continuous` | `false` | Keep listening across utterances. Off ends the session on silence. |
-| `forge.voice.interimResults` | `true` | Surface interim transcripts as the user speaks. Off waits for final results only. |
-
-**Privacy note**: Chrome's Web Speech API sends audio to a Google cloud
-STT service. Voice input requires a network connection and a working
-microphone. When the API is unavailable (older VS Code, headless servers,
-some Linux distros), the mic button disables itself with an explanatory
-tooltip.
+**Privacy note**: what you say goes to your system's voice typing, under its
+own settings and privacy terms (Windows and macOS can use online speech
+recognition). Forge never receives the audio, only the text typed into the
+chat box.
 
 ## Usage
 

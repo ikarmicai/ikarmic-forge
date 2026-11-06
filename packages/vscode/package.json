@@ -527,22 +527,26 @@
         "forge.voice.language": {
           "type": "string",
           "default": "",
-          "description": "%config.forge.voice.language.description%"
+          "description": "%config.forge.voice.language.description%",
+          "deprecationMessage": "%config.forge.voice.unused%"
         },
         "forge.voice.autoSubmit": {
           "type": "boolean",
           "default": false,
-          "description": "%config.forge.voice.autoSubmit.description%"
+          "description": "%config.forge.voice.autoSubmit.description%",
+          "deprecationMessage": "%config.forge.voice.unused%"
         },
         "forge.voice.continuous": {
           "type": "boolean",
           "default": false,
-          "description": "%config.forge.voice.continuous.description%"
+          "description": "%config.forge.voice.continuous.description%",
+          "deprecationMessage": "%config.forge.voice.unused%"
         },
         "forge.voice.interimResults": {
           "type": "boolean",
           "default": true,
-          "description": "%config.forge.voice.interimResults.description%"
+          "description": "%config.forge.voice.interimResults.description%",
+          "deprecationMessage": "%config.forge.voice.unused%"
         },
         "forge.autoPlan": {
           "type": "boolean",

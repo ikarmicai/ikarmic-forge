@@ -4,7 +4,6 @@ import * as lib from '../src/settings/settings-lib.js';
 import {
   AWS_REGIONS,
   VERTEX_LOCATIONS,
-  VOICE_LANGUAGES,
   filterGroups,
   isKnownValue,
   modelGroups,
@@ -72,7 +71,7 @@ describe('modelGroups', () => {
 });
 
 describe('fixed lists', () => {
-  const all: Array<[string, ComboGroup[]]> = [['AWS regions', AWS_REGIONS], ['Vertex locations', VERTEX_LOCATIONS], ['voice languages', VOICE_LANGUAGES]];
+  const all: Array<[string, ComboGroup[]]> = [['AWS regions', AWS_REGIONS], ['Vertex locations', VERTEX_LOCATIONS]];
 
   it.each(all)('%s carry sentence labels that are not their stored value (words, not identifiers)', (_name, groups) => {
     const options = groups.flatMap((g) => g.options);
@@ -88,13 +87,12 @@ describe('fixed lists', () => {
   it('holds the regions and codes the spec names', () => {
     expect(isKnownValue(AWS_REGIONS, 'us-east-1')).toBe(true);
     expect(isKnownValue(VERTEX_LOCATIONS, 'us-central1')).toBe(true);
-    expect(isKnownValue(VOICE_LANGUAGES, 'hi-IN')).toBe(true);
   });
 });
 
 describe('the page can reach it (window.ForgeSettings)', () => {
   it('exports every helper the page script calls', () => {
-    for (const name of ['filterGroups', 'isKnownValue', 'modelGroups', 'AWS_REGIONS', 'VERTEX_LOCATIONS', 'VOICE_LANGUAGES']) {
+    for (const name of ['filterGroups', 'isKnownValue', 'modelGroups', 'AWS_REGIONS', 'VERTEX_LOCATIONS']) {
       expect((lib as Record<string, unknown>)[name], name).toBeDefined();
     }
   });

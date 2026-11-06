@@ -113,10 +113,9 @@ describe('rows backed by a list of suggestions (the list never validates)', () =
     'forge.completionModel': 'modelIds',
     'forge.providers.awsRegion': 'awsRegions',
     'forge.providers.vertexLocation': 'vertexLocations',
-    'forge.voice.language': 'voiceLanguages',
   };
 
-  it('names the list for exactly the six rows, and no other row has one', () => {
+  it('names the list for exactly the five rows, and no other row has one', () => {
     const withChoices = Object.fromEntries(SETTING_ROWS.filter((r) => r.choices).map((r) => [r.key, r.choices]));
     expect(withChoices).toEqual(expected);
   });
@@ -132,6 +131,6 @@ describe('rows backed by a list of suggestions (the list never validates)', () =
   it('saves a typed value that is in no list unchanged (trimmed only)', () => {
     expect(coerceRow(row('forge.providers.awsRegion'), '  eu-south-3 ')).toEqual({ ok: true, value: 'eu-south-3' });
     expect(coerceRow(row('forge.router.cheapModel'), 'my-gateway:custom-model')).toEqual({ ok: true, value: 'my-gateway:custom-model' });
-    expect(coerceRow(row('forge.voice.language'), 'en-ZA')).toEqual({ ok: true, value: 'en-ZA' });
+    expect(coerceRow(row('forge.providers.vertexLocation'), ' me-central9 ')).toEqual({ ok: true, value: 'me-central9' });
   });
 });

@@ -18,7 +18,7 @@ export {
   saveMessages,
   sortedTools,
 } from './settings-model.js';
-export { AWS_REGIONS, VERTEX_LOCATIONS, VOICE_LANGUAGES, filterGroups, isKnownValue, modelGroups } from './settings-combo.js';
+export { AWS_REGIONS, VERTEX_LOCATIONS, filterGroups, isKnownValue, modelGroups } from './settings-combo.js';
 export { enumLabel, toolLabel } from '../human-text.js';
 export { indexStatusLine } from '../index-status.js';
 export { cleanupLine } from './cleanup-record.js';

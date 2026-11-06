@@ -613,7 +613,6 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
   function comboGroups(kind) {
     if (kind === 'awsRegions') return FS.AWS_REGIONS;
     if (kind === 'vertexLocations') return FS.VERTEX_LOCATIONS;
-    if (kind === 'voiceLanguages') return FS.VOICE_LANGUAGES;
     return FS.modelGroups({ aliases: aliases, mainProvider: listProvider(), lists: modelLists, catalog: catalog, providers: providers.filter(isConfigured), labelOf: labelOf, bareOnly: kind === 'modelIds' });
   }
   // Other providers' lists load the first time a model combo opens, once each, and only for providers with a key.
@@ -2011,18 +2010,6 @@ export function getSettingsHtml(opts: { scriptUri?: string; cspSource?: string; 
       if (r.max !== undefined) control.max = String(r.max);
       control.value = r.value === undefined || r.value === null ? '' : String(r.value);
       control.addEventListener('change', () => { if (control.value.trim() !== '') send(Number(control.value)); });
-    } else if (r.choices === 'voiceLanguages') {
-      control = selectEl();
-      control.appendChild(new Option('Browser default', ''));
-      FS.VOICE_LANGUAGES.forEach((g) => {
-        const og = document.createElement('optgroup'); og.label = g.label;
-        g.options.forEach((o) => { const opt = new Option(o.label, o.value); opt.title = o.value; og.appendChild(opt); });
-        control.appendChild(og);
-      });
-      const savedValue = typeof r.value === 'string' ? r.value : '';
-      if (savedValue && !FS.isKnownValue(FS.VOICE_LANGUAGES, savedValue)) control.appendChild(new Option(savedValue + ' (not in the list)', savedValue));
-      control.value = savedValue;
-      control.addEventListener('change', () => send(control.value));
     } else if (r.choices) {
       mount = buildCombo(r.label, '', typeof r.value === 'string' ? r.value : '');
       control = mount.querySelector('input');

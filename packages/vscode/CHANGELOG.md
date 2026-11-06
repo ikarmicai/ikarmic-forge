@@ -38,6 +38,7 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - A plan written next to a tool call is kept when the model's next step has no text (RB-150).
 - Project memory is no longer read from, or written to, a folder above the project (RB-151).
 - A spec design with its own `##` headings is no longer cut down to its title (RB-31).
+- Settings, Advanced no longer shows four voice settings that changed nothing (voice language, send automatically, keep listening, show words as you speak): the mic starts your system's voice typing, which has its own. They are marked as no longer used, and the Voice input row says what the mic does.
 - A retry after a lost connection says why ("Cannot connect to API: ECONNRESET") instead of "Cannot connect to API: )".
 - The terminal app keeps a saved session's start date and adds each run's tokens and cost to the session's totals; every save used to overwrite them, and the Done line read "↑0 ↓0".
 - `minimatch` is pinned to 11.0.1 or later for a security alert.

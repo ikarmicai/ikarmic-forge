@@ -6,7 +6,7 @@
  */
 
 /** `models`: alias, bare id or provider:model. `modelIds`: a plain id of the main provider only. */
-export type RowChoices = 'models' | 'modelIds' | 'awsRegions' | 'vertexLocations' | 'voiceLanguages';
+export type RowChoices = 'models' | 'modelIds' | 'awsRegions' | 'vertexLocations';
 
 export type RowSection = 'context' | 'safety' | 'notifications' | 'tools' | 'git' | 'advanced';
 
@@ -132,10 +132,6 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   b('forge.chat.showSpeed', 'advanced', 'Show reply speed'),
   b('forge.chatViewEnabled', 'advanced', 'Show Forge in the sidebar'),
   b('forge.voice.enabled', 'advanced', 'Voice input'),
-  c('forge.voice.language', 'advanced', 'Voice language', 'voiceLanguages'),
-  b('forge.voice.autoSubmit', 'advanced', 'Send voice input automatically'),
-  b('forge.voice.continuous', 'advanced', 'Keep listening'),
-  b('forge.voice.interimResults', 'advanced', 'Show words as you speak'),
   c('forge.providers.awsRegion', 'advanced', 'AWS region (Bedrock)', 'awsRegions'),
   s('forge.providers.vertexProject', 'advanced', 'Vertex project'),
   c('forge.providers.vertexLocation', 'advanced', 'Vertex location', 'vertexLocations'),
@@ -154,6 +150,12 @@ export const EXCLUDED_KEYS: readonly string[] = [
   'forge.apiKeys.openai', // legacy: keys live in secret storage (Models and providers page)
   'forge.apiKeys.anthropic',
   'forge.apiKeys.google',
+  // Deprecated: read only by the in-page speech engine, which is never built (VS Code refuses webviews the
+  // microphone). The mic hands off to the system's voice typing, which has its own language and behaviour.
+  'forge.voice.language',
+  'forge.voice.autoSubmit',
+  'forge.voice.continuous',
+  'forge.voice.interimResults',
 ];
 
 export type Coerced = { ok: true; value: unknown } | { ok: false; message: string };
@@ -231,7 +233,7 @@ export const SHORT_HELP: Record<string, string> = {
   "forge.autoCommit.dirtyCommits": "With auto-commit on, commit your own uncommitted changes first, so the agent's commit holds only its own.",
   "forge.verify.auto": "Run the project's typecheck, lint and tests after edits and send failures back to the model. ask = once per command set, on = always, off = never.",
   "forge.completionTelemetry": "Count how often completions are shown and accepted, locally with no network calls. Shows the accept rate in the status bar tooltip.",
-  "forge.voice.language": "BCP-47 language code for speech recognition, such as en-US or fr-FR. Empty uses the browser default.",
+  "forge.voice.enabled": "Show the mic button, which starts your system's voice typing in the chat box. Hidden on a system with none.",
   "forge.providers.openaiCompatibleBaseUrl": "Base URL of any OpenAI-compatible endpoint, such as http://localhost:8000/v1. The key comes from OPENAI_COMPATIBLE_API_KEY.",
 };
 

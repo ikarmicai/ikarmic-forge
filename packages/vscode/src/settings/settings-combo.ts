@@ -72,12 +72,3 @@ export const VERTEX_LOCATIONS: ComboGroup[] = [
   group('Europe', [['europe-west1', 'Europe West (Belgium)'], ['europe-west4', 'Europe West (Netherlands)']]),
   group('Asia Pacific', [['asia-northeast1', 'Asia Northeast (Tokyo)'], ['asia-southeast1', 'Asia Southeast (Singapore)']]),
 ];
-
-/** BCP-47 codes for speech recognition. */
-export const VOICE_LANGUAGES: ComboGroup[] = [
-  group('English', [['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['en-IN', 'English (India)']]),
-  group('Other languages', [
-    ['hi-IN', 'Hindi'], ['es-ES', 'Spanish (Spain)'], ['es-MX', 'Spanish (Mexico)'], ['fr-FR', 'French'], ['de-DE', 'German'],
-    ['it-IT', 'Italian'], ['pt-BR', 'Portuguese (Brazil)'], ['ja-JP', 'Japanese'], ['ko-KR', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
-  ]),
-];
