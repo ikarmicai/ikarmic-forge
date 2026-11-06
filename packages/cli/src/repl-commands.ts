@@ -275,3 +275,20 @@ export function formatScript(state: {
   for (const f of state.files.readOnly) lines.push(`/read-only ${quote(f)}`);
   return `${lines.join('\n')}\n`;
 }
+
+/**
+ * The REPL's line for a verify event. "Passed" with nothing run (a language server that is not installed) reads
+ * "not checked", not a pass, and what was skipped is named.
+ */
+export function verifyLine(e: { attempt: number; passed: boolean; checked: boolean; failedCommands: string[]; slowCommands?: string[]; unavailableServers?: string[] }): string {
+  const head = !e.passed
+    ? `✘ verification failed (pass ${e.attempt}): ${e.failedCommands.join(', ')}`
+    : e.checked
+      ? `✔ verification passed (pass ${e.attempt})`
+      : `○ not checked (pass ${e.attempt})`;
+  const notes: string[] = [];
+  if (e.slowCommands?.length) notes.push(`skipped, too slow: ${e.slowCommands.join(', ')}`);
+  if (e.unavailableServers?.length) notes.push(`no language server installed for: ${e.unavailableServers.join(', ')}`);
+  if (notes.length === 0) return head;
+  return e.passed && !e.checked ? `${head}: ${notes.join(' · ')}` : `${head} · ${notes.join(' · ')}`;
+}

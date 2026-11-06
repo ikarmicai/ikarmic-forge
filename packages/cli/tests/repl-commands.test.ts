@@ -4,6 +4,7 @@ import {
   OK_TASK,
   contextOutput,
   describeModel,
+  verifyLine,
   effortForThinkTokens,
   estimateContextTokens,
   fixTask,
@@ -207,5 +208,22 @@ describe('scripts', () => {
 
   it('formatScript with nothing optional is just the model line', () => {
     expect(scriptLines(formatScript({ model: { provider: 'openai', model: 'm' } as never, files: { editable: [], readOnly: [] } }))).toEqual(['/model openai:m']);
+  });
+});
+
+// With the language-server check on and no server installed, the terminal app said "verification passed" although
+// nothing had looked at the edit (2026-11-06).
+describe('verifyLine', () => {
+  it('says not checked when nothing ran, and names a missing language server', () => {
+    expect(verifyLine({ attempt: 1, passed: true, checked: false, failedCommands: [], unavailableServers: ['typescript-language-server'] })).toBe(
+      '○ not checked (pass 1): no language server installed for: typescript-language-server'
+    );
+  });
+
+  it('keeps passed and failed as they were, and adds what was skipped', () => {
+    expect(verifyLine({ attempt: 2, passed: true, checked: true, failedCommands: [] })).toBe('✔ verification passed (pass 2)');
+    expect(verifyLine({ attempt: 1, passed: false, checked: true, failedCommands: ['npm test'], slowCommands: ['npm run e2e'] })).toBe(
+      '✘ verification failed (pass 1): npm test · skipped, too slow: npm run e2e'
+    );
   });
 });

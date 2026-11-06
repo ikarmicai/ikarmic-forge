@@ -2047,7 +2047,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
           await projectScriptsFingerprint(workspaceRoot),
           vscode.workspace.isTrusted
         );
-    const extras = buildRunExtras({ ...cfg, verifyCommands: plan.commands }, runModel, {
+    // A language server can run the project's own code (the workspace's TypeScript): trusted workspaces only, like the checks.
+    const extras = buildRunExtras({ ...cfg, verifyCommands: plan.commands, verifyLsp: cfg.verifyLsp && trustedForChecks }, runModel, {
       readOnly: generating,
       ...(sharedConfig.aliases ? { aliases: sharedConfig.aliases } : {}),
       ...(verifyAuto ? { verifyAuto } : {}),
@@ -2340,6 +2341,8 @@ export class ForgeChatViewProvider implements vscode.WebviewViewProvider {
               passed: event.passed,
               failedCommands: event.failedCommands,
               ...(event.slowCommands ? { slowCommands: event.slowCommands } : {}),
+              ...(event.unavailableServers ? { unavailableServers: event.unavailableServers } : {}),
+              checked: event.checked,
             });
             return;
           case 'model_route':

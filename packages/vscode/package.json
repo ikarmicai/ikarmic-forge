@@ -946,7 +946,7 @@
         },
         "forge.verify.lsp": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "%config.forge.verify.lsp.description%"
         },
         "forge.semantic.embedder": {

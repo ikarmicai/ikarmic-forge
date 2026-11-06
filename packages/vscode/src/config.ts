@@ -208,7 +208,7 @@ export function readConfig(): ExtensionConfig {
       editorModel: (cfg.get<string>('architect.editorModel') ?? '').trim(),
     },
     verifyCommands: (cfg.get<string[]>('verify.commands') ?? []).filter((c) => c.trim().length > 0),
-    verifyLsp: cfg.get<boolean>('verify.lsp') ?? false,
+    verifyLsp: cfg.get<boolean>('verify.lsp') ?? true,
     verifyAuto: ((v) => (v === 'on' || v === 'off' ? v : 'ask'))(cfg.get<string>('verify.auto')),
     semanticSearch: cfg.get<boolean>('semanticSearch') ?? false,
     github: { enabled: cfg.get<boolean>('github.enabled') ?? false },

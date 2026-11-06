@@ -1477,6 +1477,9 @@ export function chatHtml(
     }
   }
 
+  /** Language servers already named as not installed in this chat view, so the verify line says it once. */
+  const namedServers = new Set();
+
   function appendStatusLine(text) {
     hideEmpty();
     const div = document.createElement('div');
@@ -3261,12 +3264,19 @@ export function chatHtml(
       case 'context_masked':
         appendStatusLine('Saved about ' + Number(msg.savedTokens).toLocaleString() + ' tokens by not resending ' + msg.maskedCount + ' old tool result(s).');
         break;
-      case 'verify':
+      case 'verify': {
+        // "Passed" with nothing run (a language server that is not installed) is "Not checked", not a pass. A missing
+        // server is named once per chat; after that a run where nothing was checked adds no line.
+        const newServers = (msg.unavailableServers || []).filter((s) => !namedServers.has(s));
+        newServers.forEach((s) => namedServers.add(s));
+        if (msg.passed && msg.checked === false && newServers.length === 0 && !(msg.slowCommands && msg.slowCommands.length)) break;
         appendStatusLine(
-          (msg.passed ? 'Checks passed.' : 'Checks failed (pass ' + msg.attempt + '): ' + (msg.failedCommands || []).join(', ')) +
-          (msg.slowCommands && msg.slowCommands.length ? ' Skipped, too slow: ' + msg.slowCommands.join(', ') : '')
+          (msg.passed ? (msg.checked === false ? 'Not checked.' : 'Checks passed.') : 'Checks failed (pass ' + msg.attempt + '): ' + (msg.failedCommands || []).join(', ')) +
+          (msg.slowCommands && msg.slowCommands.length ? ' Skipped, too slow: ' + msg.slowCommands.join(', ') : '') +
+          (newServers.length ? ' No language server installed for: ' + newServers.join(', ') + '. Install it, or turn off Include editor problems in checks in Settings.' : '')
         );
         break;
+      }
       case 'approval_resolved':
         hostResolvedApproval(msg.id, msg.approved, !!msg.partial);
         break;

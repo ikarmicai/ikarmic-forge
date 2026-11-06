@@ -75,6 +75,7 @@ import {
   runContextNote,
   runShell,
   switchModel,
+  verifyLine,
 } from './repl-commands.js';
 import type { GitWorkflow } from './git-workflow.js';
 import { Header } from './components/Header.js';
@@ -1400,9 +1401,7 @@ export function Repl({
                   {
                     kind: 'status',
                     id: cryptoId(),
-                    text: event.passed
-                      ? `✔ verification passed (pass ${event.attempt})`
-                      : `✘ verification failed (pass ${event.attempt}): ${event.failedCommands.join(', ')}`,
+                    text: verifyLine(event),
                   },
                 ]);
                 break;

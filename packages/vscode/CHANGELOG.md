@@ -23,6 +23,7 @@ and the project follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - **The browser tools are on by default in VS Code** (`forge.browser.enabled`). The agent opens your dev server in Forge's own browser to look at what it built, instead of starting Chrome from the shell, which Autonomous asks about each time. Turn it off in Settings, or with the `disableBrowser` policy. The terminal app has them by default too (`--no-browser` leaves them out; `--browser` still works).
+- **Editor problems are part of the checks by default** (`forge.verify.lsp`): after the agent edits files, their language server (TypeScript, Python, Go, Rust) checks them and errors go back to the model, in a trusted workspace. With no server installed the chat says "Not checked" once and names the server, instead of "Checks passed".
 - **No time or step limit in the terminal app.** A run no longer stops after 10 minutes of wall clock or 50 steps, as in the VS Code chat; `--max-duration <ms>` and `--max-iterations <n>` still set one. The live "Build a CRM" run in the terminal app was cut off mid-work by each in turn. A run that does reach a limit now asks you to carry on in words, instead of naming a Continue button the terminal app does not have.
 
 ### Fixed
